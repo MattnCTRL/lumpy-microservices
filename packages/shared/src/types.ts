@@ -222,6 +222,15 @@ export interface CreateServerInput {
 /** Metrics payload posted by an agent; the orchestrator stamps `at`. */
 export type MetricsReport = Omit<ServerMetrics, 'at'>;
 
+/** SSHFS mount state for a machine: present on the orchestrator and responsive. */
+export interface MountState {
+  mounted: boolean;
+  healthy: boolean;
+}
+
+/** Mount state keyed by server id. */
+export type FleetMounts = Record<string, MountState>;
+
 /** A device seen on the tailnet that is not yet in the fleet. */
 export interface TailnetDevice {
   name: string;

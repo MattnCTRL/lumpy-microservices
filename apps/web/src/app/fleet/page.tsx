@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type {
+  FleetMounts,
   FleetNodeKind,
   LumpyEvent,
+  MountState,
   Server,
   ServerCriticality,
   ServerEnv,
@@ -19,6 +21,7 @@ import { reconnectingSocket } from '@/lib/socket';
 export default function FleetPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [histories, setHistories] = useState<Record<string, ServerMetrics[]>>({});
+  const [mounts, setMounts] = useState<FleetMounts>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +42,17 @@ export default function FleetPage() {
     const interval = setInterval(() => void refresh(), 5000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  useEffect(() => {
+    const load = () =>
+      api
+        .getMounts()
+        .then(setMounts)
+        .catch(() => {});
+    void load();
+    const interval = setInterval(() => void load(), 7000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handle = reconnectingSocket(fleetSocketUrl(), (data) => {
@@ -100,6 +114,7 @@ export default function FleetPage() {
             title="Servers"
             empty="No servers yet."
             servers={servers.filter((s) => s.kind === 'server')}
+            mounts={mounts}
             selectedId={selectedId}
             onSelect={(id) => void select(id)}
           />
@@ -107,6 +122,7 @@ export default function FleetPage() {
             title="Machines"
             empty="No machines yet."
             servers={servers.filter((s) => s.kind === 'machine')}
+            mounts={mounts}
             selectedId={selectedId}
             onSelect={(id) => void select(id)}
           />
@@ -116,6 +132,7 @@ export default function FleetPage() {
           {selected ? (
             <ServerDetailPanel
               server={selected}
+              mount={mounts[selected.id]}
               history={histories[selected.id] ?? []}
               onChanged={() => void refresh()}
               onDelete={async () => {
@@ -164,12 +181,14 @@ function FleetGroup({
   title,
   empty,
   servers,
+  mounts,
   selectedId,
   onSelect,
 }: {
   title: string;
   empty: string;
   servers: Server[];
+  mounts: FleetMounts;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -184,7 +203,12 @@ function FleetGroup({
       {servers.length === 0 ? (
         <p className="px-1 py-1 text-sm text-neutral-600">{empty}</p>
       ) : (
-        <ServerList servers={servers} selectedId={selectedId} onSelect={onSelect} />
+        <ServerList
+          servers={servers}
+          mounts={mounts}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
       )}
     </div>
   );
@@ -192,10 +216,12 @@ function FleetGroup({
 
 function ServerList({
   servers,
+  mounts,
   selectedId,
   onSelect,
 }: {
   servers: Server[];
+  mounts: FleetMounts;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -217,7 +243,10 @@ function ServerList({
               <span className="truncate text-sm font-medium text-neutral-100">{server.name}</span>
               <StatusBadge status={server.status} />
             </div>
-            <div className="mt-1 truncate text-xs text-neutral-500">{server.address}</div>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="truncate text-xs text-neutral-500">{server.address}</span>
+              <MountBadge mount={mounts[server.id]} />
+            </div>
           </button>
         </li>
       ))}
@@ -225,13 +254,30 @@ function ServerList({
   );
 }
 
+function MountBadge({ mount }: { mount: MountState | undefined }) {
+  if (!mount?.mounted) return null;
+  return (
+    <span
+      className={`flex shrink-0 items-center gap-1 text-xs ${
+        mount.healthy ? 'text-sky-400' : 'text-amber-400'
+      }`}
+      title={mount.healthy ? 'Files mounted and responsive' : 'Mount stalled (host asleep?)'}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${mount.healthy ? 'bg-sky-400' : 'bg-amber-400'}`} />
+      {mount.healthy ? 'mounted' : 'mount stalled'}
+    </span>
+  );
+}
+
 function ServerDetailPanel({
   server,
+  mount,
   history,
   onChanged,
   onDelete,
 }: {
   server: Server;
+  mount: MountState | undefined;
   history: ServerMetrics[];
   onChanged: () => void;
   onDelete: () => void;
@@ -263,6 +309,7 @@ function ServerDetailPanel({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <MountBadge mount={mount} />
           <StatusBadge status={server.status} />
           <button
             onClick={toggleKind}

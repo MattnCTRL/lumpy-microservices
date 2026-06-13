@@ -3,6 +3,7 @@ import type {
   AuthState,
   CreateServerInput,
   CreateSessionInput,
+  FleetMounts,
   HealthResponse,
   Playbook,
   Server,
@@ -80,6 +81,7 @@ export const api = {
 
   listServers: () => req('/api/fleet/servers').then(parse<Server[]>),
   discoverDevices: () => req('/api/fleet/discover').then(parse<TailnetDevice[]>),
+  getMounts: () => req('/api/fleet/mounts').then(parse<FleetMounts>),
   getServer: (id: string) => req(`/api/fleet/servers/${id}`).then(parse<ServerDetail>),
   createServer: (input: CreateServerInput) =>
     send('/api/fleet/servers', 'POST', input).then(parse<Server>),

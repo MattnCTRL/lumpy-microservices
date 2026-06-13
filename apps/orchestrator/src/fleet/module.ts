@@ -1,9 +1,10 @@
 import type { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { MetricsReport } from '@lumpy/shared';
-import type { TailnetDevice } from '@lumpy/shared';
+import type { FleetMounts, TailnetDevice } from '@lumpy/shared';
 import { collectOverSsh, type SshTarget } from '../ssh/collect.js';
 import { kindFromOs, tailnetDevices } from './discover.js';
+import { mountStates } from './mounts.js';
 import { FleetStore } from '../store/fleet.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { FleetManager } from './manager.js';
@@ -46,6 +47,12 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
   const { app } = ctx;
 
   app.get('/api/fleet/servers', async () => fleet.list());
+
+  // SSHFS mount state per machine (mounted on the orchestrator + responsive).
+  app.get('/api/fleet/mounts', async (): Promise<FleetMounts> => {
+    const machines = fleet.list().filter((s) => s.kind === 'machine');
+    return mountStates(machines.map((s) => ({ id: s.id, address: s.address })));
+  });
 
   // Tailnet devices not yet in the fleet — "available to add".
   app.get('/api/fleet/discover', async (): Promise<TailnetDevice[]> => {
