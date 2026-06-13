@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { LumpyEvent, Session, SessionActivity } from '@lumpy/shared';
+import { ConnectorsDialog } from '@/components/ConnectorsDialog';
 import { Field } from '@/components/Field';
 import { Terminal } from '@/components/Terminal';
 import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
@@ -230,6 +231,7 @@ function SessionPanel({
   onChanged: () => void;
   onDeleted: () => void;
 }) {
+  const [showConnectors, setShowConnectors] = useState(false);
   return (
     <div className="flex h-full flex-col rounded-lg border border-neutral-800 bg-neutral-950">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
@@ -237,8 +239,20 @@ function SessionPanel({
           <h2 className="truncate text-sm font-medium text-neutral-100">{session.name}</h2>
           <p className="truncate text-xs text-neutral-500">{session.workspace}</p>
         </div>
-        <ActivityBadge session={session} />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowConnectors(true)}
+            className="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-300 hover:bg-neutral-800"
+            title="Connectors (data sources, secrets, MCP servers)"
+          >
+            🔌 Connectors
+          </button>
+          <ActivityBadge session={session} />
+        </div>
       </div>
+      {showConnectors && (
+        <ConnectorsDialog sessionId={session.id} onClose={() => setShowConnectors(false)} />
+      )}
       {session.status === 'running' && session.activity === 'awaiting_permission' && (
         <PromptBanner sessionId={session.id} prompt={session.prompt} />
       )}

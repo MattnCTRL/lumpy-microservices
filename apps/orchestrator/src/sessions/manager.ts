@@ -1,7 +1,15 @@
-import { chownSync, existsSync, mkdirSync } from 'node:fs';
+import { chownSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { customAlphabet } from 'nanoid';
-import type { Session, SessionActivity, SessionPrompt, SessionStatus } from '@lumpy/shared';
+import type {
+  Session,
+  SessionActivity,
+  SessionConnectors,
+  SessionConnectorsView,
+  SessionPrompt,
+  SessionStatus,
+  UpdateConnectorsInput,
+} from '@lumpy/shared';
 import { config } from '../config.js';
 import type { EventBus } from '../events/bus.js';
 import { logger } from '../logger.js';
@@ -96,6 +104,7 @@ export class SessionManager {
       }),
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
+      env: this.applyConnectors(id, workspace),
     });
 
     const record: SessionRecord = {
@@ -121,6 +130,56 @@ export class SessionManager {
 
     logger.info({ id, workspace, command: args.command }, 'session created');
     return this.toSession(record, true);
+  }
+
+  /**
+   * Write the session's MCP servers to `<workspace>/.mcp.json` so Claude loads
+   * them, and return its secret env to inject into the session at launch. The
+   * file holds only ${VAR} references, never secret values.
+   */
+  applyConnectors(id: string, workspace: string): Record<string, string> {
+    const connectors = this.store.getConnectors(id);
+    const path = join(workspace, '.mcp.json');
+    try {
+      if (Object.keys(connectors.mcpServers).length > 0) {
+        writeFileSync(path, `${JSON.stringify({ mcpServers: connectors.mcpServers }, null, 2)}\n`);
+        if (this.runAs) {
+          try {
+            chownSync(path, this.runAs.uid, this.runAs.gid);
+          } catch {
+            // best-effort
+          }
+        }
+      } else if (existsSync(path)) {
+        rmSync(path); // no MCP servers — don't leave a stale config
+      }
+    } catch (error) {
+      logger.warn({ id, error }, 'could not write .mcp.json');
+    }
+    return connectors.env;
+  }
+
+  /** A session's connectors with env values masked (keys only) for the client. */
+  connectorsView(id: string): SessionConnectorsView {
+    const c = this.store.getConnectors(id);
+    return { envKeys: Object.keys(c.env), mcpServers: c.mcpServers, repo: c.repo };
+  }
+
+  /** Merge a connectors update, persist it, and refresh `.mcp.json` immediately. */
+  updateConnectors(id: string, input: UpdateConnectorsInput): SessionConnectorsView {
+    const current = this.store.getConnectors(id);
+    const env = { ...current.env };
+    for (const [key, value] of Object.entries(input.setEnv ?? {})) env[key] = value;
+    for (const key of input.removeEnv ?? []) delete env[key];
+    const next: SessionConnectors = {
+      env,
+      mcpServers: input.mcpServers ?? current.mcpServers,
+      repo: input.repo !== undefined ? input.repo : current.repo,
+    };
+    this.store.setConnectors(id, next);
+    const record = this.store.getSession(id);
+    if (record?.workspace) this.applyConnectors(id, record.workspace);
+    return { envKeys: Object.keys(next.env), mcpServers: next.mcpServers, repo: next.repo };
   }
 
   /**
@@ -210,6 +269,7 @@ export class SessionManager {
       command,
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
+      env: this.applyConnectors(id, record.workspace),
     });
     try {
       this.attachBroker(id);

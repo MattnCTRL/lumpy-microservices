@@ -52,6 +52,48 @@ export interface CreateSessionInput {
   task?: string;
 }
 
+// --- Session connectors (per-project data sources) ----------------------
+
+/**
+ * An MCP server declaration, written to the workspace's `.mcp.json`. Either a
+ * local `stdio` server (command/args) or a remote `http` server (url). Values
+ * may reference session env with ${VAR} so secrets stay out of the file.
+ */
+export interface McpServerDef {
+  type?: 'stdio' | 'http';
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+}
+
+/**
+ * The connectors a session/project uses: secret env vars (injected into the
+ * session at launch), MCP servers (Supabase, Vercel, …), and the GitHub repo it
+ * maps to. Secret values are never returned to clients — see the View type.
+ */
+export interface SessionConnectors {
+  env: Record<string, string>;
+  mcpServers: Record<string, McpServerDef>;
+  repo: string | null;
+}
+
+/** Client-facing view: env keys without their secret values. */
+export interface SessionConnectorsView {
+  envKeys: string[];
+  mcpServers: Record<string, McpServerDef>;
+  repo: string | null;
+}
+
+/** Partial update to a session's connectors. */
+export interface UpdateConnectorsInput {
+  setEnv?: Record<string, string>;
+  removeEnv?: string[];
+  mcpServers?: Record<string, McpServerDef>;
+  repo?: string | null;
+}
+
 export type Role = 'admin' | 'viewer';
 
 export interface GithubUser {

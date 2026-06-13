@@ -22,6 +22,8 @@ export interface NewSessionOptions {
   command: string;
   cols: number;
   rows: number;
+  /** Environment variables set on the session (via tmux -e), e.g. connector secrets. */
+  env?: Record<string, string>;
 }
 
 /** Whether tmux is installed and runnable on this host. */
@@ -58,6 +60,11 @@ export async function sessionExists(name: string): Promise<boolean> {
 }
 
 export async function newSession(opts: NewSessionOptions): Promise<void> {
+  // Pass connector env via -e so secrets stay out of the command line (ps).
+  const envArgs = Object.entries(opts.env ?? {}).flatMap(([key, value]) => [
+    '-e',
+    `${key}=${value}`,
+  ]);
   await exec(
     'tmux',
     [
@@ -71,6 +78,7 @@ export async function newSession(opts: NewSessionOptions): Promise<void> {
       String(opts.rows),
       '-c',
       opts.cwd,
+      ...envArgs,
       opts.command,
     ],
     options(),

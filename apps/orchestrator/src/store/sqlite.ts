@@ -1,6 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import type { McpServerDef, SessionConnectors } from '@lumpy/shared';
+import { decryptSecret, encryptSecret, loadOrCreateKey } from '../crypto/secret.js';
 
 export interface SessionRecord {
   id: string;
@@ -40,12 +42,21 @@ function toRecord(row: SessionRow): SessionRecord {
   };
 }
 
+interface ConnectorsRow {
+  session_id: string;
+  env: string | null;
+  mcp: string | null;
+  repo: string | null;
+}
+
 /** Metadata store for sessions. tmux remains the source of truth for liveness. */
 export class Store {
   private readonly db: Database.Database;
+  private readonly key: Buffer;
 
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
+    this.key = loadOrCreateKey(dataDir);
     this.db = new Database(join(dataDir, 'lumpy.db'));
     this.db.pragma('journal_mode = WAL');
     this.db.exec(`
@@ -68,6 +79,46 @@ export class Store {
         // Column already exists.
       }
     }
+    // Per-session connectors: secret env (encrypted), MCP servers, and repo.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS session_connectors (
+        session_id TEXT PRIMARY KEY,
+        env TEXT,
+        mcp TEXT,
+        repo TEXT
+      );
+    `);
+  }
+
+  /** A session's connectors with decrypted env, or empty defaults if none. */
+  getConnectors(sessionId: string): SessionConnectors {
+    const row = this.db
+      .prepare('SELECT * FROM session_connectors WHERE session_id = ?')
+      .get(sessionId) as ConnectorsRow | undefined;
+    if (!row) return { env: {}, mcpServers: {}, repo: null };
+    return {
+      env: row.env ? (JSON.parse(decryptSecret(row.env, this.key)) as Record<string, string>) : {},
+      mcpServers: row.mcp ? (JSON.parse(row.mcp) as Record<string, McpServerDef>) : {},
+      repo: row.repo,
+    };
+  }
+
+  setConnectors(sessionId: string, connectors: SessionConnectors): void {
+    const env = Object.keys(connectors.env).length
+      ? encryptSecret(JSON.stringify(connectors.env), this.key)
+      : null;
+    this.db
+      .prepare(
+        `INSERT INTO session_connectors (session_id, env, mcp, repo)
+         VALUES (@session_id, @env, @mcp, @repo)
+         ON CONFLICT(session_id) DO UPDATE SET env = @env, mcp = @mcp, repo = @repo`,
+      )
+      .run({
+        session_id: sessionId,
+        env,
+        mcp: JSON.stringify(connectors.mcpServers),
+        repo: connectors.repo,
+      });
   }
 
   createSession(record: SessionRecord): void {
@@ -109,5 +160,6 @@ export class Store {
 
   deleteSession(id: string): void {
     this.db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+    this.db.prepare('DELETE FROM session_connectors WHERE session_id = ?').run(id);
   }
 }

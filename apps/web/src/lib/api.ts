@@ -8,7 +8,9 @@ import type {
   Server,
   ServerDetail,
   Session,
+  SessionConnectorsView,
   SettingsResponse,
+  UpdateConnectorsInput,
 } from '@lumpy/shared';
 
 export interface ModuleInfo {
@@ -94,6 +96,11 @@ export const api = {
   getSettings: () => req('/api/settings').then(parse<SettingsResponse>),
   updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
+
+  getConnectors: (id: string) =>
+    req(`/api/sessions/${id}/connectors`).then(parse<SessionConnectorsView>),
+  updateConnectors: (id: string, input: UpdateConnectorsInput) =>
+    send(`/api/sessions/${id}/connectors`, 'PATCH', input).then(parse<SessionConnectorsView>),
 
   authMe: () => req('/api/auth/me').then(parse<AuthState>),
   authLoginUrl: () => `${ORCHESTRATOR_URL}/api/auth/github/login`,

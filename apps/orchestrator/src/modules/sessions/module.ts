@@ -14,6 +14,22 @@ const createSchema = z.object({
   task: z.string().optional(),
 });
 
+const mcpServerSchema = z.object({
+  type: z.enum(['stdio', 'http']).optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  url: z.string().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
+const connectorsUpdateSchema = z.object({
+  setEnv: z.record(z.string(), z.string()).optional(),
+  removeEnv: z.array(z.string()).optional(),
+  mcpServers: z.record(z.string(), mcpServerSchema).optional(),
+  repo: z.string().nullable().optional(),
+});
+
 function send(socket: WebSocket, message: ServerMessage): void {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
 }
@@ -61,6 +77,22 @@ function registerRest(ctx: ModuleContext): void {
     if (!broker) return reply.status(404).send({ error: 'session not running' });
     broker.write(body.data.data);
     return reply.status(204).send();
+  });
+
+  app.get('/api/sessions/:id/connectors', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (!(await sessions.get(id))) return reply.status(404).send({ error: 'session not found' });
+    return sessions.connectorsView(id);
+  });
+
+  app.patch('/api/sessions/:id/connectors', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (!(await sessions.get(id))) return reply.status(404).send({ error: 'session not found' });
+    const parsed = connectorsUpdateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
+    }
+    return sessions.updateConnectors(id, parsed.data);
   });
 
   app.post('/api/sessions/:id/stop', async (request, reply) => {
