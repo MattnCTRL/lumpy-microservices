@@ -5,6 +5,8 @@ import type {
   McpServerDef,
   Project,
   ProjectSources,
+  Service,
+  ServiceImprovement,
   SessionConnectors,
 } from '@lumpy/shared';
 import { decryptSecret, encryptSecret, loadOrCreateKey } from '../crypto/secret.js';
@@ -92,6 +94,32 @@ interface ConnectorsRow {
   repo: string | null;
 }
 
+interface ServiceRow {
+  id: string;
+  name: string;
+  speciality: string;
+  description: string | null;
+  instructions: string;
+  version: number;
+  improvements: string;
+  created_at: string;
+  updated_at: string;
+}
+
+function toService(row: ServiceRow): Service {
+  return {
+    id: row.id,
+    name: row.name,
+    speciality: row.speciality,
+    description: row.description,
+    instructions: row.instructions,
+    version: row.version,
+    improvements: JSON.parse(row.improvements) as ServiceImprovement[],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 /** Metadata store for sessions. tmux remains the source of truth for liveness. */
 export class Store {
   private readonly db: Database.Database;
@@ -157,6 +185,98 @@ export class Store {
     } catch {
       // Column already exists.
     }
+    // Micro services: deployable, self-improving specialist functions.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS services (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        speciality TEXT NOT NULL DEFAULT '',
+        description TEXT,
+        instructions TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        improvements TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+  }
+
+  createService(service: Service): void {
+    this.db
+      .prepare(
+        `INSERT INTO services (id, name, speciality, description, instructions, version, improvements, created_at, updated_at)
+         VALUES (@id, @name, @speciality, @description, @instructions, @version, @improvements, @created_at, @updated_at)`,
+      )
+      .run({
+        id: service.id,
+        name: service.name,
+        speciality: service.speciality,
+        description: service.description,
+        instructions: service.instructions,
+        version: service.version,
+        improvements: JSON.stringify(service.improvements),
+        created_at: service.createdAt,
+        updated_at: service.updatedAt,
+      });
+  }
+
+  getService(id: string): Service | null {
+    const row = this.db.prepare('SELECT * FROM services WHERE id = ?').get(id) as
+      | ServiceRow
+      | undefined;
+    return row ? toService(row) : null;
+  }
+
+  listServices(): Service[] {
+    return (
+      this.db.prepare('SELECT * FROM services ORDER BY created_at DESC').all() as ServiceRow[]
+    ).map(toService);
+  }
+
+  updateService(
+    id: string,
+    patch: {
+      name?: string;
+      speciality?: string;
+      description?: string | null;
+      instructions?: string;
+      version?: number;
+      improvements?: ServiceImprovement[];
+    },
+  ): Service | null {
+    const cur = this.getService(id);
+    if (!cur) return null;
+    const next: Service = {
+      ...cur,
+      name: patch.name ?? cur.name,
+      speciality: patch.speciality ?? cur.speciality,
+      description: patch.description !== undefined ? patch.description : cur.description,
+      instructions: patch.instructions ?? cur.instructions,
+      version: patch.version ?? cur.version,
+      improvements: patch.improvements ?? cur.improvements,
+      updatedAt: new Date().toISOString(),
+    };
+    this.db
+      .prepare(
+        `UPDATE services SET name=@name, speciality=@speciality, description=@description,
+           instructions=@instructions, version=@version, improvements=@improvements, updated_at=@updated_at
+         WHERE id=@id`,
+      )
+      .run({
+        id,
+        name: next.name,
+        speciality: next.speciality,
+        description: next.description,
+        instructions: next.instructions,
+        version: next.version,
+        improvements: JSON.stringify(next.improvements),
+        updated_at: next.updatedAt,
+      });
+    return next;
+  }
+
+  deleteService(id: string): void {
+    this.db.prepare('DELETE FROM services WHERE id = ?').run(id);
   }
 
   createProject(project: Project): void {

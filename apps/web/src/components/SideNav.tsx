@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 const NAV = [
   { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/sessions', label: 'Sessions', icon: '⌨' },
+  { href: '/services', label: 'Services', icon: '🧩' },
   { href: '/fleet', label: 'Fleet', icon: '🖥' },
 ];
 

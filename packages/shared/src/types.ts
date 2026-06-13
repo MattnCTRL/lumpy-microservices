@@ -117,6 +117,52 @@ export interface KnowledgeBase {
   draft: string | null;
 }
 
+// --- Micro services (deployable, self-improving specialists) -------------
+
+/** A recorded refinement to a service's definition after a run. */
+export interface ServiceImprovement {
+  at: string;
+  note: string;
+  version: number;
+}
+
+/**
+ * A micro service: a specialist function that works directly for Lumpy (like a
+ * subagent, but platform-level). It is deployed by spawning a session with its
+ * instructions, and can be improved after each use.
+ */
+export interface Service {
+  id: string;
+  name: string;
+  speciality: string;
+  description: string | null;
+  instructions: string;
+  version: number;
+  improvements: ServiceImprovement[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateServiceInput {
+  name: string;
+  speciality?: string;
+  description?: string;
+  instructions: string;
+}
+
+export interface UpdateServiceInput {
+  name?: string;
+  speciality?: string;
+  description?: string | null;
+  instructions?: string;
+}
+
+/** Record a refinement; optionally replace the instructions and bump the version. */
+export interface ImproveServiceInput {
+  note: string;
+  instructions?: string;
+}
+
 // --- Session connectors (per-project data sources) ----------------------
 
 /**

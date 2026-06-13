@@ -12,6 +12,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [getting-started.md](getting-started.md)           | Install, configure, and run locally.                    |
 | [session-engine.md](session-engine.md)             | How `tmux` + PTY session orchestration works.           |
 | [connectors.md](connectors.md)                     | Per-session data sources: MCP servers, secrets, repo.   |
+| [services.md](services.md)                         | Deployable, self-improving micro services rolodex.      |
 | [playbooks.md](playbooks.md)                       | Vetted, reusable remediation instructions per alert.    |
 | [remediation.md](remediation.md)                   | Alert-triggered autonomous investigation/fixing.        |
 | [alerts.md](alerts.md)                             | Metric threshold alerts feeding notifications.          |

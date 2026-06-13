@@ -8,6 +8,7 @@ import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
+import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
 import { ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
     .add(authModule)
     .add(settingsModule)
     .add(projectsModule)
+    .add(servicesModule)
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)

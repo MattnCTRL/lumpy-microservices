@@ -12,6 +12,9 @@ import type {
   Project,
   Server,
   ServerDetail,
+  Service,
+  CreateServiceInput,
+  UpdateServiceInput,
   Session,
   SessionConnectorsView,
   SettingsResponse,
@@ -122,6 +125,15 @@ export const api = {
   approveKnowledge: (id: string) =>
     send(`/api/projects/${id}/knowledge/approve`, 'POST').then(parse<KnowledgeBase>),
   discardKnowledge: (id: string) => send(`/api/projects/${id}/knowledge/discard`, 'POST'),
+
+  listServices: () => req('/api/services').then(parse<Service[]>),
+  createService: (input: CreateServiceInput) =>
+    send('/api/services', 'POST', input).then(parse<Service>),
+  updateService: (id: string, patch: UpdateServiceInput) =>
+    send(`/api/services/${id}`, 'PATCH', patch).then(parse<Service>),
+  deleteService: (id: string) => send(`/api/services/${id}`, 'DELETE'),
+  deployService: (id: string) =>
+    send(`/api/services/${id}/deploy`, 'POST').then(parse<{ sessionId: string }>),
 
   getConnectors: (id: string) =>
     req(`/api/sessions/${id}/connectors`).then(parse<SessionConnectorsView>),
