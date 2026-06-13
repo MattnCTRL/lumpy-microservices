@@ -126,6 +126,14 @@ export default function FleetPage() {
             selectedId={selectedId}
             onSelect={(id) => void select(id)}
           />
+          <FleetGroup
+            title="Remotes"
+            empty="No remotes yet."
+            servers={servers.filter((s) => s.kind === 'remote')}
+            mounts={mounts}
+            selectedId={selectedId}
+            onSelect={(id) => void select(id)}
+          />
         </aside>
 
         <main className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -160,6 +168,12 @@ export default function FleetPage() {
     </div>
   );
 }
+
+const KIND_ICON: Record<FleetNodeKind, string> = {
+  server: '🖥',
+  machine: '💻',
+  remote: '📱',
+};
 
 const STATUS_STYLE: Record<ServerStatus, { dot: string; label: string }> = {
   online: { dot: 'bg-emerald-500', label: 'online' },
@@ -290,8 +304,9 @@ function ServerDetailPanel({
     }
   };
 
-  const toggleKind = async () => {
-    await api.setServerKind(server.id, server.kind === 'server' ? 'machine' : 'server');
+  const changeKind = async (kind: FleetNodeKind) => {
+    if (kind === server.kind) return;
+    await api.setServerKind(server.id, kind);
     onChanged();
   };
 
@@ -311,13 +326,16 @@ function ServerDetailPanel({
         <div className="flex items-center gap-3">
           <MountBadge mount={mount} />
           <StatusBadge status={server.status} />
-          <button
-            onClick={toggleKind}
-            className="text-xs text-neutral-500 hover:text-neutral-200"
-            title="Switch between server and machine"
+          <select
+            value={server.kind}
+            onChange={(e) => void changeKind(e.target.value as FleetNodeKind)}
+            title="Change type"
+            className="rounded border border-neutral-700 bg-neutral-900 px-1.5 py-0.5 text-xs text-neutral-300"
           >
-            {server.kind === 'server' ? '→ machine' : '→ server'}
-          </button>
+            <option value="server">server</option>
+            <option value="machine">machine</option>
+            <option value="remote">remote</option>
+          </select>
           <button onClick={rename} className="text-xs text-neutral-500 hover:text-neutral-200">
             rename
           </button>
@@ -536,7 +554,7 @@ function AddServerDialog({
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${d.online ? 'bg-emerald-500' : 'bg-neutral-600'}`} />
                   {d.name}
-                  <span className="text-neutral-500">{d.kind === 'machine' ? '💻' : '🖥'}</span>
+                  <span className="text-neutral-500">{KIND_ICON[d.kind]}</span>
                 </button>
               ))}
             </div>
@@ -657,6 +675,7 @@ function AddServerDialog({
               >
                 <option value="server">server</option>
                 <option value="machine">machine</option>
+                <option value="remote">remote</option>
               </select>
             </Field>
             <Field label="Environment">

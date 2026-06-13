@@ -158,10 +158,11 @@ export type ServerCriticality = 'low' | 'medium' | 'high';
 
 /**
  * `server` = always-on infrastructure (cloud hosts, VPSes). `machine` = a
- * personal computer (laptop/desktop) that is intermittent and may sleep. They
- * are monitored the same way but presented and reasoned about separately.
+ * personal computer (laptop/desktop) that runs the agent. `remote` = a phone or
+ * tablet that can't run an agent — tracked by Tailscale presence only. Presented
+ * and reasoned about separately.
  */
-export type FleetNodeKind = 'server' | 'machine';
+export type FleetNodeKind = 'server' | 'machine' | 'remote';
 
 /** `unknown` = registered but never reported; `offline` = heartbeat went stale. */
 export type ServerStatus = 'online' | 'offline' | 'unknown';

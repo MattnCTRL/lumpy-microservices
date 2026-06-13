@@ -135,10 +135,23 @@ export class FleetManager {
   checkStale(): void {
     const now = Date.now();
     for (const server of this.store.listServers()) {
+      // Remotes don't send heartbeats; their status comes from Tailscale presence.
+      if (server.kind === 'remote') continue;
       const last = this.lastSeenMs.get(server.id);
       if (last !== undefined && now - last > HEARTBEAT_TIMEOUT_MS) {
         this.setStatus(server.id, 'offline');
       }
+    }
+  }
+
+  /**
+   * Set online/offline for remote (phone/tablet) nodes from the set of
+   * addresses currently present on the tailnet.
+   */
+  setRemotePresence(onlineAddresses: Set<string>): void {
+    for (const server of this.store.listServers()) {
+      if (server.kind !== 'remote') continue;
+      this.setStatus(server.id, onlineAddresses.has(server.address) ? 'online' : 'offline');
     }
   }
 

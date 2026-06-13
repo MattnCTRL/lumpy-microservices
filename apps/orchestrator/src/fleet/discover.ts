@@ -62,6 +62,8 @@ export async function tailnetDevices(): Promise<DiscoveredDevice[]> {
 }
 
 /** Infer fleet kind from a Tailscale OS string. */
-export function kindFromOs(os: string): 'server' | 'machine' {
-  return /mac|win|ios|android/i.test(os) ? 'machine' : 'server';
+export function kindFromOs(os: string): 'server' | 'machine' | 'remote' {
+  if (/ios|ipados|android/i.test(os)) return 'remote';
+  if (/mac|win/i.test(os)) return 'machine';
+  return 'server';
 }

@@ -21,7 +21,7 @@ const sshSchema = z.object({
 const createServerSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),
-  kind: z.enum(['server', 'machine']).optional(),
+  kind: z.enum(['server', 'machine', 'remote']).optional(),
   tags: z.array(z.string()).optional(),
   env: z.enum(['prod', 'staging', 'dev']).optional(),
   criticality: z.enum(['low', 'medium', 'high']).optional(),
@@ -34,6 +34,9 @@ const createServerSchema = z.object({
 function inferKind(platform: string | undefined): 'server' | 'machine' {
   return platform === 'darwin' || platform === 'win32' ? 'machine' : 'server';
 }
+
+/** How often to refresh remote (phone/tablet) presence from Tailscale. */
+const REMOTE_PRESENCE_INTERVAL_MS = 30_000;
 
 const metricsSchema = z.object({
   cpuPercent: z.number().min(0).max(100),
@@ -126,7 +129,7 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     const body = z
       .object({
         name: z.string().min(1).optional(),
-        kind: z.enum(['server', 'machine']).optional(),
+        kind: z.enum(['server', 'machine', 'remote']).optional(),
       })
       .safeParse(request.body);
     if (!body.success || (body.data.name === undefined && body.data.kind === undefined)) {
@@ -177,5 +180,16 @@ export const fleetModule: LumpyModule = {
     new SshMonitor(fleet);
     registerRest(ctx, fleet);
     registerEventsWebSocket(ctx);
+
+    // Remotes (phones/tablets) can't run an agent, so derive their online
+    // status from Tailscale presence instead of metric heartbeats.
+    const refreshRemotes = async (): Promise<void> => {
+      if (!fleet.list().some((s) => s.kind === 'remote')) return;
+      const online = new Set((await tailnetDevices()).filter((d) => d.online).map((d) => d.address));
+      fleet.setRemotePresence(online);
+    };
+    void refreshRemotes();
+    const timer = setInterval(() => void refreshRemotes(), REMOTE_PRESENCE_INTERVAL_MS);
+    timer.unref();
   },
 };

@@ -4,6 +4,7 @@ import type {
   CreateServerInput,
   CreateSessionInput,
   FleetMounts,
+  FleetNodeKind,
   HealthResponse,
   Playbook,
   Server,
@@ -87,7 +88,7 @@ export const api = {
     send('/api/fleet/servers', 'POST', input).then(parse<Server>),
   renameServer: (id: string, name: string) =>
     send(`/api/fleet/servers/${id}`, 'PATCH', { name }).then(parse<ServerDetail>),
-  setServerKind: (id: string, kind: 'server' | 'machine') =>
+  setServerKind: (id: string, kind: FleetNodeKind) =>
     send(`/api/fleet/servers/${id}`, 'PATCH', { kind }).then(parse<ServerDetail>),
   deleteServer: (id: string) => send(`/api/fleet/servers/${id}`, 'DELETE'),
 
