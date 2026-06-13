@@ -72,6 +72,7 @@ The subsystems in [spec.md](spec.md) map onto modules:
 
 | Module        | Status      | Responsibility                                                                    |
 | ------------- | ----------- | --------------------------------------------------------------------------------- |
+| `auth`        | implemented | Sign in with GitHub; profile mirroring. See [auth.md](auth.md).                   |
 | `sessions`    | implemented | tmux-backed Claude Code sessions (built-in).                                      |
 | `fleet`       | implemented | Server registry, metrics ingestion, status. See [fleet.md](fleet.md).             |
 | `notify`      | implemented | ntfy push with approve/reject actions. See [notifications.md](notifications.md).  |

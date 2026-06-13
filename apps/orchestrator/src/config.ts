@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +44,11 @@ export const config = {
   sessionUser: env('LUMPY_SESSION_USER', ''),
   // Alert remediation: off | investigate (diagnose only) | auto (also fix).
   remediationMode: env('LUMPY_REMEDIATION_MODE', 'off') as 'off' | 'investigate' | 'auto',
+  // Severities that remediate automatically; others require one-tap approval.
+  remediationAutoSeverities: env('LUMPY_REMEDIATION_AUTO_SEVERITIES', 'warning')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
   workspaceRoot,
   // Notifications (ntfy). Leave the topic empty to disable push notifications.
   ntfyUrl: env('LUMPY_NTFY_URL', 'https://ntfy.sh'),
@@ -50,6 +56,15 @@ export const config = {
   // Base URL the phone can reach (a Tailscale address) for notification links
   // and approve/deny action buttons. Optional.
   publicUrl: env('LUMPY_PUBLIC_URL', ''),
+  // The web UI URL to return to after GitHub sign-in.
+  webUrl: env('LUMPY_WEB_URL', ''),
+  // GitHub OAuth (Sign in with GitHub). Empty = sign-in disabled.
+  github: {
+    clientId: env('LUMPY_GITHUB_CLIENT_ID', ''),
+    clientSecret: env('LUMPY_GITHUB_CLIENT_SECRET', ''),
+  },
+  // Secret for signing auth cookies; random per boot if unset (re-login on restart).
+  authSecret: env('LUMPY_AUTH_SECRET', '') || randomBytes(32).toString('hex'),
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

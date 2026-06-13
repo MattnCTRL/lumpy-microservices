@@ -1,5 +1,6 @@
 import type {
   Alert,
+  AuthState,
   CreateServerInput,
   CreateSessionInput,
   HealthResponse,
@@ -84,4 +85,10 @@ export const api = {
   listAlerts: () => fetch(`${ORCHESTRATOR_URL}/api/alerts`).then(parse<Alert[]>),
   dismissAlert: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  authMe: () =>
+    fetch(`${ORCHESTRATOR_URL}/api/auth/me`, { credentials: 'include' }).then(parse<AuthState>),
+  authLoginUrl: () => `${ORCHESTRATOR_URL}/api/auth/github/login`,
+  authLogout: () =>
+    fetch(`${ORCHESTRATOR_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }),
 };

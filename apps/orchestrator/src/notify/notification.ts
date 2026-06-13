@@ -53,6 +53,30 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
+  if (event.type === 'remediation.pending') {
+    const actions: NtfyAction[] = publicUrl
+      ? [
+          {
+            action: 'http',
+            label: 'Approve fix',
+            url: `${publicUrl}/api/remediation/${event.alertId}/approve`,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+            clear: true,
+          },
+        ]
+      : [];
+    return {
+      title: `${event.serverName} — approve remediation?`,
+      message: `${event.label} (${event.severity}). Approve to let Claude investigate and fix.`,
+      priority: 4,
+      tags: ['warning'],
+      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+      actions,
+    };
+  }
+
   if (event.type === 'remediation.started') {
     return {
       title: `${event.serverName} — ${event.mode === 'auto' ? 'auto-remediating' : 'investigating'}`,

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { HealthResponse } from '@lumpy/shared';
+import type { AuthState, HealthResponse } from '@lumpy/shared';
 import { api } from '@/lib/api';
 
 const TABS = [
@@ -17,6 +17,14 @@ export function TopNav() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [alertCount, setAlertCount] = useState(0);
   const [hasCritical, setHasCritical] = useState(false);
+  const [auth, setAuth] = useState<AuthState | null>(null);
+
+  useEffect(() => {
+    api
+      .authMe()
+      .then(setAuth)
+      .catch(() => setAuth(null));
+  }, []);
 
   useEffect(() => {
     const load = () =>
@@ -79,9 +87,48 @@ export function TopNav() {
           })}
         </nav>
       </div>
-      <HealthBadge health={health} />
+      <div className="flex items-center gap-4">
+        <HealthBadge health={health} />
+        <Profile auth={auth} onSignedOut={() => setAuth((a) => (a ? { ...a, user: null } : a))} />
+      </div>
     </header>
   );
+}
+
+function Profile({ auth, onSignedOut }: { auth: AuthState | null; onSignedOut: () => void }) {
+  if (!auth) return null;
+  if (auth.user) {
+    return (
+      <button
+        onClick={() => {
+          void api.authLogout().then(onSignedOut);
+        }}
+        title="Sign out"
+        className="flex items-center gap-2"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={auth.user.avatarUrl}
+          alt={auth.user.login}
+          className="h-6 w-6 rounded-full border border-neutral-700"
+        />
+        <span className="hidden text-sm text-neutral-200 sm:inline">
+          {auth.user.name ?? auth.user.login}
+        </span>
+      </button>
+    );
+  }
+  if (auth.configured) {
+    return (
+      <a
+        href={api.authLoginUrl()}
+        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-800"
+      >
+        Sign in with GitHub
+      </a>
+    );
+  }
+  return null;
 }
 
 function HealthBadge({ health }: { health: HealthResponse | null }) {

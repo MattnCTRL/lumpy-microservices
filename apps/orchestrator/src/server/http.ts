@@ -1,3 +1,4 @@
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -22,7 +23,8 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
   // process exits promptly on shutdown / dev-watch restart.
   const app = Fastify({ logger: loggerOptions, forceCloseConnections: true });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: true, credentials: true });
+  await app.register(cookie, { secret: config.authSecret });
   await app.register(websocket);
 
   app.get('/api/health', async (): Promise<HealthResponse> => {

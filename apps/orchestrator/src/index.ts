@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import { EventBus } from './events/bus.js';
 import { alertsModule } from './alerts/module.js';
+import { authModule } from './auth/module.js';
 import { fleetModule } from './fleet/module.js';
 import { logger } from './logger.js';
 import { ModuleRegistry } from './modules/registry.js';
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   await sessions.recover();
 
   const registry = new ModuleRegistry()
+    .add(authModule)
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)

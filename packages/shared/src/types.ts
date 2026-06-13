@@ -34,6 +34,17 @@ export interface CreateSessionInput {
   task?: string;
 }
 
+export interface GithubUser {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+}
+
+export interface AuthState {
+  configured: boolean;
+  user: GithubUser | null;
+}
+
 export interface HealthResponse {
   status: 'ok';
   tmux: boolean;
@@ -151,6 +162,14 @@ export type LumpyEvent =
   | { type: 'fleet.server.removed'; id: string; name: string; at: string }
   | { type: 'alert.fired'; alert: Alert; at: string }
   | { type: 'alert.resolved'; id: string; serverName: string; label: string; at: string }
+  | {
+      type: 'remediation.pending';
+      alertId: string;
+      serverName: string;
+      severity: AlertSeverity;
+      label: string;
+      at: string;
+    }
   | {
       type: 'remediation.started';
       alertId: string;

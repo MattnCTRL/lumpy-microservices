@@ -21,6 +21,7 @@ export function Terminal({ sessionId }: { sessionId: string }) {
   const fitRef = useRef<XFitAddon | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const [fontSize, setFontSize] = useState(13);
+  const fontSizeRef = useRef(13);
 
   useEffect(() => {
     let disposed = false;
@@ -92,6 +93,7 @@ export function Terminal({ sessionId }: { sessionId: string }) {
 
   // Apply font-size changes: smaller font = the session resizes to show more.
   useEffect(() => {
+    fontSizeRef.current = fontSize;
     const term = termRef.current;
     const fit = fitRef.current;
     const socket = socketRef.current;
@@ -102,6 +104,48 @@ export function Terminal({ sessionId }: { sessionId: string }) {
       socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
     }
   }, [fontSize]);
+
+  // Pinch-to-zoom on touch: two-finger gesture adjusts the font size.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let startDistance = 0;
+    let startFont = 13;
+    const distance = (touches: TouchList) => {
+      const a = touches[0]!;
+      const b = touches[1]!;
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    };
+
+    const onStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        startDistance = distance(event.touches);
+        startFont = fontSizeRef.current;
+        event.preventDefault();
+      }
+    };
+    const onMove = (event: TouchEvent) => {
+      if (event.touches.length === 2 && startDistance > 0) {
+        event.preventDefault();
+        const ratio = distance(event.touches) / startDistance;
+        const next = Math.max(MIN_FONT, Math.min(MAX_FONT, Math.round(startFont * ratio)));
+        setFontSize(next);
+      }
+    };
+    const onEnd = () => {
+      startDistance = 0;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: false });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, []);
 
   return (
     <div className="flex h-full flex-col">

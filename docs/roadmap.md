@@ -13,9 +13,8 @@ Monorepo, tooling, configuration, documentation, and an authenticated app shell.
 - [x] Module/extension seam (registry + `ModuleContext`) for downstream tools
 - [x] Always-on deploy: `scripts/install-orchestrator.sh` runs orchestrator +
       web as systemd services bound to the tailnet (see [deploy.md](deploy.md))
-- [ ] Authentication — **Sign in with GitHub** (OAuth) as the primary login, with
-      the Lumpy profile mirroring the GitHub identity (avatar, name, handle) for a
-      familiar feel; passkeys as an additional factor
+- [x] **Sign in with GitHub** (OAuth) with profile mirroring (avatar/name/handle)
+- [ ] Gate access by auth + roles (passkeys as an additional factor)
 - [ ] GitHub integration beyond auth: surface repos when creating sessions, and
       show the signed-in GitHub profile in the UI header
 
@@ -61,7 +60,8 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 ## Phase 3 — Alerting & tiered remediation
 
 - [x] Alert-triggered remediation: autonomous Claude sessions (investigate/auto)
-- [ ] Severity → autonomy mapping (tiered policy) + playbook engine
+- [x] Severity → autonomy mapping (auto for warnings, one-tap approve for critical)
+- [ ] Playbook engine (declarative remediation steps)
 - [ ] Approve-to-remediate flow and audit log
 - [x] "Investigate with Claude" delegation (the remediation loop)
 
