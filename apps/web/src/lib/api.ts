@@ -4,6 +4,7 @@ import type {
   CreateServerInput,
   CreateSessionInput,
   HealthResponse,
+  Playbook,
   Server,
   ServerDetail,
   Session,
@@ -95,6 +96,7 @@ export const api = {
     fetch(`${ORCHESTRATOR_URL}/api/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   listModules: () => fetch(`${ORCHESTRATOR_URL}/api/modules`).then(parse<ModuleInfo[]>),
+  listPlaybooks: () => fetch(`${ORCHESTRATOR_URL}/api/playbooks`).then(parse<Playbook[]>),
   getSettings: () => fetch(`${ORCHESTRATOR_URL}/api/settings`).then(parse<SettingsResponse>),
   updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
     fetch(`${ORCHESTRATOR_URL}/api/settings`, {

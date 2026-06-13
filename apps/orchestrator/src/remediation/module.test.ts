@@ -37,6 +37,7 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
       },
     },
     app: {
+      get: () => undefined,
       post: (path: string, handler: RouteHandler) => {
         routes[path] = handler;
       },

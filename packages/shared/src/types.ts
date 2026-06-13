@@ -162,6 +162,18 @@ export interface Alert {
   firedAt: string;
 }
 
+export interface Playbook {
+  id: string;
+  name: string;
+  description: string;
+  /** Alert rule ids this playbook responds to. */
+  ruleIds: string[];
+  /** When true, this playbook always needs approval regardless of severity policy. */
+  requiresApproval: boolean;
+  /** The instruction given to the remediation session. */
+  task: string;
+}
+
 // --- Event spine ---------------------------------------------------------
 
 /**

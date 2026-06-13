@@ -1,6 +1,7 @@
 import type { Alert } from '@lumpy/shared';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { DEFAULT_PLAYBOOKS, findPlaybook } from './playbooks.js';
 import { buildRemediationTask } from './task.js';
 
 /**
@@ -26,7 +27,7 @@ export const remediationModule: LumpyModule = {
           command: ctx.config.defaultCommand,
           tags: ['remediation'],
           autonomous: true,
-          task: buildRemediationTask(alert, mode),
+          task: buildRemediationTask(alert, mode, findPlaybook(alert.ruleId)?.task),
         });
         ctx.bus.publish({
           type: 'remediation.started',
@@ -42,6 +43,8 @@ export const remediationModule: LumpyModule = {
         logger.error({ alert: alert.id, error }, 'remediation failed to start');
       }
     };
+
+    ctx.app.get('/api/playbooks', async () => DEFAULT_PLAYBOOKS);
 
     ctx.app.post('/api/remediation/:id/approve', async (request, reply) => {
       const { id } = request.params as { id: string };
@@ -67,7 +70,10 @@ export const remediationModule: LumpyModule = {
       const alert = event.alert;
       if (handling.has(alert.id) || pending.has(alert.id)) return;
 
-      if (remediationAutoSeverities.includes(alert.severity)) {
+      const playbook = findPlaybook(alert.ruleId);
+      const autoOk =
+        remediationAutoSeverities.includes(alert.severity) && !playbook?.requiresApproval;
+      if (autoOk) {
         handling.add(alert.id);
         void start(alert, mode);
       } else {

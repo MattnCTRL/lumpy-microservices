@@ -61,7 +61,8 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 
 - [x] Alert-triggered remediation: autonomous Claude sessions (investigate/auto)
 - [x] Severity → autonomy mapping (auto for warnings, one-tap approve for critical)
-- [ ] Playbook engine (declarative remediation steps)
+- [x] Playbook engine: vetted per-alert remediation instructions (built-in set)
+- [ ] User-editable playbooks (custom steps, per-server overrides)
 - [ ] Approve-to-remediate flow and audit log
 - [x] "Investigate with Claude" delegation (the remediation loop)
 

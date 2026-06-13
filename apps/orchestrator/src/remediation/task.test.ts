@@ -28,3 +28,9 @@ test('auto task permits safe, non-destructive remediation', () => {
   assert.match(task, /remediate/);
   assert.match(task, /non-destructive/);
 });
+
+test('playbook guidance replaces the generic body but keeps the mode constraint', () => {
+  const task = buildRemediationTask(alert, 'investigate', 'Clear safe disk space only.');
+  assert.match(task, /Clear safe disk space only\./);
+  assert.match(task, /Do NOT make any changes/);
+});

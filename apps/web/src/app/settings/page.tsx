@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AuthState, SettingsResponse } from '@lumpy/shared';
+import type { AuthState, Playbook, SettingsResponse } from '@lumpy/shared';
 import { api, type ModuleInfo } from '@/lib/api';
 
 const MODES: { value: 'off' | 'investigate' | 'auto'; label: string; hint: string }[] = [
@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,10 @@ export default function SettingsPage() {
     api
       .listModules()
       .then(setModules)
+      .catch(() => {});
+    api
+      .listPlaybooks()
+      .then(setPlaybooks)
       .catch(() => {});
   }, []);
 
@@ -115,6 +120,27 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+        )}
+      </Section>
+
+      <Section
+        title="Playbooks"
+        hint="Vetted instructions Lumpy uses to remediate specific alerts."
+      >
+        {playbooks.length === 0 ? (
+          <Loading />
+        ) : (
+          <ul className="space-y-2">
+            {playbooks.map((p) => (
+              <li key={p.id} className="rounded-md border border-neutral-800 bg-neutral-900/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-neutral-100">{p.name}</span>
+                  <span className="font-mono text-xs text-neutral-500">{p.ruleIds.join(', ')}</span>
+                </div>
+                <p className="mt-1 text-xs text-neutral-500">{p.description}</p>
+              </li>
+            ))}
+          </ul>
         )}
       </Section>
 

@@ -11,6 +11,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [architecture.md](architecture.md)                 | How the running system fits together.                   |
 | [getting-started.md](getting-started.md)           | Install, configure, and run locally.                    |
 | [session-engine.md](session-engine.md)             | How `tmux` + PTY session orchestration works.           |
+| [playbooks.md](playbooks.md)                       | Vetted, reusable remediation instructions per alert.    |
 | [remediation.md](remediation.md)                   | Alert-triggered autonomous investigation/fixing.        |
 | [alerts.md](alerts.md)                             | Metric threshold alerts feeding notifications.          |
 | [fleet.md](fleet.md)                               | Remote server registry, metrics ingestion, and status.  |
