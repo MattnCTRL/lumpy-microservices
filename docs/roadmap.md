@@ -11,7 +11,8 @@ Monorepo, tooling, configuration, documentation, and an authenticated app shell.
 - [x] Documentation set and documentation policy
 - [x] Shared types package
 - [x] Module/extension seam (registry + `ModuleContext`) for downstream tools
-- [ ] Tailscale + reverse proxy deployment recipe
+- [x] Always-on deploy: `scripts/install-orchestrator.sh` runs orchestrator +
+      web as systemd services bound to the tailnet (see [deploy.md](deploy.md))
 - [ ] Authentication — **Sign in with GitHub** (OAuth) as the primary login, with
       the Lumpy profile mirroring the GitHub identity (avatar, name, handle) for a
       familiar feel; passkeys as an additional factor

@@ -18,6 +18,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [api.md](api.md)                                   | REST and WebSocket surface of the orchestrator.         |
 | [configuration.md](configuration.md)               | Environment variables and runtime options.              |
 | [security.md](security.md)                         | Access model, network posture, and hardening.           |
+| [deploy.md](deploy.md)                             | Deploy Lumpy always-on on a tailnet host.               |
 | [roadmap.md](roadmap.md)                           | Phased delivery plan and current status.                |
 | [documentation-policy.md](documentation-policy.md) | How docs, notes, and code stay separated and clean.     |
 
