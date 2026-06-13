@@ -63,6 +63,14 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     }
     const input = parsed.data;
 
+    // Dedupe by address for agent/push registrations: if a record for this
+    // address already exists (e.g. added from tailnet discovery), adopt it
+    // instead of creating a duplicate. SSH adds always create their own record.
+    if (!input.ssh) {
+      const existing = fleet.list().find((s) => s.address === input.address);
+      if (existing) return reply.status(200).send(fleet.get(existing.id) ?? existing);
+    }
+
     // When SSH details are supplied, verify they work before registering so the
     // operator gets immediate feedback, and seed the first metrics sample.
     let firstSample: MetricsReport | null = null;
