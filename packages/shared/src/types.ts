@@ -31,6 +31,8 @@ export interface HealthResponse {
   tmux: boolean;
   version: string;
   uptimeSeconds: number;
+  /** Tailnet-reachable base URL agents should report to, if configured. */
+  publicUrl: string;
 }
 
 /** Control messages sent from client to server over the session WebSocket. */
@@ -64,6 +66,9 @@ export interface ServerMetrics {
   uptimeSeconds: number;
 }
 
+/** How a server's metrics arrive: `ssh` = Lumpy polls it; `push` = an agent reports. */
+export type MonitoringMode = 'ssh' | 'push';
+
 export interface Server {
   id: string;
   name: string;
@@ -72,9 +77,19 @@ export interface Server {
   env: ServerEnv;
   criticality: ServerCriticality;
   status: ServerStatus;
+  monitoring: MonitoringMode;
   lastSeenAt: string | null;
   createdAt: string;
   metrics: ServerMetrics | null;
+}
+
+/** SSH connection details for agentless monitoring. Never returned to clients. */
+export interface SshConnectionInput {
+  host: string;
+  port?: number;
+  user: string;
+  privateKey?: string;
+  password?: string;
 }
 
 export interface ServerDetail extends Server {
@@ -87,6 +102,8 @@ export interface CreateServerInput {
   tags?: string[];
   env?: ServerEnv;
   criticality?: ServerCriticality;
+  /** When provided, Lumpy monitors the server agentlessly over SSH. */
+  ssh?: SshConnectionInput;
 }
 
 /** Metrics payload posted by an agent; the orchestrator stamps `at`. */

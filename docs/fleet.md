@@ -22,7 +22,23 @@ Status and metrics changes are published on the [event spine](session-engine.md#
 as `fleet.server.status` and `fleet.metrics`, streamed to clients over
 `/ws/fleet`.
 
-## Reporting metrics
+## Adding a server over SSH (recommended)
+
+The easiest way to monitor a server: give Lumpy SSH access and it does the rest.
+In the **Fleet** tab, click **Add → Connect via SSH** and provide the host, SSH
+user, and a private key (or password). Lumpy connects **outbound**, verifies the
+credentials, and then polls the host on a schedule — reading CPU, memory, disk,
+load, and uptime straight from `/proc` and `df`. No agent, no software to install
+on the target, and nothing to expose on the orchestrator (it dials out).
+
+Because the orchestrator initiates the connection, this works wherever the
+orchestrator runs, as long as it can reach the host (e.g. over the tailnet or a
+public address).
+
+SSH credentials are stored in `fleet.db` for polling — keep the orchestrator
+host trusted (see [security.md](security.md)). Encryption at rest is planned.
+
+## Reporting metrics (agent / push)
 
 An agent (or any caller on the private network) posts samples:
 

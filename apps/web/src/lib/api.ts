@@ -48,7 +48,9 @@ export const api = {
   stopSession: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/stop`, { method: 'POST' }),
   restartSession: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/restart`, { method: 'POST' }).then(parse<Session>),
+    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/restart`, { method: 'POST' }).then(
+      parse<Session>,
+    ),
   resumeSession: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/resume`, { method: 'POST' }).then(parse<Session>),
   deleteSession: (id: string) =>
@@ -69,6 +71,12 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(input),
     }).then(parse<Server>),
+  renameServer: (id: string, name: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }).then(parse<ServerDetail>),
   deleteServer: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, { method: 'DELETE' }),
 };

@@ -3,6 +3,14 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import type { ServerCriticality, ServerEnv } from '@lumpy/shared';
 
+export interface SshCredentials {
+  host: string;
+  port: number;
+  user: string;
+  privateKey?: string;
+  password?: string;
+}
+
 export interface ServerRecord {
   id: string;
   name: string;
@@ -12,6 +20,7 @@ export interface ServerRecord {
   criticality: ServerCriticality;
   createdAt: string;
   lastSeenAt: string | null;
+  ssh: SshCredentials | null;
 }
 
 interface ServerRow {
@@ -23,6 +32,11 @@ interface ServerRow {
   criticality: ServerCriticality;
   created_at: string;
   last_seen_at: string | null;
+  ssh_host: string | null;
+  ssh_port: number | null;
+  ssh_user: string | null;
+  ssh_private_key: string | null;
+  ssh_password: string | null;
 }
 
 function toRecord(row: ServerRow): ServerRecord {
@@ -35,10 +49,22 @@ function toRecord(row: ServerRow): ServerRecord {
     criticality: row.criticality,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
+    ssh: row.ssh_host
+      ? {
+          host: row.ssh_host,
+          port: row.ssh_port ?? 22,
+          user: row.ssh_user ?? 'root',
+          privateKey: row.ssh_private_key ?? undefined,
+          password: row.ssh_password ?? undefined,
+        }
+      : null,
   };
 }
 
-/** Persistent registry of monitored servers. Metrics history is held in memory. */
+/**
+ * Persistent registry of monitored servers. SSH credentials are stored here for
+ * agentless polling; keep the orchestrator host trusted (see docs/security.md).
+ */
 export class FleetStore {
   private readonly db: Database.Database;
 
@@ -55,16 +81,39 @@ export class FleetStore {
         env TEXT NOT NULL DEFAULT 'prod',
         criticality TEXT NOT NULL DEFAULT 'medium',
         created_at TEXT NOT NULL,
-        last_seen_at TEXT
+        last_seen_at TEXT,
+        ssh_host TEXT,
+        ssh_port INTEGER,
+        ssh_user TEXT,
+        ssh_private_key TEXT,
+        ssh_password TEXT
       );
     `);
+    // Migrate older databases that predate the SSH columns.
+    for (const column of [
+      'ssh_host TEXT',
+      'ssh_port INTEGER',
+      'ssh_user TEXT',
+      'ssh_private_key TEXT',
+      'ssh_password TEXT',
+    ]) {
+      try {
+        this.db.exec(`ALTER TABLE servers ADD COLUMN ${column}`);
+      } catch {
+        // Column already exists.
+      }
+    }
   }
 
   createServer(record: ServerRecord): void {
     this.db
       .prepare(
-        `INSERT INTO servers (id, name, address, tags, env, criticality, created_at, last_seen_at)
-         VALUES (@id, @name, @address, @tags, @env, @criticality, @created_at, @last_seen_at)`,
+        `INSERT INTO servers
+           (id, name, address, tags, env, criticality, created_at, last_seen_at,
+            ssh_host, ssh_port, ssh_user, ssh_private_key, ssh_password)
+         VALUES
+           (@id, @name, @address, @tags, @env, @criticality, @created_at, @last_seen_at,
+            @ssh_host, @ssh_port, @ssh_user, @ssh_private_key, @ssh_password)`,
       )
       .run({
         id: record.id,
@@ -75,6 +124,11 @@ export class FleetStore {
         criticality: record.criticality,
         created_at: record.createdAt,
         last_seen_at: record.lastSeenAt,
+        ssh_host: record.ssh?.host ?? null,
+        ssh_port: record.ssh?.port ?? null,
+        ssh_user: record.ssh?.user ?? null,
+        ssh_private_key: record.ssh?.privateKey ?? null,
+        ssh_password: record.ssh?.password ?? null,
       });
   }
 
@@ -94,6 +148,10 @@ export class FleetStore {
 
   markSeen(id: string, at: string): void {
     this.db.prepare('UPDATE servers SET last_seen_at = ? WHERE id = ?').run(at, id);
+  }
+
+  renameServer(id: string, name: string): boolean {
+    return this.db.prepare('UPDATE servers SET name = ? WHERE id = ?').run(name, id).changes > 0;
   }
 
   deleteServer(id: string): void {

@@ -12,7 +12,11 @@ Monorepo, tooling, configuration, documentation, and an authenticated app shell.
 - [x] Shared types package
 - [x] Module/extension seam (registry + `ModuleContext`) for downstream tools
 - [ ] Tailscale + reverse proxy deployment recipe
-- [ ] Passkey authentication
+- [ ] Authentication — **Sign in with GitHub** (OAuth) as the primary login, with
+      the Lumpy profile mirroring the GitHub identity (avatar, name, handle) for a
+      familiar feel; passkeys as an additional factor
+- [ ] GitHub integration beyond auth: surface repos when creating sessions, and
+      show the signed-in GitHub profile in the UI header
 
 ## Phase 1 — Session orchestration (current)
 
@@ -39,9 +43,13 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 - [x] Fleet events on the spine + tests
 - [x] Web UI: Sessions/Fleet navigation; server list + detail with live metric
       cards and sparklines, driven by `/ws/fleet`
+- [x] **Agentless SSH monitoring**: add a server with SSH creds, Lumpy connects
+      out and polls `/proc`; connection tested on add; rename/delete in the UI
 - [x] Demo metrics agent (`scripts/demo-agent.mjs`) for exercising the UI
 - [x] `lumpy-agent` (CPU/mem/disk/load/uptime, self-registration) — Node v0
-- [ ] Agent: log tailing + agentless SSH fallback; static-binary build
+- [ ] Encrypt stored SSH credentials at rest
+- [ ] Remote management over SSH (run commands / playbooks on a server)
+- [ ] Agent: log tailing; static-binary build
 - [ ] Ingestion auth (token / mTLS over the tailnet)
 - [x] Server-offline notifications via the `notify` module
 - [ ] Live log streaming in the server detail view

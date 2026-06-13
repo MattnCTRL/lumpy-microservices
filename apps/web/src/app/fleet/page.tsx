@@ -106,6 +106,7 @@ export default function FleetPage() {
             <ServerDetailPanel
               server={selected}
               history={histories[selected.id] ?? []}
+              onChanged={() => void refresh()}
               onDelete={async () => {
                 await api.deleteServer(selected.id);
                 setSelectedId(null);
@@ -189,19 +190,30 @@ function ServerList({
 function ServerDetailPanel({
   server,
   history,
+  onChanged,
   onDelete,
 }: {
   server: Server;
   history: ServerMetrics[];
+  onChanged: () => void;
   onDelete: () => void;
 }) {
+  const rename = async () => {
+    const next = window.prompt('Rename server', server.name);
+    if (next && next.trim() && next.trim() !== server.name) {
+      await api.renameServer(server.id, next.trim());
+      onChanged();
+    }
+  };
+
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-950">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
           <p className="truncate text-xs text-neutral-500">
-            {server.address} · {server.env} · {server.criticality} ·{' '}
+            {server.address} · {server.monitoring === 'ssh' ? 'SSH' : 'agent'} · {server.env} ·{' '}
+            {server.criticality} ·{' '}
             {server.lastSeenAt
               ? `seen ${new Date(server.lastSeenAt).toLocaleTimeString()}`
               : 'never seen'}
@@ -209,6 +221,9 @@ function ServerDetailPanel({
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={server.status} />
+          <button onClick={rename} className="text-xs text-neutral-500 hover:text-neutral-200">
+            rename
+          </button>
           <button
             onClick={onDelete}
             className="text-xs text-neutral-500 hover:text-red-400"
@@ -327,10 +342,21 @@ function AddServerDialog({
   onClose: () => void;
   onAdded: (server: Server) => void;
 }) {
+  const [mode, setMode] = useState<'ssh' | 'manual'>('ssh');
   const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
   const [env, setEnv] = useState<ServerEnv>('prod');
   const [criticality, setCriticality] = useState<ServerCriticality>('medium');
+
+  // SSH
+  const [host, setHost] = useState('');
+  const [port, setPort] = useState('22');
+  const [user, setUser] = useState('root');
+  const [authType, setAuthType] = useState<'key' | 'password'>('key');
+  const [secret, setSecret] = useState('');
+
+  // Manual
+  const [address, setAddress] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -339,12 +365,27 @@ function AddServerDialog({
     setSubmitting(true);
     setError(null);
     try {
-      const server = await api.createServer({
-        name: name.trim(),
-        address: address.trim(),
-        env,
-        criticality,
-      });
+      const server =
+        mode === 'ssh'
+          ? await api.createServer({
+              name: name.trim(),
+              address: host.trim(),
+              env,
+              criticality,
+              ssh: {
+                host: host.trim(),
+                port: Number(port) || 22,
+                user: user.trim(),
+                privateKey: authType === 'key' ? secret : undefined,
+                password: authType === 'password' ? secret : undefined,
+              },
+            })
+          : await api.createServer({
+              name: name.trim(),
+              address: address.trim(),
+              env,
+              criticality,
+            });
       onAdded(server);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to add server');
@@ -352,33 +393,120 @@ function AddServerDialog({
     }
   };
 
+  const ready =
+    name.trim().length > 0 &&
+    (mode === 'ssh' ? host.trim() && user.trim() && secret.trim() : address.trim().length > 0);
+
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-100">Add server</h2>
+
+        <div className="mb-4 flex gap-1 rounded-md border border-neutral-800 p-1 text-sm">
+          <ModeTab active={mode === 'ssh'} onClick={() => setMode('ssh')}>
+            Connect via SSH
+          </ModeTab>
+          <ModeTab active={mode === 'manual'} onClick={() => setMode('manual')}>
+            Manual / agent
+          </ModeTab>
+        </div>
+
+        {mode === 'ssh' && (
+          <p className="mb-3 text-xs text-neutral-500">
+            Lumpy connects over SSH and monitors the server for you — no agent to install. The
+            connection is tested before the server is added.
+          </p>
+        )}
+
         <div className="space-y-3">
-          <Field label="Name">
+          <Field label="Name" hint="a friendly label, e.g. Nublear">
             <input
               autoFocus
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="web-1"
+              placeholder="Nublear"
               className="input"
             />
           </Field>
-          <Field label="Address" hint="Tailscale IP or hostname">
-            <input
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="100.x.y.z"
-              className="input"
-            />
-          </Field>
+
+          {mode === 'ssh' ? (
+            <>
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <Field label="Host" hint="Tailscale IP or public address">
+                  <input
+                    required
+                    value={host}
+                    onChange={(e) => setHost(e.target.value)}
+                    placeholder="100.81.90.46"
+                    className="input"
+                  />
+                </Field>
+                <Field label="Port">
+                  <input
+                    value={port}
+                    onChange={(e) => setPort(e.target.value)}
+                    className="input w-20"
+                  />
+                </Field>
+              </div>
+              <Field label="SSH user">
+                <input
+                  required
+                  value={user}
+                  onChange={(e) => setUser(e.target.value)}
+                  placeholder="root"
+                  className="input"
+                />
+              </Field>
+              <Field label="Authentication">
+                <select
+                  value={authType}
+                  onChange={(e) => setAuthType(e.target.value as 'key' | 'password')}
+                  className="input"
+                >
+                  <option value="key">Private key</option>
+                  <option value="password">Password</option>
+                </select>
+              </Field>
+              <Field
+                label={authType === 'key' ? 'Private key (PEM)' : 'Password'}
+                hint={authType === 'key' ? 'paste the contents of your private key' : undefined}
+              >
+                {authType === 'key' ? (
+                  <textarea
+                    required
+                    value={secret}
+                    onChange={(e) => setSecret(e.target.value)}
+                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                    className="input h-28 font-mono text-xs"
+                  />
+                ) : (
+                  <input
+                    required
+                    type="password"
+                    value={secret}
+                    onChange={(e) => setSecret(e.target.value)}
+                    className="input"
+                  />
+                )}
+              </Field>
+            </>
+          ) : (
+            <Field label="Address" hint="Tailscale IP or hostname (push/agent monitoring)">
+              <input
+                required
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="100.x.y.z"
+                className="input"
+              />
+            </Field>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="Environment">
               <select
@@ -417,13 +545,41 @@ function AddServerDialog({
           </button>
           <button
             type="submit"
-            disabled={submitting || name.trim().length === 0 || address.trim().length === 0}
+            disabled={submitting || !ready}
             className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
           >
-            {submitting ? 'Adding…' : 'Add server'}
+            {submitting
+              ? mode === 'ssh'
+                ? 'Connecting…'
+                : 'Adding…'
+              : mode === 'ssh'
+                ? 'Connect & add'
+                : 'Add server'}
           </button>
         </div>
       </form>
     </div>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 rounded px-3 py-1.5 transition ${
+        active ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

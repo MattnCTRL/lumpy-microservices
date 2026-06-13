@@ -1,8 +1,19 @@
 import type { WebSocket } from 'ws';
 import { z } from 'zod';
-import { FleetManager } from './manager.js';
+import type { MetricsReport } from '@lumpy/shared';
+import { collectOverSsh, type SshTarget } from '../ssh/collect.js';
 import { FleetStore } from '../store/fleet.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { FleetManager } from './manager.js';
+import { SshMonitor } from './monitor.js';
+
+const sshSchema = z.object({
+  host: z.string().min(1),
+  port: z.number().int().positive().optional(),
+  user: z.string().min(1),
+  privateKey: z.string().optional(),
+  password: z.string().optional(),
+});
 
 const createServerSchema = z.object({
   name: z.string().min(1),
@@ -10,6 +21,7 @@ const createServerSchema = z.object({
   tags: z.array(z.string()).optional(),
   env: z.enum(['prod', 'staging', 'dev']).optional(),
   criticality: z.enum(['low', 'medium', 'high']).optional(),
+  ssh: sshSchema.optional(),
 });
 
 const metricsSchema = z.object({
@@ -31,14 +43,40 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
       return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
     }
     const input = parsed.data;
+
+    // When SSH details are supplied, verify they work before registering so the
+    // operator gets immediate feedback, and seed the first metrics sample.
+    let firstSample: MetricsReport | null = null;
+    const ssh: SshTarget | null = input.ssh
+      ? {
+          host: input.ssh.host,
+          port: input.ssh.port ?? 22,
+          user: input.ssh.user,
+          privateKey: input.ssh.privateKey,
+          password: input.ssh.password,
+        }
+      : null;
+
+    if (ssh) {
+      try {
+        firstSample = await collectOverSsh(ssh);
+      } catch (error) {
+        return reply.status(400).send({
+          error: `SSH connection failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        });
+      }
+    }
+
     const server = fleet.register({
       name: input.name,
       address: input.address,
       tags: input.tags ?? [],
       env: input.env ?? 'prod',
       criticality: input.criticality ?? 'medium',
+      ssh,
     });
-    return reply.status(201).send(server);
+    if (firstSample) fleet.ingest(server.id, firstSample);
+    return reply.status(201).send(fleet.get(server.id) ?? server);
   });
 
   app.get('/api/fleet/servers/:id', async (request, reply) => {
@@ -46,6 +84,16 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     const server = fleet.get(id);
     if (!server) return reply.status(404).send({ error: 'server not found' });
     return server;
+  });
+
+  app.patch('/api/fleet/servers/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({ name: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: 'name is required' });
+    if (!fleet.rename(id, body.data.name)) {
+      return reply.status(404).send({ error: 'server not found' });
+    }
+    return fleet.get(id);
   });
 
   app.delete('/api/fleet/servers/:id', async (request, reply) => {
@@ -81,9 +129,10 @@ export const fleetModule: LumpyModule = {
   id: 'fleet',
   name: 'Fleet Monitoring',
   version: '0.1.0',
-  description: 'Register, monitor, and track the status of remote servers.',
+  description: 'Register, monitor, and track remote servers (agentless over SSH or via push).',
   register(ctx) {
     const fleet = new FleetManager(new FleetStore(ctx.config.dataDir), ctx.bus);
+    new SshMonitor(fleet);
     registerRest(ctx, fleet);
     registerEventsWebSocket(ctx);
   },

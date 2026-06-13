@@ -8,7 +8,7 @@ import type {
 } from '@lumpy/shared';
 import type { EventBus } from '../events/bus.js';
 import { logger } from '../logger.js';
-import type { FleetStore, ServerRecord } from '../store/fleet.js';
+import type { FleetStore, ServerRecord, SshCredentials } from '../store/fleet.js';
 
 const HEARTBEAT_TIMEOUT_MS = 30_000;
 const CHECK_INTERVAL_MS = 10_000;
@@ -22,6 +22,7 @@ export interface RegisterServerArgs {
   tags: string[];
   env: ServerRecord['env'];
   criticality: ServerRecord['criticality'];
+  ssh?: SshCredentials | null;
 }
 
 export class FleetManager {
@@ -53,10 +54,23 @@ export class FleetManager {
       criticality: args.criticality,
       createdAt: new Date().toISOString(),
       lastSeenAt: null,
+      ssh: args.ssh ?? null,
     };
     this.store.createServer(record);
-    logger.info({ id, address: args.address }, 'server registered');
+    logger.info({ id, address: args.address, ssh: Boolean(args.ssh) }, 'server registered');
     return this.toServer(record);
+  }
+
+  /** Servers configured for agentless SSH polling, with their credentials. */
+  sshTargets(): { id: string; target: SshCredentials }[] {
+    return this.store
+      .listServers()
+      .filter((server) => server.ssh !== null)
+      .map((server) => ({ id: server.id, target: server.ssh as SshCredentials }));
+  }
+
+  rename(id: string, name: string): boolean {
+    return this.store.renameServer(id, name);
   }
 
   list(): Server[] {
@@ -136,6 +150,7 @@ export class FleetManager {
       env: record.env,
       criticality: record.criticality,
       status: this.statuses.get(record.id) ?? 'unknown',
+      monitoring: record.ssh ? 'ssh' : 'push',
       lastSeenAt: record.lastSeenAt,
       createdAt: record.createdAt,
       metrics: this.latest.get(record.id) ?? null,

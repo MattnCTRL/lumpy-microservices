@@ -1,0 +1,107 @@
+import { Client } from 'ssh2';
+import type { MetricsReport } from '@lumpy/shared';
+
+export interface SshTarget {
+  host: string;
+  port: number;
+  user: string;
+  privateKey?: string;
+  password?: string;
+}
+
+// One round trip: two CPU samples 1s apart, plus memory, load, uptime, disk.
+const METRICS_COMMAND = [
+  "echo C1; grep '^cpu ' /proc/stat",
+  'sleep 1',
+  "echo C2; grep '^cpu ' /proc/stat",
+  "echo MEM; grep -E '^(MemTotal|MemAvailable):' /proc/meminfo",
+  'echo LOAD; cat /proc/loadavg',
+  'echo UP; cat /proc/uptime',
+  'echo DISK; df -kP / | tail -1',
+].join('; ');
+
+function cpuTotals(line: string): { idle: number; total: number } {
+  const values = line.trim().split(/\s+/).slice(1).map(Number);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const idle = (values[3] ?? 0) + (values[4] ?? 0); // idle + iowait
+  return { idle, total };
+}
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, Number(value.toFixed(1))));
+}
+
+/** Parse the output of METRICS_COMMAND into a metrics report. */
+export function parseMetrics(output: string): MetricsReport {
+  const lines = output.split('\n');
+  const cpuLines = lines.filter((line) => /^cpu\s+\d/.test(line));
+  const memTotal = Number(/MemTotal:\s+(\d+)/.exec(output)?.[1] ?? 0);
+  const memAvailable = Number(/MemAvailable:\s+(\d+)/.exec(output)?.[1] ?? 0);
+
+  let cpuPercent = 0;
+  if (cpuLines.length >= 2) {
+    const a = cpuTotals(cpuLines[0]!);
+    const b = cpuTotals(cpuLines[1]!);
+    const totalDelta = b.total - a.total;
+    if (totalDelta > 0) cpuPercent = clampPercent((1 - (b.idle - a.idle) / totalDelta) * 100);
+  }
+
+  const memPercent = memTotal > 0 ? clampPercent(((memTotal - memAvailable) / memTotal) * 100) : 0;
+
+  const loadLine = lines[lines.indexOf('LOAD') + 1] ?? '';
+  const load1 = Number(loadLine.trim().split(/\s+/)[0] ?? 0);
+
+  const upLine = lines[lines.indexOf('UP') + 1] ?? '';
+  const uptimeSeconds = Math.floor(Number(upLine.trim().split(/\s+/)[0] ?? 0));
+
+  const diskLine = lines[lines.indexOf('DISK') + 1] ?? '';
+  const diskPercent = Number((diskLine.trim().split(/\s+/)[4] ?? '0%').replace('%', '')) || 0;
+
+  return {
+    cpuPercent,
+    memPercent,
+    diskPercent: clampPercent(diskPercent),
+    load1: Number.isFinite(load1) ? load1 : 0,
+    uptimeSeconds: Number.isFinite(uptimeSeconds) ? uptimeSeconds : 0,
+  };
+}
+
+/** Connect to a host over SSH, collect a metrics sample, and disconnect. */
+export function collectOverSsh(target: SshTarget): Promise<MetricsReport> {
+  return new Promise((resolve, reject) => {
+    const client = new Client();
+    const fail = (error: Error) => {
+      client.end();
+      reject(error);
+    };
+
+    client
+      .on('ready', () => {
+        client.exec(METRICS_COMMAND, (error, stream) => {
+          if (error) return fail(error);
+          let output = '';
+          stream
+            .on('data', (chunk: Buffer) => {
+              output += chunk.toString('utf8');
+            })
+            .on('close', () => {
+              client.end();
+              try {
+                resolve(parseMetrics(output));
+              } catch (parseError) {
+                reject(parseError instanceof Error ? parseError : new Error('parse failed'));
+              }
+            });
+        });
+      })
+      .on('error', fail)
+      .connect({
+        host: target.host,
+        port: target.port,
+        username: target.user,
+        privateKey: target.privateKey,
+        password: target.password,
+        readyTimeout: 12_000,
+      });
+  });
+}

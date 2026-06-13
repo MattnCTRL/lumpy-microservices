@@ -31,6 +31,7 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
       tmux: await tmux.isAvailable(),
       version: VERSION,
       uptimeSeconds: Math.floor(process.uptime()),
+      publicUrl: config.publicUrl,
     };
   });
 
