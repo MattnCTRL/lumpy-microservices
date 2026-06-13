@@ -56,9 +56,9 @@ endpoint, so they only function from a device on the tailnet. See
 
 Agentless monitoring stores each server's SSH credentials (private key or
 password) in the orchestrator's `fleet.db` so it can poll on a schedule. They are
-currently stored unencrypted, so the orchestrator host must be treated as trusted
-infrastructure on the private network. Encryption at rest (and using a dedicated,
-least-privilege SSH key per server) is planned. Prefer keys over passwords.
+**encrypted at rest** with AES-256-GCM using a key kept in `data/.secret.key`
+(0600, not committed). Keep the orchestrator host trusted on the private network,
+and prefer a dedicated least-privilege key per server over passwords.
 
 ## Secrets
 

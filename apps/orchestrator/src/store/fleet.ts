@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import type { ServerCriticality, ServerEnv } from '@lumpy/shared';
+import { decryptSecret, encryptSecret, loadOrCreateKey } from '../crypto/secret.js';
 
 export interface SshCredentials {
   host: string;
@@ -39,7 +40,7 @@ interface ServerRow {
   ssh_password: string | null;
 }
 
-function toRecord(row: ServerRow): ServerRecord {
+function toRecord(row: ServerRow, key: Buffer): ServerRecord {
   return {
     id: row.id,
     name: row.name,
@@ -54,22 +55,25 @@ function toRecord(row: ServerRow): ServerRecord {
           host: row.ssh_host,
           port: row.ssh_port ?? 22,
           user: row.ssh_user ?? 'root',
-          privateKey: row.ssh_private_key ?? undefined,
-          password: row.ssh_password ?? undefined,
+          privateKey: row.ssh_private_key ? decryptSecret(row.ssh_private_key, key) : undefined,
+          password: row.ssh_password ? decryptSecret(row.ssh_password, key) : undefined,
         }
       : null,
   };
 }
 
 /**
- * Persistent registry of monitored servers. SSH credentials are stored here for
- * agentless polling; keep the orchestrator host trusted (see docs/security.md).
+ * Persistent registry of monitored servers. SSH credentials are encrypted at
+ * rest with a key kept in the data directory; keep the orchestrator host trusted
+ * (see docs/security.md).
  */
 export class FleetStore {
   private readonly db: Database.Database;
+  private readonly key: Buffer;
 
   constructor(dataDir: string) {
     mkdirSync(dataDir, { recursive: true });
+    this.key = loadOrCreateKey(dataDir);
     this.db = new Database(join(dataDir, 'fleet.db'));
     this.db.pragma('journal_mode = WAL');
     this.db.exec(`
@@ -127,8 +131,10 @@ export class FleetStore {
         ssh_host: record.ssh?.host ?? null,
         ssh_port: record.ssh?.port ?? null,
         ssh_user: record.ssh?.user ?? null,
-        ssh_private_key: record.ssh?.privateKey ?? null,
-        ssh_password: record.ssh?.password ?? null,
+        ssh_private_key: record.ssh?.privateKey
+          ? encryptSecret(record.ssh.privateKey, this.key)
+          : null,
+        ssh_password: record.ssh?.password ? encryptSecret(record.ssh.password, this.key) : null,
       });
   }
 
@@ -136,14 +142,14 @@ export class FleetStore {
     const row = this.db.prepare('SELECT * FROM servers WHERE id = ?').get(id) as
       | ServerRow
       | undefined;
-    return row ? toRecord(row) : null;
+    return row ? toRecord(row, this.key) : null;
   }
 
   listServers(): ServerRecord[] {
     const rows = this.db
       .prepare('SELECT * FROM servers ORDER BY created_at DESC')
       .all() as ServerRow[];
-    return rows.map(toRecord);
+    return rows.map((row) => toRecord(row, this.key));
   }
 
   markSeen(id: string, at: string): void {

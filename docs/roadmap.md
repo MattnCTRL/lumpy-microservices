@@ -49,7 +49,7 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
       out and polls `/proc`; connection tested on add; rename/delete in the UI
 - [x] Demo metrics agent (`scripts/demo-agent.mjs`) for exercising the UI
 - [x] `lumpy-agent` (CPU/mem/disk/load/uptime, self-registration) — Node v0
-- [ ] Encrypt stored SSH credentials at rest
+- [x] Encrypt stored SSH credentials at rest (AES-256-GCM)
 - [ ] Remote management over SSH (run commands / playbooks on a server)
 - [ ] Agent: log tailing; static-binary build
 - [ ] Ingestion auth (token / mTLS over the tailnet)

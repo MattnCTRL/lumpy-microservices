@@ -86,7 +86,7 @@ export default function FleetPage() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <aside className="w-full shrink-0 overflow-y-auto border-b border-neutral-800 p-3 md:w-80 md:border-b-0 md:border-r">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Servers</h2>
+            <h2 className="text-sm font-medium text-neutral-300">Machines</h2>
             <button
               onClick={() => setAdding(true)}
               className="rounded-md bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-900 hover:bg-white"
@@ -159,7 +159,7 @@ function ServerList({
   onSelect: (id: string) => void;
 }) {
   if (servers.length === 0) {
-    return <p className="px-1 py-2 text-sm text-neutral-500">No servers yet.</p>;
+    return <p className="px-1 py-2 text-sm text-neutral-500">No machines yet.</p>;
   }
   return (
     <ul className="space-y-1.5">
@@ -324,7 +324,7 @@ function formatUptime(seconds: number): string {
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-neutral-500">
-      <p className="text-sm">No server selected. Register one to start monitoring.</p>
+      <p className="text-sm">No machine selected. Add one to start monitoring.</p>
       <button
         onClick={onAdd}
         className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-900"
@@ -403,7 +403,7 @@ function AddServerDialog({
         onSubmit={submit}
         className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
       >
-        <h2 className="mb-4 text-base font-semibold text-neutral-100">Add server</h2>
+        <h2 className="mb-4 text-base font-semibold text-neutral-100">Add machine</h2>
 
         <div className="mb-4 flex gap-1 rounded-md border border-neutral-800 p-1 text-sm">
           <ModeTab active={mode === 'ssh'} onClick={() => setMode('ssh')}>
