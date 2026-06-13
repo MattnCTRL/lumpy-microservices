@@ -5,6 +5,7 @@ import type { LumpyEvent, Session, SessionActivity } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { Terminal } from '@/components/Terminal';
 import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
+import { reconnectingSocket } from '@/lib/socket';
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -29,11 +30,10 @@ export default function SessionsPage() {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  // Live updates from the orchestrator event spine.
+  // Live updates from the orchestrator event spine (auto-reconnecting).
   useEffect(() => {
-    const socket = new WebSocket(eventsSocketUrl());
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data as string) as LumpyEvent;
+    const handle = reconnectingSocket(eventsSocketUrl(), (data) => {
+      const message = JSON.parse(data) as LumpyEvent;
       if (message.type === 'session.activity') {
         setSessions((prev) =>
           prev.map((s) => (s.id === message.id ? { ...s, activity: message.activity } : s)),
@@ -44,8 +44,8 @@ export default function SessionsPage() {
         );
         if (message.status === 'stopped') void refresh();
       }
-    };
-    return () => socket.close();
+    });
+    return () => handle.close();
   }, [refresh]);
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null;

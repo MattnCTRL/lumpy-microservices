@@ -12,6 +12,7 @@ import type {
 import { Field } from '@/components/Field';
 import { Sparkline } from '@/components/Sparkline';
 import { api, fleetSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
+import { reconnectingSocket } from '@/lib/socket';
 
 export default function FleetPage() {
   const [servers, setServers] = useState<Server[]>([]);
@@ -38,9 +39,8 @@ export default function FleetPage() {
   }, [refresh]);
 
   useEffect(() => {
-    const socket = new WebSocket(fleetSocketUrl());
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data as string) as LumpyEvent;
+    const handle = reconnectingSocket(fleetSocketUrl(), (data) => {
+      const message = JSON.parse(data) as LumpyEvent;
       if (message.type === 'fleet.metrics') {
         setServers((prev) =>
           prev.map((s) =>
@@ -58,8 +58,8 @@ export default function FleetPage() {
           prev.map((s) => (s.id === message.id ? { ...s, status: message.status } : s)),
         );
       }
-    };
-    return () => socket.close();
+    });
+    return () => handle.close();
   }, []);
 
   const select = useCallback(async (id: string) => {
