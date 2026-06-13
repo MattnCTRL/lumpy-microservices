@@ -150,4 +150,12 @@ export type LumpyEvent =
   | { type: 'fleet.metrics'; id: string; name: string; metrics: ServerMetrics; at: string }
   | { type: 'fleet.server.removed'; id: string; name: string; at: string }
   | { type: 'alert.fired'; alert: Alert; at: string }
-  | { type: 'alert.resolved'; id: string; serverName: string; label: string; at: string };
+  | { type: 'alert.resolved'; id: string; serverName: string; label: string; at: string }
+  | {
+      type: 'remediation.started';
+      alertId: string;
+      sessionId: string;
+      serverName: string;
+      mode: 'investigate' | 'auto';
+      at: string;
+    };

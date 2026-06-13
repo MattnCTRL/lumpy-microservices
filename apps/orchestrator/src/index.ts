@@ -6,6 +6,7 @@ import { logger } from './logger.js';
 import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
+import { remediationModule } from './remediation/module.js';
 import { SessionManager } from './sessions/manager.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)
+    .add(remediationModule)
     .add(notifyModule);
   const app = await createApp({ sessions, registry, bus });
 

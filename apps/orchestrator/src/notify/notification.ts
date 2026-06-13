@@ -53,6 +53,16 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
+  if (event.type === 'remediation.started') {
+    return {
+      title: `${event.serverName} — ${event.mode === 'auto' ? 'auto-remediating' : 'investigating'}`,
+      message: 'Lumpy started an autonomous Claude session to handle the alert.',
+      priority: 3,
+      tags: ['robot'],
+      click: publicUrl ? `${publicUrl}/sessions` : undefined,
+    };
+  }
+
   if (event.type === 'alert.resolved') {
     return {
       title: `${event.serverName} — resolved`,

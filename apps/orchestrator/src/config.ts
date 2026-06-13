@@ -41,6 +41,8 @@ export const config = {
   // Run sessions as this OS user (non-root sandboxing). Empty = run as the
   // orchestrator's own user.
   sessionUser: env('LUMPY_SESSION_USER', ''),
+  // Alert remediation: off | investigate (diagnose only) | auto (also fix).
+  remediationMode: env('LUMPY_REMEDIATION_MODE', 'off') as 'off' | 'investigate' | 'auto',
   workspaceRoot,
   // Notifications (ntfy). Leave the topic empty to disable push notifications.
   ntfyUrl: env('LUMPY_NTFY_URL', 'https://ntfy.sh'),

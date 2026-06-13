@@ -60,9 +60,10 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 
 ## Phase 3 — Alerting & tiered remediation
 
-- [ ] Rule/playbook engine with severity → autonomy mapping
+- [x] Alert-triggered remediation: autonomous Claude sessions (investigate/auto)
+- [ ] Severity → autonomy mapping (tiered policy) + playbook engine
 - [ ] Approve-to-remediate flow and audit log
-- [ ] "Investigate with Claude" delegation
+- [x] "Investigate with Claude" delegation (the remediation loop)
 
 ## Phase 4 — Advanced UI & polish
 
