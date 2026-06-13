@@ -172,11 +172,19 @@ export class SessionManager {
 
   private setActivity(id: string, activity: SessionActivity): void {
     this.activities.set(id, activity);
-    this.bus.publish({ type: 'session.activity', id, activity, at: new Date().toISOString() });
+    const name = this.store.getSession(id)?.name ?? id;
+    this.bus.publish({
+      type: 'session.activity',
+      id,
+      name,
+      activity,
+      at: new Date().toISOString(),
+    });
   }
 
   private publishStatus(id: string, status: SessionStatus): void {
-    this.bus.publish({ type: 'session.status', id, status, at: new Date().toISOString() });
+    const name = this.store.getSession(id)?.name ?? id;
+    this.bus.publish({ type: 'session.status', id, name, status, at: new Date().toISOString() });
   }
 
   private touch(id: string): void {

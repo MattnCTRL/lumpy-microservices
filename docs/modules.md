@@ -70,13 +70,13 @@ discover available capabilities at runtime.
 
 The subsystems in [spec.md](spec.md) map onto modules:
 
-| Module        | Status      | Responsibility                                                        |
-| ------------- | ----------- | --------------------------------------------------------------------- |
-| `sessions`    | implemented | tmux-backed Claude Code sessions (built-in).                          |
-| `fleet`       | implemented | Server registry, metrics ingestion, status. See [fleet.md](fleet.md). |
-| `alerts`      | planned     | Rule evaluation, severity, notifications.                             |
-| `remediation` | planned     | Playbooks and tiered autonomy.                                        |
-| `notify`      | planned     | Push/ntfy/Pushover delivery with actionable responses.                |
+| Module        | Status      | Responsibility                                                                   |
+| ------------- | ----------- | -------------------------------------------------------------------------------- |
+| `sessions`    | implemented | tmux-backed Claude Code sessions (built-in).                                     |
+| `fleet`       | implemented | Server registry, metrics ingestion, status. See [fleet.md](fleet.md).            |
+| `notify`      | implemented | ntfy push with approve/reject actions. See [notifications.md](notifications.md). |
+| `alerts`      | planned     | Rule evaluation, severity, notifications.                                        |
+| `remediation` | planned     | Playbooks and tiered autonomy.                                                   |
 
 Each will follow the contract above. Splitting any of them into a separate
 process later is a deployment change, not a rewrite, because the boundaries are

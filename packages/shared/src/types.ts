@@ -100,7 +100,7 @@ export type MetricsReport = Omit<ServerMetrics, 'at'>;
  * this union as they land.
  */
 export type LumpyEvent =
-  | { type: 'session.activity'; id: string; activity: SessionActivity; at: string }
-  | { type: 'session.status'; id: string; status: SessionStatus; at: string }
-  | { type: 'fleet.server.status'; id: string; status: ServerStatus; at: string }
+  | { type: 'session.activity'; id: string; name: string; activity: SessionActivity; at: string }
+  | { type: 'session.status'; id: string; name: string; status: SessionStatus; at: string }
+  | { type: 'fleet.server.status'; id: string; name: string; status: ServerStatus; at: string }
   | { type: 'fleet.metrics'; id: string; metrics: ServerMetrics; at: string };

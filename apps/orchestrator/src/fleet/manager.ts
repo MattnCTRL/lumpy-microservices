@@ -117,7 +117,14 @@ export class FleetManager {
   private setStatus(id: string, status: ServerStatus): void {
     if (this.statuses.get(id) === status) return;
     this.statuses.set(id, status);
-    this.bus.publish({ type: 'fleet.server.status', id, status, at: new Date().toISOString() });
+    const name = this.store.getServer(id)?.name ?? id;
+    this.bus.publish({
+      type: 'fleet.server.status',
+      id,
+      name,
+      status,
+      at: new Date().toISOString(),
+    });
   }
 
   private toServer(record: ServerRecord): Server {

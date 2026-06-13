@@ -27,8 +27,8 @@ Create, attach, stream, and control `tmux`-backed Claude Code sessions.
 - [x] Mobile quick-keys to answer prompts by thumb
 - [x] Session recovery on orchestrator restart (hardened; integration-tested)
 - [x] Tests: activity detection (unit) + restart recovery (integration)
-- [ ] Permission-prompt → push notification → approve/deny relay (needs a
-      notification provider — see `.notes/TODO.md`)
+- [x] Permission-prompt → ntfy push with approve/reject action buttons
+      (`notify` module; see [notifications.md](notifications.md))
 
 ## Phase 2 — Fleet monitoring (current)
 
@@ -43,8 +43,9 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 - [x] `lumpy-agent` (CPU/mem/disk/load/uptime, self-registration) — Node v0
 - [ ] Agent: log tailing + agentless SSH fallback; static-binary build
 - [ ] Ingestion auth (token / mTLS over the tailnet)
+- [x] Server-offline notifications via the `notify` module
 - [ ] Live log streaming in the server detail view
-- [ ] Threshold alert rules and notifications
+- [ ] Threshold alert rules (the `alerts` module) feeding notifications
 
 ## Phase 3 — Alerting & tiered remediation
 

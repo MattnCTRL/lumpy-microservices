@@ -22,6 +22,12 @@ export const config = {
   tmuxPrefix: env('LUMPY_TMUX_PREFIX', 'lumpy'),
   defaultCommand: env('LUMPY_DEFAULT_COMMAND', 'claude'),
   workspaceRoot,
+  // Notifications (ntfy). Leave the topic empty to disable push notifications.
+  ntfyUrl: env('LUMPY_NTFY_URL', 'https://ntfy.sh'),
+  ntfyTopic: env('LUMPY_NTFY_TOPIC', ''),
+  // Base URL the phone can reach (a Tailscale address) for notification links
+  // and approve/deny action buttons. Optional.
+  publicUrl: env('LUMPY_PUBLIC_URL', ''),
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

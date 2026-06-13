@@ -38,6 +38,15 @@ Automated remediation is tiered by severity:
 
 Every action is recorded in an append-only audit log.
 
+## Notifications
+
+Push notifications go through ntfy. On the public `ntfy.sh`, the **topic name is
+the only access control** — anyone who knows it can read and publish. Use a long,
+random topic and treat it as a secret, or self-host ntfy on the tailnet for
+sensitive context. Approve/reject action buttons call the orchestrator's input
+endpoint, so they only function from a device on the tailnet. See
+[notifications.md](notifications.md).
+
 ## Secrets
 
 - `.env` is git-ignored; only `.env.example` is committed.

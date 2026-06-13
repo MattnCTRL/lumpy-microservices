@@ -17,7 +17,10 @@ export interface AppDependencies {
 }
 
 export async function createApp(deps: AppDependencies): Promise<FastifyInstance> {
-  const app = Fastify({ logger: loggerOptions });
+  // forceCloseConnections makes app.close() terminate open WebSocket
+  // connections immediately instead of waiting for them to drain, so the
+  // process exits promptly on shutdown / dev-watch restart.
+  const app = Fastify({ logger: loggerOptions, forceCloseConnections: true });
 
   await app.register(cors, { origin: true });
   await app.register(websocket);
