@@ -1,9 +1,14 @@
 import { execFile } from 'node:child_process';
-import { cpus, freemem, loadavg, totalmem, uptime } from 'node:os';
+import { readFileSync } from 'node:fs';
+import { cpus, freemem, loadavg, platform, totalmem, uptime } from 'node:os';
 import { promisify } from 'node:util';
 import type { MetricsReport } from '@lumpy/shared';
 
 const exec = promisify(execFile);
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, value));
+}
 
 export interface CpuSnapshot {
   idle: number;
@@ -29,10 +34,39 @@ export function cpuPercent(previous: CpuSnapshot, current: CpuSnapshot): number 
   return Math.max(0, Math.min(100, (1 - idleDelta / totalDelta) * 100));
 }
 
-export function memoryPercent(): number {
+/** Linux: use MemAvailable (reclaimable cache counts as available, unlike MemFree). */
+export function parseLinuxMemPercent(meminfo: string): number {
+  const total = Number(/MemTotal:\s+(\d+)/.exec(meminfo)?.[1] ?? 0);
+  const available = Number(/MemAvailable:\s+(\d+)/.exec(meminfo)?.[1] ?? 0);
+  return total > 0 ? clampPercent(((total - available) / total) * 100) : 0;
+}
+
+/**
+ * macOS: os.freemem() is misleading (most RAM is reclaimable cache/compressed),
+ * so derive "used" from vm_stat as active + wired + compressed pages.
+ */
+export function parseMacMemPercent(vmStat: string, totalBytes: number): number {
+  const pageSize = Number(/page size of (\d+)/.exec(vmStat)?.[1] ?? 4096);
+  const pages = (label: string) => Number(new RegExp(`${label}:\\s+(\\d+)`).exec(vmStat)?.[1] ?? 0);
+  const used =
+    (pages('Pages active') + pages('Pages wired down') + pages('Pages occupied by compressor')) *
+    pageSize;
+  return totalBytes > 0 ? clampPercent((used / totalBytes) * 100) : 0;
+}
+
+/** Accurate memory-used percentage, per platform. */
+export async function memoryPercent(): Promise<number> {
+  try {
+    if (platform() === 'linux') return parseLinuxMemPercent(readFileSync('/proc/meminfo', 'utf8'));
+    if (platform() === 'darwin') {
+      const { stdout } = await exec('vm_stat');
+      return parseMacMemPercent(stdout, totalmem());
+    }
+  } catch {
+    // Fall back below.
+  }
   const total = totalmem();
-  if (total <= 0) return 0;
-  return ((total - freemem()) / total) * 100;
+  return total > 0 ? clampPercent(((total - freemem()) / total) * 100) : 0;
 }
 
 /** Disk usage percentage for the filesystem containing `path`, via `df`. */
@@ -54,7 +88,7 @@ export async function collect(
 ): Promise<MetricsReport> {
   return {
     cpuPercent: Number(cpuPercent(previous, current).toFixed(1)),
-    memPercent: Number(memoryPercent().toFixed(1)),
+    memPercent: Number((await memoryPercent()).toFixed(1)),
     diskPercent: Number((await diskPercent(diskPath)).toFixed(1)),
     load1: Number((loadavg()[0] ?? 0).toFixed(2)),
     uptimeSeconds: Math.floor(uptime()),
