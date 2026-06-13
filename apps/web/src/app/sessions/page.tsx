@@ -242,7 +242,7 @@ function SessionPanel({
           <StoppedActions session={session} onChanged={onChanged} onDeleted={onDeleted} />
         )}
       </div>
-      {session.status === 'running' && <QuickKeys sessionId={session.id} />}
+      {session.status === 'running' && <InputBar sessionId={session.id} />}
     </div>
   );
 }
@@ -316,23 +316,67 @@ const QUICK_KEYS: { label: string; data: string }[] = [
   { label: '3', data: '3' },
   { label: 'y', data: 'y' },
   { label: 'n', data: 'n' },
-  { label: '⏎', data: '\r' },
+  { label: '↑', data: '\x1b[A' },
+  { label: '↓', data: '\x1b[B' },
   { label: 'esc', data: '\x1b' },
   { label: '⌃C', data: '\x03' },
 ];
 
-function QuickKeys({ sessionId }: { sessionId: string }) {
+// A text field plus the special keys. Typing here (Enter to send) works on
+// desktop and mobile without needing to focus the terminal — the reliable way
+// to answer a free-text prompt or paste a value into a session.
+function InputBar({ sessionId }: { sessionId: string }) {
+  const [text, setText] = useState('');
+
+  const send = () => {
+    // Send the line followed by a carriage return so the session submits it.
+    void api.sendInput(sessionId, `${text}\r`);
+    setText('');
+  };
+
   return (
-    <div className="flex flex-wrap gap-1.5 border-t border-neutral-800 px-2 py-2">
-      {QUICK_KEYS.map((key) => (
+    <div className="space-y-1.5 border-t border-neutral-800 px-2 py-2">
+      <div className="flex gap-1.5">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder="Type a reply or paste a value, then Enter…"
+          className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
         <button
-          key={key.label}
-          onClick={() => void api.sendInput(sessionId, key.data)}
-          className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+          onClick={send}
+          className="shrink-0 rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
         >
-          {key.label}
+          Send
         </button>
-      ))}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => void api.sendInput(sessionId, '\r')}
+          className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+          title="Enter / submit"
+        >
+          ⏎
+        </button>
+        {QUICK_KEYS.map((key) => (
+          <button
+            key={key.label}
+            onClick={() => void api.sendInput(sessionId, key.data)}
+            className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+          >
+            {key.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
