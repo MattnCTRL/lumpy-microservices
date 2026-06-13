@@ -51,7 +51,13 @@ export function readUser(request: FastifyRequest): GithubUser | null {
   const unsigned = request.unsignCookie(raw);
   if (!unsigned.valid || !unsigned.value) return null;
   try {
-    return JSON.parse(unsigned.value) as GithubUser;
+    const user = JSON.parse(unsigned.value) as GithubUser;
+    // Reject cookies from an older shape (e.g. before roles) so the user is
+    // prompted to sign in again and gets a current, well-formed session.
+    if (!user || typeof user.login !== 'string' || (user.role !== 'admin' && user.role !== 'viewer')) {
+      return null;
+    }
+    return user;
   } catch {
     return null;
   }
