@@ -34,8 +34,9 @@ function registerRest(ctx: ModuleContext): void {
 
     const input = parsed.data;
     const session = await sessions.create({
+      // Blank workspace → the manager isolates the session in its own directory.
+      workspace: input.workspace?.trim() ? resolveWorkspace(input.workspace) : undefined,
       name: input.name,
-      workspace: resolveWorkspace(input.workspace),
       command: input.command || config.defaultCommand,
       tags: input.tags ?? [],
       autonomous: input.autonomous ?? true,

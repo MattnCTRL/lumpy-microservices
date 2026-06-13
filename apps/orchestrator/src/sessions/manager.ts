@@ -1,5 +1,8 @@
+import { chownSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { customAlphabet } from 'nanoid';
 import type { Session, SessionActivity, SessionPrompt, SessionStatus } from '@lumpy/shared';
+import { config } from '../config.js';
 import type { EventBus } from '../events/bus.js';
 import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
@@ -16,9 +19,24 @@ const TOUCH_INTERVAL_MS = 5000;
 
 const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
 
+function slug(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 32) || 'session'
+  );
+}
+
 export interface CreateSessionArgs {
   name: string;
-  workspace: string;
+  /**
+   * Explicit working directory. When omitted, each session gets its OWN
+   * isolated directory so Claude's per-project state (history, todos,
+   * background tasks — keyed by cwd) never collides across sessions.
+   */
+  workspace?: string;
   command: string;
   tags: string[];
   autonomous: boolean;
@@ -63,9 +81,14 @@ export class SessionManager {
     const id = generateId();
     const name = this.tmuxName(id);
 
+    // Without an explicit workspace, isolate each session in its own directory
+    // so two concurrent Claude sessions never share project state via the cwd.
+    const workspace = args.workspace ?? join(config.workspaceRoot, `${slug(args.name)}-${id}`);
+    this.ensureWorkspace(workspace, !args.workspace);
+
     await tmux.newSession({
       name,
-      cwd: args.workspace,
+      cwd: workspace,
       command: buildLaunchCommand(args.command, {
         autonomous: args.autonomous,
         task: args.task,
@@ -78,7 +101,7 @@ export class SessionManager {
     const record: SessionRecord = {
       id,
       name: args.name,
-      workspace: args.workspace,
+      workspace,
       command: args.command,
       tags: args.tags,
       autonomous: args.autonomous,
@@ -96,8 +119,25 @@ export class SessionManager {
     }
     this.publishStatus(id, 'running');
 
-    logger.info({ id, workspace: args.workspace, command: args.command }, 'session created');
+    logger.info({ id, workspace, command: args.command }, 'session created');
     return this.toSession(record, true);
+  }
+
+  /**
+   * Make sure a session's working directory exists. Auto-created (isolated)
+   * directories are chowned to the session's run-as user so the non-root
+   * session can write to them; explicit directories are left as-is.
+   */
+  private ensureWorkspace(dir: string, created: boolean): void {
+    if (existsSync(dir)) return;
+    mkdirSync(dir, { recursive: true });
+    if (created && this.runAs) {
+      try {
+        chownSync(dir, this.runAs.uid, this.runAs.gid);
+      } catch (error) {
+        logger.warn({ dir, error }, 'could not chown session workspace');
+      }
+    }
   }
 
   async list(): Promise<Session[]> {

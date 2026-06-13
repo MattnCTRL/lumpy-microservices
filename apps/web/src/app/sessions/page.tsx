@@ -540,14 +540,14 @@ function CreateDialog({
             label="Workspace"
             hint={
               workspaceRoot
-                ? `on the orchestrator host — blank uses ${workspaceRoot}`
-                : 'absolute path on the orchestrator host, or blank for its home'
+                ? `path on the orchestrator host (e.g. ${workspaceRoot}/my-project). Blank = a fresh isolated directory for this session.`
+                : 'absolute path on the orchestrator host; blank = a fresh isolated directory'
             }
           >
             <input
               value={workspace}
               onChange={(e) => setWorkspace(e.target.value)}
-              placeholder={workspaceRoot || '/path/to/project'}
+              placeholder={workspaceRoot ? `${workspaceRoot}/my-project` : '/path/to/project'}
               className="input"
             />
           </Field>

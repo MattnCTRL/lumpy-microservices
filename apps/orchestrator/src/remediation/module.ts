@@ -23,7 +23,7 @@ export const remediationModule: LumpyModule = {
       try {
         const session = await ctx.sessions.create({
           name: `${mode === 'auto' ? 'Fix' : 'Investigate'}: ${alert.serverName} — ${alert.label}`,
-          workspace: ctx.config.workspaceRoot,
+          // Omit workspace so each remediation session is isolated in its own dir.
           command: ctx.config.defaultCommand,
           tags: ['remediation'],
           autonomous: true,
