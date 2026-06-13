@@ -18,6 +18,7 @@ export interface SessionRecord {
   autonomous: boolean;
   task: string | null;
   projectId: string | null;
+  locked: boolean;
   createdAt: string;
   lastActivityAt: string | null;
 }
@@ -31,6 +32,7 @@ interface SessionRow {
   autonomous: number;
   task: string | null;
   project_id: string | null;
+  locked: number | null;
   created_at: string;
   last_activity_at: string | null;
 }
@@ -45,6 +47,7 @@ function toRecord(row: SessionRow): SessionRecord {
     autonomous: row.autonomous === 1,
     task: row.task,
     projectId: row.project_id ?? null,
+    locked: row.locked === 1,
     createdAt: row.created_at,
     lastActivityAt: row.last_activity_at,
   };
@@ -114,6 +117,7 @@ export class Store {
       'autonomous INTEGER NOT NULL DEFAULT 1',
       'task TEXT',
       'project_id TEXT',
+      'locked INTEGER NOT NULL DEFAULT 0',
     ]) {
       try {
         this.db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`);
@@ -244,8 +248,8 @@ export class Store {
   createSession(record: SessionRecord): void {
     this.db
       .prepare(
-        `INSERT INTO sessions (id, name, workspace, command, tags, autonomous, task, project_id, created_at, last_activity_at)
-         VALUES (@id, @name, @workspace, @command, @tags, @autonomous, @task, @project_id, @created_at, @last_activity_at)`,
+        `INSERT INTO sessions (id, name, workspace, command, tags, autonomous, task, project_id, locked, created_at, last_activity_at)
+         VALUES (@id, @name, @workspace, @command, @tags, @autonomous, @task, @project_id, @locked, @created_at, @last_activity_at)`,
       )
       .run({
         id: record.id,
@@ -256,6 +260,7 @@ export class Store {
         autonomous: record.autonomous ? 1 : 0,
         task: record.task,
         project_id: record.projectId,
+        locked: record.locked ? 1 : 0,
         created_at: record.createdAt,
         last_activity_at: record.lastActivityAt,
       });

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,11 +32,31 @@ function expandHome(input: string): string {
 }
 
 const workspaceRoot = resolve(expandHome(env('LUMPY_WORKSPACE_ROOT', homedir())));
+const dataDir = resolve(expandHome(env('LUMPY_DATA_DIR', './data')));
+
+// A stable admin token (persisted) the Conductor uses to call the API as admin.
+function loadOrCreateAdminToken(dir: string): string {
+  const path = resolve(dir, '.admin-token');
+  try {
+    const existing = readFileSync(path, 'utf8').trim();
+    if (existing) return existing;
+  } catch {
+    // not created yet
+  }
+  const token = randomBytes(24).toString('hex');
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, token, { mode: 0o600 });
+  } catch {
+    // non-fatal; token just won't persist across restarts
+  }
+  return token;
+}
 
 export const config = {
   host: env('LUMPY_HOST', '127.0.0.1'),
   port: Number(env('LUMPY_PORT', '4317')),
-  dataDir: resolve(expandHome(env('LUMPY_DATA_DIR', './data'))),
+  dataDir,
   logLevel: env('LUMPY_LOG_LEVEL', 'info'),
   tmuxPrefix: env('LUMPY_TMUX_PREFIX', 'lumpy'),
   defaultCommand: env('LUMPY_DEFAULT_COMMAND', 'claude'),
@@ -80,6 +101,11 @@ export const config = {
   // while auth gating is on. Empty = agent telemetry is allowed on trust (the
   // tailnet is the boundary); set it to require the token from agents too.
   agentToken: env('LUMPY_AGENT_TOKEN', ''),
+  // Admin token (x-lumpy-admin-token) the Conductor uses to call the full API.
+  // Stable across restarts (persisted to data/.admin-token).
+  adminToken: env('LUMPY_ADMIN_TOKEN', '') || loadOrCreateAdminToken(dataDir),
+  // Opt-in: run the locked Conductor (master orchestrator) session.
+  conductorEnabled: env('LUMPY_CONDUCTOR', '') === 'true',
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

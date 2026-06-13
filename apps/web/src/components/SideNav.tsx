@@ -7,9 +7,9 @@ import type { AuthState, HealthResponse } from '@lumpy/shared';
 import { api } from '@/lib/api';
 
 const NAV = [
-  { href: '/projects', label: 'Projects' },
-  { href: '/sessions', label: 'Sessions' },
-  { href: '/fleet', label: 'Fleet' },
+  { href: '/projects', label: 'Projects', icon: '📁' },
+  { href: '/sessions', label: 'Sessions', icon: '⌨' },
+  { href: '/fleet', label: 'Fleet', icon: '🖥' },
 ];
 
 export function SideNav() {
@@ -51,78 +51,86 @@ export function SideNav() {
     return () => clearInterval(interval);
   }, []);
 
-  const alertsActive = pathname.startsWith('/alerts');
-
   return (
-    <nav className="flex h-full w-48 shrink-0 flex-col border-r border-neutral-800 px-3 py-4">
-      <div className="mb-6 px-1">
+    <nav
+      className="flex shrink-0 items-stretch border-neutral-800 bg-neutral-950
+                 border-t md:h-full md:w-48 md:flex-col md:border-r md:border-t-0
+                 md:bg-transparent md:px-3 md:py-4"
+    >
+      <div className="mb-6 hidden px-1 md:block">
         <div className="text-lg font-semibold tracking-tight text-neutral-100">Lumpy</div>
         <div className="text-xs text-neutral-500">Micro Services</div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1">
-        {NAV.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-md px-3 py-1.5 text-sm transition ${
-                active
-                  ? 'bg-neutral-800 text-neutral-100'
-                  : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
-              }`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+      {/* Primary nav: row on mobile, column on desktop. */}
+      <div className="flex flex-1 justify-around md:flex-col md:justify-start md:gap-1">
+        {NAV.map((item) => (
+          <NavItem key={item.href} {...item} active={pathname.startsWith(item.href)} />
+        ))}
       </div>
 
-      <div className="mt-4 flex flex-col gap-1 border-t border-neutral-800 pt-3">
-        <Link
+      {/* Utility cluster: inline on mobile, pinned to the bottom on desktop. */}
+      <div className="flex items-center justify-around md:mt-4 md:flex-col md:items-stretch md:gap-1 md:border-t md:border-neutral-800 md:pt-3">
+        <NavItem
           href="/alerts"
-          aria-label="Alerts"
-          className={`flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition ${
-            alertsActive
-              ? 'bg-neutral-800 text-neutral-100'
-              : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <span className="text-base leading-none">🔔</span> Alerts
-          </span>
-          {alertCount > 0 && (
-            <span
-              className={`rounded-full px-1.5 text-xs font-medium text-neutral-950 ${
-                hasCritical ? 'bg-red-500' : 'bg-amber-500'
-              }`}
-            >
-              {alertCount}
-            </span>
-          )}
-        </Link>
-
-        <Link
+          label="Alerts"
+          icon="🔔"
+          active={pathname.startsWith('/alerts')}
+          badge={alertCount > 0 ? { count: alertCount, critical: hasCritical } : undefined}
+        />
+        <NavItem
           href="/settings"
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition ${
-            pathname.startsWith('/settings')
-              ? 'bg-neutral-800 text-neutral-100'
-              : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
-          }`}
-        >
-          <span className="text-base leading-none">⚙</span> Settings
-        </Link>
-
-        <div className="px-1 pt-1">
+          label="Settings"
+          icon="⚙"
+          active={pathname.startsWith('/settings')}
+        />
+        <div className="px-2 py-2 md:px-1 md:pt-1">
           <Profile auth={auth} onSignedOut={() => setAuth((a) => (a ? { ...a, user: null } : a))} />
         </div>
-
-        <div className="px-3 pt-2">
+        <div className="hidden md:block md:px-3 md:pt-2">
           <HealthBadge health={health} />
         </div>
       </div>
     </nav>
+  );
+}
+
+function NavItem({
+  href,
+  label,
+  icon,
+  active,
+  badge,
+}: {
+  href: string;
+  label: string;
+  icon: string;
+  active: boolean;
+  badge?: { count: number; critical: boolean };
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className={`relative flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-xs transition
+        md:flex-row md:gap-2 md:text-sm ${
+          active
+            ? 'text-neutral-100 md:bg-neutral-800'
+            : 'text-neutral-400 hover:text-neutral-200 md:hover:bg-neutral-900'
+        }`}
+    >
+      <span className="text-base leading-none">{icon}</span>
+      <span>{label}</span>
+      {badge && (
+        <span
+          className={`absolute right-1 top-0.5 rounded-full px-1.5 text-[10px] font-medium text-neutral-950 md:static md:ml-auto md:text-xs ${
+            badge.critical ? 'bg-red-500' : 'bg-amber-500'
+          }`}
+        >
+          {badge.count}
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -143,7 +151,9 @@ function Profile({ auth, onSignedOut }: { auth: AuthState | null; onSignedOut: (
           alt={auth.user.login}
           className="h-6 w-6 rounded-full border border-neutral-700"
         />
-        <span className="truncate text-sm text-neutral-200">{auth.user.name ?? auth.user.login}</span>
+        <span className="hidden truncate text-sm text-neutral-200 md:inline">
+          {auth.user.name ?? auth.user.login}
+        </span>
       </button>
     );
   }

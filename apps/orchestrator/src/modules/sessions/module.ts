@@ -109,6 +109,10 @@ function registerRest(ctx: ModuleContext): void {
 
   app.post('/api/sessions/:id/stop', async (request, reply) => {
     const { id } = request.params as { id: string };
+    const session = await sessions.get(id);
+    if (session?.locked) {
+      return reply.status(403).send({ error: 'the Conductor cannot be stopped' });
+    }
     const stopped = await sessions.stop(id);
     if (!stopped) return reply.status(404).send({ error: 'session not found' });
     return reply.status(204).send();
@@ -144,6 +148,10 @@ function registerRest(ctx: ModuleContext): void {
 
   app.delete('/api/sessions/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
+    const session = await sessions.get(id);
+    if (session?.locked) {
+      return reply.status(403).send({ error: 'the Conductor cannot be removed' });
+    }
     const removed = await sessions.remove(id);
     if (!removed) return reply.status(404).send({ error: 'session not found' });
     return reply.status(204).send();

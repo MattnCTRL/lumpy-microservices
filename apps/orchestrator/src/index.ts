@@ -9,6 +9,7 @@ import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
 import { remediationModule } from './remediation/module.js';
+import { ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
@@ -57,6 +58,12 @@ async function main(): Promise<void> {
   const app = await createApp({ sessions, registry, bus, settings: settingsStore, store });
 
   await app.listen({ host: config.host, port: config.port });
+
+  // The locked Conductor (master orchestrator). Ensure it exists on boot, and
+  // keep it alive on a timer. Opt-in via LUMPY_CONDUCTOR=true.
+  await ensureConductor(sessions, store);
+  const conductorKeeper = setInterval(() => void ensureConductor(sessions, store), 60_000);
+  conductorKeeper.unref();
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {

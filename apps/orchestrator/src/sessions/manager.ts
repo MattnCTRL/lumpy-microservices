@@ -51,6 +51,10 @@ export interface CreateSessionArgs {
   task: string | null;
   /** The project this session belongs to, if any. */
   projectId?: string | null;
+  /** Locked sessions (the Conductor) can't be stopped or removed. */
+  locked?: boolean;
+  /** Extra env injected at launch and on every relaunch (persisted as connectors). */
+  env?: Record<string, string>;
 }
 
 export class SessionManager {
@@ -96,6 +100,11 @@ export class SessionManager {
     const workspace = args.workspace ?? join(config.workspaceRoot, `${slug(args.name)}-${id}`);
     this.ensureWorkspace(workspace, !args.workspace);
 
+    // Persist any launch env as connectors so it is re-injected on every relaunch.
+    if (args.env && Object.keys(args.env).length > 0) {
+      this.store.setConnectors(id, { env: args.env, mcpServers: {}, repo: null });
+    }
+
     await tmux.newSession({
       name,
       cwd: workspace,
@@ -118,6 +127,7 @@ export class SessionManager {
       autonomous: args.autonomous,
       task: args.task,
       projectId: args.projectId ?? null,
+      locked: args.locked ?? false,
       createdAt: new Date().toISOString(),
       lastActivityAt: null,
     };
@@ -311,6 +321,7 @@ export class SessionManager {
             autonomous: false,
             task: null,
             projectId: null,
+            locked: false,
             createdAt: new Date().toISOString(),
             lastActivityAt: null,
           });
@@ -404,6 +415,7 @@ export class SessionManager {
       status: live ? 'running' : 'stopped',
       activity: live ? (this.activities.get(record.id) ?? 'unknown') : 'unknown',
       projectId: record.projectId,
+      locked: record.locked,
       prompt: live ? (this.prompts.get(record.id) ?? null) : null,
       autonomous: record.autonomous,
       task: record.task,

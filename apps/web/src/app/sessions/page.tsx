@@ -136,32 +136,43 @@ function SessionList({
   if (sessions.length === 0) {
     return <p className="px-1 py-2 text-sm text-neutral-500">No sessions yet.</p>;
   }
+  // Pin the locked Conductor to the top.
+  const ordered = [...sessions].sort((a, b) => Number(b.locked) - Number(a.locked));
   return (
     <ul className="space-y-1.5">
-      {sessions.map((session) => (
+      {ordered.map((session) => (
         <li key={session.id}>
           <button
             onClick={() => onSelect(session.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              session.status === 'running' && session.activity === 'awaiting_permission'
-                ? 'border-amber-600/70 bg-amber-950/20'
-                : session.id === selectedId
-                  ? 'border-neutral-600 bg-neutral-900'
-                  : 'border-transparent hover:bg-neutral-900/60'
+              session.locked
+                ? 'border-indigo-700/60 bg-indigo-950/20'
+                : session.status === 'running' && session.activity === 'awaiting_permission'
+                  ? 'border-amber-600/70 bg-amber-950/20'
+                  : session.id === selectedId
+                    ? 'border-neutral-600 bg-neutral-900'
+                    : 'border-transparent hover:bg-neutral-900/60'
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-medium text-neutral-100">{session.name}</span>
+              <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-neutral-100">
+                {session.locked && <span title="Locked master orchestrator">👑</span>}
+                {session.name}
+              </span>
               <ActivityBadge session={session} />
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="truncate text-xs text-neutral-500">{session.command}</span>
-              <RowAction
-                label={session.status === 'running' ? 'stop' : 'delete'}
-                onAction={() =>
-                  session.status === 'running' ? onStop(session.id) : onDelete(session.id)
-                }
-              />
+              {session.locked ? (
+                <span className="shrink-0 text-xs text-indigo-400/70">conductor</span>
+              ) : (
+                <RowAction
+                  label={session.status === 'running' ? 'stop' : 'delete'}
+                  onAction={() =>
+                    session.status === 'running' ? onStop(session.id) : onDelete(session.id)
+                  }
+                />
+              )}
             </div>
           </button>
         </li>

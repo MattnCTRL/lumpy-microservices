@@ -53,6 +53,11 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
     logger.info('auth gating enabled (signed-in GitHub user required)');
     app.addHook('onRequest', async (request, reply) => {
       const path = request.url.split('?')[0] ?? request.url;
+      // The Conductor (and other internal automation) authenticate as admin with
+      // the admin token, bypassing the user gate entirely.
+      if (config.adminToken && request.headers['x-lumpy-admin-token'] === config.adminToken) {
+        return;
+      }
       // Agents are authorized when no token is configured (tailnet trust) or
       // when they present the matching token.
       const agentAuthorized = config.agentToken

@@ -33,6 +33,8 @@ export interface Session {
   activity: SessionActivity;
   /** The project this session belongs to, if any. */
   projectId: string | null;
+  /** Locked sessions (the Conductor) cannot be stopped or removed. */
+  locked: boolean;
   /** The current prompt when awaiting_permission, else null. Best-effort. */
   prompt: SessionPrompt | null;
   /** When true, Claude runs with permissions auto-approved (autonomous). */

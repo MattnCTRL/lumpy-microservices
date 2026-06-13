@@ -21,9 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-mono">
         <AuthGate>
-          <div className="flex h-screen">
+          {/* Mobile: content with a bottom tab bar (col-reverse). Desktop: left rail. */}
+          <div className="flex h-screen flex-col-reverse md:flex-row">
             <SideNav />
-            <div className="min-w-0 flex-1">{children}</div>
+            <div className="min-h-0 min-w-0 flex-1">{children}</div>
           </div>
         </AuthGate>
       </body>
