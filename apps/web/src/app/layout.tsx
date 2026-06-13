@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@xterm/xterm/css/xterm.css';
 import './globals.css';
+import { AuthGate } from '@/components/AuthGate';
 import { TopNav } from '@/components/TopNav';
 
 export const metadata: Metadata = {
@@ -19,10 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-mono">
-        <div className="flex h-screen flex-col">
-          <TopNav />
-          <div className="min-h-0 flex-1">{children}</div>
-        </div>
+        <AuthGate>
+          <div className="flex h-screen flex-col">
+            <TopNav />
+            <div className="min-h-0 flex-1">{children}</div>
+          </div>
+        </AuthGate>
       </body>
     </html>
   );

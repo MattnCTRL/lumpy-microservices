@@ -47,67 +47,53 @@ async function parse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+// Every request carries cookies so the signed-in session is recognized even
+// though the web (:3000) and orchestrator (:4317) are different origins.
+function req(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${ORCHESTRATOR_URL}${path}`, { credentials: 'include', ...init });
+}
+
+function send(path: string, method: string, body?: unknown): Promise<Response> {
+  return req(path, {
+    method,
+    ...(body === undefined
+      ? {}
+      : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+  });
+}
+
 export const api = {
-  health: () => fetch(`${ORCHESTRATOR_URL}/api/health`).then(parse<HealthResponse>),
-  listSessions: () => fetch(`${ORCHESTRATOR_URL}/api/sessions`).then(parse<Session[]>),
+  health: () => req('/api/health').then(parse<HealthResponse>),
+  listSessions: () => req('/api/sessions').then(parse<Session[]>),
   createSession: (input: CreateSessionInput) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(input),
-    }).then(parse<Session>),
-  stopSession: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/stop`, { method: 'POST' }),
+    send('/api/sessions', 'POST', input).then(parse<Session>),
+  stopSession: (id: string) => send(`/api/sessions/${id}/stop`, 'POST'),
   restartSession: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/restart`, { method: 'POST' }).then(
-      parse<Session>,
-    ),
+    send(`/api/sessions/${id}/restart`, 'POST').then(parse<Session>),
   resumeSession: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/resume`, { method: 'POST' }).then(parse<Session>),
-  deleteSession: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}`, { method: 'DELETE' }),
-  sendInput: (id: string, data: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/input`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ data }),
-    }),
+    send(`/api/sessions/${id}/resume`, 'POST').then(parse<Session>),
+  deleteSession: (id: string) => send(`/api/sessions/${id}`, 'DELETE'),
+  sendInput: (id: string, data: string) => send(`/api/sessions/${id}/input`, 'POST', { data }),
 
-  listServers: () => fetch(`${ORCHESTRATOR_URL}/api/fleet/servers`).then(parse<Server[]>),
-  getServer: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`).then(parse<ServerDetail>),
+  listServers: () => req('/api/fleet/servers').then(parse<Server[]>),
+  getServer: (id: string) => req(`/api/fleet/servers/${id}`).then(parse<ServerDetail>),
   createServer: (input: CreateServerInput) =>
-    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(input),
-    }).then(parse<Server>),
+    send('/api/fleet/servers', 'POST', input).then(parse<Server>),
   renameServer: (id: string, name: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name }),
-    }).then(parse<ServerDetail>),
-  deleteServer: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, { method: 'DELETE' }),
+    send(`/api/fleet/servers/${id}`, 'PATCH', { name }).then(parse<ServerDetail>),
+  deleteServer: (id: string) => send(`/api/fleet/servers/${id}`, 'DELETE'),
 
-  listAlerts: () => fetch(`${ORCHESTRATOR_URL}/api/alerts`).then(parse<Alert[]>),
+  listAlerts: () => req('/api/alerts').then(parse<Alert[]>),
   dismissAlert: (id: string) =>
-    fetch(`${ORCHESTRATOR_URL}/api/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    send(`/api/alerts/${encodeURIComponent(id)}`, 'DELETE'),
 
-  listModules: () => fetch(`${ORCHESTRATOR_URL}/api/modules`).then(parse<ModuleInfo[]>),
-  listPlaybooks: () => fetch(`${ORCHESTRATOR_URL}/api/playbooks`).then(parse<Playbook[]>),
-  getSettings: () => fetch(`${ORCHESTRATOR_URL}/api/settings`).then(parse<SettingsResponse>),
+  listModules: () => req('/api/modules').then(parse<ModuleInfo[]>),
+  listPlaybooks: () => req('/api/playbooks').then(parse<Playbook[]>),
+  getSettings: () => req('/api/settings').then(parse<SettingsResponse>),
   updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
-    fetch(`${ORCHESTRATOR_URL}/api/settings`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    }).then(parse<SettingsResponse>),
+    send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
 
-  authMe: () =>
-    fetch(`${ORCHESTRATOR_URL}/api/auth/me`, { credentials: 'include' }).then(parse<AuthState>),
+  authMe: () => req('/api/auth/me').then(parse<AuthState>),
   authLoginUrl: () => `${ORCHESTRATOR_URL}/api/auth/github/login`,
-  authLogout: () =>
-    fetch(`${ORCHESTRATOR_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }),
+  authLogout: () => send('/api/auth/logout', 'POST'),
 };
