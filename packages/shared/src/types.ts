@@ -7,6 +7,22 @@ export type SessionStatus = 'running' | 'stopped';
  */
 export type SessionActivity = 'working' | 'awaiting_permission' | 'idle' | 'unknown';
 
+/** A selectable answer in a session prompt; `key` is the keystroke to send. */
+export interface SessionPromptOption {
+  key: string;
+  label: string;
+}
+
+/**
+ * A best-effort, human-readable view of the question a session is currently
+ * asking, extracted from its terminal stream so the UI can show it without the
+ * operator reading raw TTY output.
+ */
+export interface SessionPrompt {
+  question: string;
+  options: SessionPromptOption[];
+}
+
 export interface Session {
   id: string;
   name: string;
@@ -15,6 +31,8 @@ export interface Session {
   tags: string[];
   status: SessionStatus;
   activity: SessionActivity;
+  /** The current prompt when awaiting_permission, else null. Best-effort. */
+  prompt: SessionPrompt | null;
   /** When true, Claude runs with permissions auto-approved (autonomous). */
   autonomous: boolean;
   /** Optional task the session was started with. */
@@ -188,7 +206,14 @@ export interface Playbook {
  * this union as they land.
  */
 export type LumpyEvent =
-  | { type: 'session.activity'; id: string; name: string; activity: SessionActivity; at: string }
+  | {
+      type: 'session.activity';
+      id: string;
+      name: string;
+      activity: SessionActivity;
+      prompt: SessionPrompt | null;
+      at: string;
+    }
   | { type: 'session.status'; id: string; name: string; status: SessionStatus; at: string }
   | { type: 'fleet.server.status'; id: string; name: string; status: ServerStatus; at: string }
   | { type: 'fleet.metrics'; id: string; name: string; metrics: ServerMetrics; at: string }

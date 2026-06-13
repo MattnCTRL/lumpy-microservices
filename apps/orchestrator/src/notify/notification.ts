@@ -34,7 +34,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       : [];
     return {
       title: `${event.name} needs you`,
-      message: 'A session is awaiting permission to proceed.',
+      message: event.prompt?.question ?? 'A session is awaiting permission to proceed.',
       priority: 4,
       tags: ['warning'],
       click: publicUrl ? `${publicUrl}/sessions` : undefined,

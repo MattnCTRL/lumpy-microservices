@@ -11,11 +11,13 @@ test('an awaiting-permission session produces an actionable notification', () =>
     id: 'abc123',
     name: 'api refactor',
     activity: 'awaiting_permission',
+    prompt: { question: 'Do you want to proceed?', options: [] },
     at: '2026-06-13T00:00:00.000Z',
   };
   const note = buildNotification(event, PUBLIC);
   assert.ok(note);
   assert.match(note.title, /api refactor/);
+  assert.equal(note.message, 'Do you want to proceed?');
   assert.equal(note.actions?.length, 2);
   assert.equal(note.actions?.[0]?.url, `${PUBLIC}/api/sessions/abc123/input`);
 });
@@ -26,6 +28,7 @@ test('without a public URL there are no action buttons', () => {
     id: 'abc123',
     name: 'api refactor',
     activity: 'awaiting_permission',
+    prompt: null,
     at: '2026-06-13T00:00:00.000Z',
   };
   const note = buildNotification(event, '');
@@ -40,6 +43,7 @@ test('a working session does not notify', () => {
     id: 'abc123',
     name: 'api refactor',
     activity: 'working',
+    prompt: null,
     at: '2026-06-13T00:00:00.000Z',
   };
   assert.equal(buildNotification(event, PUBLIC), null);

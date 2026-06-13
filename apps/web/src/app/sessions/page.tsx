@@ -36,7 +36,11 @@ export default function SessionsPage() {
       const message = JSON.parse(data) as LumpyEvent;
       if (message.type === 'session.activity') {
         setSessions((prev) =>
-          prev.map((s) => (s.id === message.id ? { ...s, activity: message.activity } : s)),
+          prev.map((s) =>
+            s.id === message.id
+              ? { ...s, activity: message.activity, prompt: message.prompt }
+              : s,
+          ),
         );
       } else if (message.type === 'session.status') {
         setSessions((prev) =>
@@ -235,6 +239,9 @@ function SessionPanel({
         </div>
         <ActivityBadge session={session} />
       </div>
+      {session.status === 'running' && session.activity === 'awaiting_permission' && (
+        <PromptBanner sessionId={session.id} prompt={session.prompt} />
+      )}
       <div className="min-h-0 flex-1 p-2">
         {session.status === 'running' ? (
           <Terminal key={session.id} sessionId={session.id} />
@@ -310,6 +317,46 @@ function StoppedActions({
   );
 }
 
+// Surfaces the question a session is asking, pulled from its terminal stream,
+// so you can answer with a tap instead of reading raw TTY output.
+function PromptBanner({
+  sessionId,
+  prompt,
+}: {
+  sessionId: string;
+  prompt: Session['prompt'];
+}) {
+  const options =
+    prompt?.options && prompt.options.length > 0
+      ? prompt.options
+      : [
+          { key: 'y', label: 'Yes' },
+          { key: 'n', label: 'No' },
+        ];
+  return (
+    <div className="border-b border-amber-700/40 bg-amber-950/30 px-4 py-2.5">
+      <div className="flex items-center gap-2 text-xs font-medium text-amber-400">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+        Claude is asking
+      </div>
+      <p className="mt-1 text-sm text-neutral-100">
+        {prompt?.question ?? 'This session needs your input.'}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {options.map((option) => (
+          <button
+            key={option.key}
+            onClick={() => void api.sendInput(sessionId, option.key)}
+            className="rounded-md border border-amber-700/60 bg-amber-900/30 px-3 py-1 text-sm text-amber-100 hover:bg-amber-900/60"
+          >
+            <span className="font-mono text-amber-400">{option.key}</span> {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const QUICK_KEYS: { label: string; data: string }[] = [
   { label: '1', data: '1' },
   { label: '2', data: '2' },
@@ -327,31 +374,53 @@ const QUICK_KEYS: { label: string; data: string }[] = [
 // to answer a free-text prompt or paste a value into a session.
 function InputBar({ sessionId }: { sessionId: string }) {
   const [text, setText] = useState('');
+  const [compose, setCompose] = useState(false);
 
   const send = () => {
-    // Send the line followed by a carriage return so the session submits it.
+    if (text.length === 0) return;
+    // Send the text followed by a carriage return so the session submits it.
     void api.sendInput(sessionId, `${text}\r`);
     setText('');
   };
 
   return (
     <div className="space-y-1.5 border-t border-neutral-800 px-2 py-2">
-      <div className="flex gap-1.5">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder="Type a reply or paste a value, then Enter…"
-          className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
+      <div className="flex items-end gap-1.5">
+        {compose ? (
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter inserts a newline; ⌘/Ctrl+Enter sends the whole block.
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            rows={4}
+            placeholder="Compose a multi-line message or paste a block… (⌘/Ctrl+Enter to send)"
+            className="min-w-0 flex-1 resize-y rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        ) : (
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Type a reply or paste a value, then Enter…"
+            className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        )}
         <button
           onClick={send}
           className="shrink-0 rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
@@ -359,7 +428,19 @@ function InputBar({ sessionId }: { sessionId: string }) {
           Send
         </button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          onClick={() => setCompose((c) => !c)}
+          className={`rounded border px-2.5 py-1 text-xs ${
+            compose
+              ? 'border-neutral-500 bg-neutral-800 text-neutral-100'
+              : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+          }`}
+          title="Toggle multi-line compose"
+        >
+          ⊞ compose
+        </button>
+        <span className="mx-0.5 h-4 w-px bg-neutral-800" />
         <button
           onClick={() => void api.sendInput(sessionId, '\r')}
           className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"

@@ -1,6 +1,36 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { ActivityTracker } from './activity.js';
+import { ActivityTracker, extractPrompt } from './activity.js';
+
+test('extractPrompt pulls the question and numbered options', () => {
+  const tail = [
+    'Do you want to make this edit to config.ts?',
+    '❯ 1. Yes',
+    '  2. Yes, and don’t ask again',
+    '  3. No, and tell Claude what to do differently',
+  ].join('\n');
+  const prompt = extractPrompt(tail);
+  assert.match(prompt.question, /make this edit/i);
+  assert.deepEqual(
+    prompt.options.map((o) => o.key),
+    ['1', '2', '3'],
+  );
+  assert.equal(prompt.options[0]?.label, 'Yes');
+});
+
+test('extractPrompt falls back to y/n options', () => {
+  const prompt = extractPrompt('Overwrite existing file? (y/n)');
+  assert.match(prompt.question, /overwrite/i);
+  assert.deepEqual(
+    prompt.options.map((o) => o.key),
+    ['y', 'n'],
+  );
+});
+
+test('extractPrompt always returns a question even when unrecognized', () => {
+  const prompt = extractPrompt('some unrelated output without a clear prompt');
+  assert.ok(prompt.question.length > 0);
+});
 
 test('reports working immediately after output', () => {
   const changes: string[] = [];

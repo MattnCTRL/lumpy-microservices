@@ -1,5 +1,5 @@
 import { customAlphabet } from 'nanoid';
-import type { Session, SessionActivity, SessionStatus } from '@lumpy/shared';
+import type { Session, SessionActivity, SessionPrompt, SessionStatus } from '@lumpy/shared';
 import type { EventBus } from '../events/bus.js';
 import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
@@ -29,6 +29,7 @@ export class SessionManager {
   private readonly brokers = new Map<string, Broker>();
   private readonly trackers = new Map<string, ActivityTracker>();
   private readonly activities = new Map<string, SessionActivity>();
+  private readonly prompts = new Map<string, SessionPrompt | null>();
   private readonly lastTouch = new Map<string, number>();
 
   constructor(
@@ -221,7 +222,9 @@ export class SessionManager {
 
   private attachBroker(id: string): Broker {
     const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS, this.runAs);
-    const tracker = new ActivityTracker((activity) => this.setActivity(id, activity));
+    const tracker = new ActivityTracker((activity, prompt) =>
+      this.setActivity(id, activity, prompt),
+    );
 
     broker.onData((chunk) => {
       tracker.feed(chunk);
@@ -242,6 +245,7 @@ export class SessionManager {
     this.brokers.delete(id);
     this.trackers.delete(id);
     this.activities.delete(id);
+    this.prompts.delete(id);
     tracker?.stop();
     broker?.dispose();
     return true;
@@ -251,14 +255,16 @@ export class SessionManager {
     if (this.detach(id)) this.publishStatus(id, 'stopped');
   }
 
-  private setActivity(id: string, activity: SessionActivity): void {
+  private setActivity(id: string, activity: SessionActivity, prompt: SessionPrompt | null): void {
     this.activities.set(id, activity);
+    this.prompts.set(id, prompt);
     const name = this.store.getSession(id)?.name ?? id;
     this.bus.publish({
       type: 'session.activity',
       id,
       name,
       activity,
+      prompt,
       at: new Date().toISOString(),
     });
   }
@@ -285,6 +291,7 @@ export class SessionManager {
       tags: record.tags,
       status: live ? 'running' : 'stopped',
       activity: live ? (this.activities.get(record.id) ?? 'unknown') : 'unknown',
+      prompt: live ? (this.prompts.get(record.id) ?? null) : null,
       autonomous: record.autonomous,
       task: record.task,
       createdAt: record.createdAt,

@@ -166,7 +166,13 @@ export function Terminal({ sessionId }: { sessionId: string }) {
           A+
         </button>
       </div>
-      <div ref={containerRef} className="min-h-0 flex-1 overflow-auto" />
+      {/* Tapping focuses the terminal's input — on mobile this raises the
+          keyboard so you can type directly into the session. */}
+      <div
+        ref={containerRef}
+        onClick={() => termRef.current?.focus()}
+        className="min-h-0 flex-1 overflow-auto"
+      />
     </div>
   );
 }
