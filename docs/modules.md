@@ -75,7 +75,7 @@ The subsystems in [spec.md](spec.md) map onto modules:
 | `sessions`    | implemented | tmux-backed Claude Code sessions (built-in).                                     |
 | `fleet`       | implemented | Server registry, metrics ingestion, status. See [fleet.md](fleet.md).            |
 | `notify`      | implemented | ntfy push with approve/reject actions. See [notifications.md](notifications.md). |
-| `alerts`      | planned     | Rule evaluation, severity, notifications.                                        |
+| `alerts`      | implemented | Metric thresholds → alerts → notifications. See [alerts.md](alerts.md).          |
 | `remediation` | planned     | Playbooks and tiered autonomy.                                                   |
 
 Each will follow the contract above. Splitting any of them into a separate

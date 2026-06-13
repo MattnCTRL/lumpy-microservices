@@ -1,5 +1,6 @@
 import { config } from './config.js';
 import { EventBus } from './events/bus.js';
+import { alertsModule } from './alerts/module.js';
 import { fleetModule } from './fleet/module.js';
 import { logger } from './logger.js';
 import { ModuleRegistry } from './modules/registry.js';
@@ -20,7 +21,11 @@ async function main(): Promise<void> {
   const sessions = new SessionManager(store, bus, config.tmuxPrefix);
   await sessions.recover();
 
-  const registry = new ModuleRegistry().add(sessionsModule).add(fleetModule).add(notifyModule);
+  const registry = new ModuleRegistry()
+    .add(sessionsModule)
+    .add(fleetModule)
+    .add(alertsModule)
+    .add(notifyModule);
   const app = await createApp({ sessions, registry, bus });
 
   await app.listen({ host: config.host, port: config.port });

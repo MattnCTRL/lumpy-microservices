@@ -45,26 +45,49 @@ test('a working session does not notify', () => {
   assert.equal(buildNotification(event, PUBLIC), null);
 });
 
-test('a server going offline notifies', () => {
+test('a fired alert notifies with severity-based priority', () => {
+  const event: LumpyEvent = {
+    type: 'alert.fired',
+    at: '2026-06-13T00:00:00.000Z',
+    alert: {
+      id: 'srv1:disk-critical',
+      serverId: 'srv1',
+      serverName: 'web-1',
+      ruleId: 'disk-critical',
+      label: 'Disk almost full',
+      severity: 'critical',
+      metric: 'diskPercent',
+      value: 92,
+      message: 'Disk almost full: disk at 92%',
+      firedAt: '2026-06-13T00:00:00.000Z',
+    },
+  };
+  const note = buildNotification(event, PUBLIC);
+  assert.ok(note);
+  assert.match(note.title, /web-1/);
+  assert.equal(note.priority, 5);
+  assert.equal(note.click, `${PUBLIC}/alerts`);
+});
+
+test('a resolved alert sends a low-priority notice', () => {
+  const event: LumpyEvent = {
+    type: 'alert.resolved',
+    id: 'srv1:disk-critical',
+    serverName: 'web-1',
+    label: 'Disk almost full',
+    at: '2026-06-13T00:00:00.000Z',
+  };
+  const note = buildNotification(event, PUBLIC);
+  assert.ok(note);
+  assert.equal(note.priority, 2);
+});
+
+test('a raw offline status no longer notifies directly (alerts handles it)', () => {
   const event: LumpyEvent = {
     type: 'fleet.server.status',
     id: 'srv1',
     name: 'web-1',
     status: 'offline',
-    at: '2026-06-13T00:00:00.000Z',
-  };
-  const note = buildNotification(event, PUBLIC);
-  assert.ok(note);
-  assert.match(note.title, /web-1/);
-  assert.equal(note.click, `${PUBLIC}/fleet`);
-});
-
-test('a server coming online does not notify', () => {
-  const event: LumpyEvent = {
-    type: 'fleet.server.status',
-    id: 'srv1',
-    name: 'web-1',
-    status: 'online',
     at: '2026-06-13T00:00:00.000Z',
   };
   assert.equal(buildNotification(event, PUBLIC), null);

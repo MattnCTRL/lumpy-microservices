@@ -9,11 +9,14 @@ import { api } from '@/lib/api';
 const TABS = [
   { href: '/sessions', label: 'Sessions' },
   { href: '/fleet', label: 'Fleet' },
+  { href: '/alerts', label: 'Alerts' },
 ];
 
 export function TopNav() {
   const pathname = usePathname();
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [alertCount, setAlertCount] = useState(0);
+  const [hasCritical, setHasCritical] = useState(false);
 
   useEffect(() => {
     const load = () =>
@@ -21,6 +24,20 @@ export function TopNav() {
         .health()
         .then(setHealth)
         .catch(() => setHealth(null));
+    void load();
+    const interval = setInterval(() => void load(), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const load = () =>
+      api
+        .listAlerts()
+        .then((alerts) => {
+          setAlertCount(alerts.length);
+          setHasCritical(alerts.some((a) => a.severity === 'critical'));
+        })
+        .catch(() => {});
     void load();
     const interval = setInterval(() => void load(), 5000);
     return () => clearInterval(interval);
@@ -36,17 +53,27 @@ export function TopNav() {
         <nav className="flex gap-1">
           {TABS.map((tab) => {
             const active = pathname.startsWith(tab.href);
+            const showBadge = tab.href === '/alerts' && alertCount > 0;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`rounded-md px-3 py-1.5 text-sm transition ${
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition ${
                   active
                     ? 'bg-neutral-800 text-neutral-100'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 {tab.label}
+                {showBadge && (
+                  <span
+                    className={`rounded-full px-1.5 text-xs font-medium text-neutral-950 ${
+                      hasCritical ? 'bg-red-500' : 'bg-amber-500'
+                    }`}
+                  >
+                    {alertCount}
+                  </span>
+                )}
               </Link>
             );
           })}

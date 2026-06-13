@@ -1,4 +1,5 @@
 import type {
+  Alert,
   CreateServerInput,
   CreateSessionInput,
   HealthResponse,
@@ -79,4 +80,6 @@ export const api = {
     }).then(parse<ServerDetail>),
   deleteServer: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, { method: 'DELETE' }),
+
+  listAlerts: () => fetch(`${ORCHESTRATOR_URL}/api/alerts`).then(parse<Alert[]>),
 };

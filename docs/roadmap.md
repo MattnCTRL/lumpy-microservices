@@ -54,7 +54,7 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 - [ ] Ingestion auth (token / mTLS over the tailnet)
 - [x] Server-offline notifications via the `notify` module
 - [ ] Live log streaming in the server detail view
-- [ ] Threshold alert rules (the `alerts` module) feeding notifications
+- [x] Threshold alert rules (the `alerts` module) feeding notifications
 
 ## Phase 3 — Alerting & tiered remediation
 

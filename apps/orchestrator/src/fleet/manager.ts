@@ -109,7 +109,8 @@ export class FleetManager {
     this.lastSeenMs.set(id, Date.now());
     this.store.markSeen(id, at);
     this.setStatus(id, 'online');
-    this.bus.publish({ type: 'fleet.metrics', id, metrics, at });
+    const name = this.store.getServer(id)?.name ?? id;
+    this.bus.publish({ type: 'fleet.metrics', id, name, metrics, at });
     return true;
   }
 

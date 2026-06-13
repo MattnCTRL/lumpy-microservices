@@ -111,6 +111,23 @@ export interface CreateServerInput {
 /** Metrics payload posted by an agent; the orchestrator stamps `at`. */
 export type MetricsReport = Omit<ServerMetrics, 'at'>;
 
+// --- Alerts --------------------------------------------------------------
+
+export type AlertSeverity = 'warning' | 'critical';
+
+export interface Alert {
+  id: string;
+  serverId: string;
+  serverName: string;
+  ruleId: string;
+  label: string;
+  severity: AlertSeverity;
+  metric: string;
+  value: number;
+  message: string;
+  firedAt: string;
+}
+
 // --- Event spine ---------------------------------------------------------
 
 /**
@@ -122,4 +139,6 @@ export type LumpyEvent =
   | { type: 'session.activity'; id: string; name: string; activity: SessionActivity; at: string }
   | { type: 'session.status'; id: string; name: string; status: SessionStatus; at: string }
   | { type: 'fleet.server.status'; id: string; name: string; status: ServerStatus; at: string }
-  | { type: 'fleet.metrics'; id: string; metrics: ServerMetrics; at: string };
+  | { type: 'fleet.metrics'; id: string; name: string; metrics: ServerMetrics; at: string }
+  | { type: 'alert.fired'; alert: Alert; at: string }
+  | { type: 'alert.resolved'; id: string; serverName: string; label: string; at: string };

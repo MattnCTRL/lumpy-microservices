@@ -42,13 +42,24 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
-  if (event.type === 'fleet.server.status' && event.status === 'offline') {
+  if (event.type === 'alert.fired') {
+    const alert = event.alert;
     return {
-      title: `${event.name} is offline`,
-      message: 'No heartbeat received within the expected window.',
-      priority: 4,
-      tags: ['rotating_light'],
-      click: publicUrl ? `${publicUrl}/fleet` : undefined,
+      title: `${alert.serverName} — ${alert.label}`,
+      message: alert.message,
+      priority: alert.severity === 'critical' ? 5 : 3,
+      tags: alert.severity === 'critical' ? ['rotating_light'] : ['warning'],
+      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+    };
+  }
+
+  if (event.type === 'alert.resolved') {
+    return {
+      title: `${event.serverName} — resolved`,
+      message: `${event.label} cleared`,
+      priority: 2,
+      tags: ['white_check_mark'],
+      click: publicUrl ? `${publicUrl}/alerts` : undefined,
     };
   }
 
