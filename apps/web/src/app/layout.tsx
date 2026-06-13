@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@xterm/xterm/css/xterm.css';
 import './globals.css';
 import { AuthGate } from '@/components/AuthGate';
-import { TopNav } from '@/components/TopNav';
+import { SideNav } from '@/components/SideNav';
 
 export const metadata: Metadata = {
   title: 'Lumpy Micro Services',
@@ -21,9 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-mono">
         <AuthGate>
-          <div className="flex h-screen flex-col">
-            <TopNav />
-            <div className="min-h-0 flex-1">{children}</div>
+          <div className="flex h-screen">
+            <SideNav />
+            <div className="min-w-0 flex-1">{children}</div>
           </div>
         </AuthGate>
       </body>
