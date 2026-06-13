@@ -31,7 +31,7 @@ Create, attach, stream, and control `tmux`-backed Claude Code sessions.
 - [x] Activity detection (working / awaiting_permission / idle) with live badges
 - [x] Mobile quick-keys to answer prompts by thumb
 - [x] Autonomous sessions by default (skip-permissions + optional initial task)
-- [ ] Run sessions under a dedicated non-root user (autonomy hardening)
+- [x] Run sessions under a dedicated non-root user (autonomy hardening)
 - [x] Session recovery on orchestrator restart (hardened; integration-tested)
 - [x] Tests: activity detection (unit) + restart recovery (integration)
 - [x] Permission-prompt → ntfy push with approve/reject action buttons

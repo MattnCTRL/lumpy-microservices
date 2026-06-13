@@ -37,6 +37,34 @@ By default it binds to the host's `tailscale ip -4`. Override with
 - Logs: `journalctl -u lumpy-orchestrator -u lumpy-web -f`.
 - Update to the latest code: re-run the script (it pulls and rebuilds).
 
+## Running sessions as a non-root user (recommended)
+
+Autonomous Claude sessions execute commands without prompting, so they should not
+run as root. The orchestrator stays root but spawns sessions as a dedicated
+unprivileged user when `LUMPY_SESSION_USER` is set.
+
+On the box:
+
+```bash
+useradd -m -s /bin/bash lumpy            # no sudo
+cp -r /root/.claude /home/lumpy/.claude  # Claude credentials
+cp /root/.claude.json /home/lumpy/.claude.json   # onboarding/theme state
+chown -R lumpy:lumpy /home/lumpy/.claude /home/lumpy/.claude.json
+mkdir -p /home/lumpy/projects && chown lumpy:lumpy /home/lumpy/projects
+```
+
+Then add to `/opt/lumpy/.env`:
+
+```
+LUMPY_SESSION_USER=lumpy
+LUMPY_WORKSPACE_ROOT=/home/lumpy/projects
+```
+
+Restart the orchestrator. Sessions now run as `lumpy`, sandboxed to its own home
+with no root access — anything requiring root requires you. Both `.claude` (auth)
+and `.claude.json` (onboarding state) must be copied, or sessions hit the
+first-run wizard.
+
 ## Notes
 
 - The deployed orchestrator has its own `data/` (separate from any local dev

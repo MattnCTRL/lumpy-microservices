@@ -21,9 +21,14 @@ items marked _planned_ are specified but not yet implemented.
 
 ## Session execution
 
-- Session commands run with the orchestrator's user, environment, and
-  permissions. Treat the orchestrator host as trusted infrastructure.
-- Isolation per session (containers / restricted users) is on the roadmap.
+- Sessions can run as a dedicated **non-root user** (`LUMPY_SESSION_USER`). The
+  orchestrator stays root but spawns each session as that user, so autonomous
+  Claude is confined to that user's home with no `sudo` — anything requiring root
+  requires you. This is the recommended setup; see [deploy.md](deploy.md).
+- **Autonomous sessions** run commands without prompting
+  (`--dangerously-skip-permissions`). Only point them at trusted workspaces, and
+  run them as the non-root session user.
+- Further isolation per session (containers) remains on the roadmap.
 
 ## Remediation autonomy (planned)
 
