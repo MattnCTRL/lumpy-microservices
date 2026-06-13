@@ -41,17 +41,23 @@ To bind to an existing server entry instead, set `LUMPY_SERVER_ID`.
 ## Monitoring a Mac (or any non-Linux machine)
 
 The agent is cross-platform (it uses Node's `os` module + `df`), so it monitors
-macOS too — unlike the SSH path, which reads Linux `/proc`. To add a Mac, run the
-agent on it pointed at the orchestrator:
+macOS too — unlike the SSH path, which reads Linux `/proc`.
+
+**One-command install (recommended).** On the Mac (which must be on the same
+tailnet as the orchestrator, with Node 20+ and git installed), run the macOS
+installer. It clones the repo to `~/.lumpy`, installs the agent, and registers a
+launchd agent (`com.lumpy.agent`, RunAtLoad + KeepAlive):
 
 ```bash
-LUMPY_URL=http://<orchestrator-tailnet-ip>:4317 LUMPY_AGENT_NAME="My MacBook" \
-  npm run start -w @lumpy/agent
+LUMPY_AGENT_NAME="My MacBook" \
+  bash <(curl -fsSL https://raw.githubusercontent.com/MattnCTRL/lumpy-microservices/main/scripts/install-agent-mac.sh)
 ```
 
-For it to run on login, install a launchd agent at
-`~/Library/LaunchAgents/com.lumpy.agent.plist` (RunAtLoad + KeepAlive) that runs
-the command above, then `launchctl load -w ~/Library/LaunchAgents/com.lumpy.agent.plist`.
+`LUMPY_URL` defaults to the box (`http://100.81.90.46:4317`); override it if your
+orchestrator differs. `LUMPY_AGENT_NAME` defaults to the Mac's name. Re-run any
+time to update. Uninstall with
+`launchctl unload ~/Library/LaunchAgents/com.lumpy.agent.plist`.
+
 A laptop shows `online` while awake and goes `offline` when it sleeps, as
 expected.
 
