@@ -94,6 +94,27 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
     }
   });
 
+  // Authorize the orchestrator's mount key on a machine so it can SSHFS-mount
+  // that machine's files. Run on the target: `curl -fsSL <box>/authorize-mount | sh`.
+  app.get('/authorize-mount', async (_request, reply) => {
+    let pubkey = '';
+    try {
+      pubkey = readFileSync('/root/.ssh/lumpy_mac_mount.pub', 'utf8').trim();
+    } catch {
+      return reply.status(404).send('# orchestrator mount key not found');
+    }
+    const script = `#!/bin/sh
+set -e
+mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+touch "$HOME/.ssh/authorized_keys" && chmod 600 "$HOME/.ssh/authorized_keys"
+if ! grep -qF 'lumpy-mac-mount@box' "$HOME/.ssh/authorized_keys"; then
+  printf '%s\\n' '${pubkey}' >> "$HOME/.ssh/authorized_keys"
+fi
+echo "Lumpy: this machine now allows the orchestrator to mount its files."
+`;
+    return reply.type('text/x-shellscript').send(script);
+  });
+
   await deps.registry.init({
     app,
     logger,
