@@ -64,6 +64,41 @@ function registerRest(ctx: ModuleContext): void {
     if (!stopped) return reply.status(404).send({ error: 'session not found' });
     return reply.status(204).send();
   });
+
+  const relaunch = async (
+    request: { params: unknown },
+    reply: import('fastify').FastifyReply,
+    run: (id: string) => Promise<Awaited<ReturnType<typeof sessions.restart>>>,
+  ) => {
+    const { id } = request.params as { id: string };
+    if (!(await tmux.isAvailable())) {
+      return reply.status(503).send({ error: 'tmux is not available on the orchestrator host' });
+    }
+    try {
+      const session = await run(id);
+      if (!session) return reply.status(404).send({ error: 'session not found' });
+      return session;
+    } catch (error) {
+      return reply.status(400).send({
+        error: error instanceof Error ? error.message : 'failed to relaunch session',
+      });
+    }
+  };
+
+  app.post('/api/sessions/:id/restart', (request, reply) =>
+    relaunch(request, reply, (id) => sessions.restart(id)),
+  );
+
+  app.post('/api/sessions/:id/resume', (request, reply) =>
+    relaunch(request, reply, (id) => sessions.resume(id)),
+  );
+
+  app.delete('/api/sessions/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const removed = await sessions.remove(id);
+    if (!removed) return reply.status(404).send({ error: 'session not found' });
+    return reply.status(204).send();
+  });
 }
 
 function registerWebSocket(ctx: ModuleContext): void {

@@ -5,6 +5,7 @@ import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
 import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
+import { resumeCommand } from './resume.js';
 import * as tmux from './tmux.js';
 
 const DEFAULT_COLS = 120;
@@ -100,6 +101,59 @@ export class SessionManager {
     this.teardown(id);
     logger.info({ id }, 'session stopped');
     return true;
+  }
+
+  /** Relaunch a stopped session with its original command. */
+  async restart(id: string): Promise<Session | null> {
+    return this.relaunch(id);
+  }
+
+  /** Relaunch a stopped session, continuing its prior context where possible. */
+  async resume(id: string): Promise<Session | null> {
+    const record = this.store.getSession(id);
+    if (!record) return null;
+    return this.relaunch(id, resumeCommand(record.command));
+  }
+
+  /** Permanently remove a session: kill it if alive, then drop its metadata. */
+  async remove(id: string): Promise<boolean> {
+    const record = this.store.getSession(id);
+    if (!record) return false;
+    this.detach(id);
+    await tmux.killSession(this.tmuxName(id));
+    this.store.deleteSession(id);
+    this.lastTouch.delete(id);
+    logger.info({ id }, 'session removed');
+    return true;
+  }
+
+  private async relaunch(id: string, commandOverride?: string): Promise<Session | null> {
+    const record = this.store.getSession(id);
+    if (!record) return null;
+    if (await tmux.sessionExists(this.tmuxName(id))) {
+      return this.toSession(record, true); // already running
+    }
+    if (!record.workspace) {
+      throw new Error('cannot relaunch a session with no recorded workspace');
+    }
+
+    const command = commandOverride ?? record.command;
+    await tmux.newSession({
+      name: this.tmuxName(id),
+      cwd: record.workspace,
+      command,
+      cols: DEFAULT_COLS,
+      rows: DEFAULT_ROWS,
+    });
+    try {
+      this.attachBroker(id);
+    } catch (error) {
+      await tmux.killSession(this.tmuxName(id));
+      throw error;
+    }
+    this.publishStatus(id, 'running');
+    logger.info({ id, command }, 'session relaunched');
+    return this.toSession(record, true);
   }
 
   /** Re-discover sessions still running in tmux after an orchestrator restart. */

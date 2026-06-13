@@ -47,6 +47,12 @@ export const api = {
     }).then(parse<Session>),
   stopSession: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/stop`, { method: 'POST' }),
+  restartSession: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/restart`, { method: 'POST' }).then(parse<Session>),
+  resumeSession: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/resume`, { method: 'POST' }).then(parse<Session>),
+  deleteSession: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}`, { method: 'DELETE' }),
   sendInput: (id: string, data: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/input`, {
       method: 'POST',

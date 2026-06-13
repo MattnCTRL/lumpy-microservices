@@ -77,12 +77,24 @@ export default function SessionsPage() {
               await api.stopSession(id);
               void refresh();
             }}
+            onDelete={async (id) => {
+              await api.deleteSession(id);
+              setSelectedId((current) => (current === id ? null : current));
+              void refresh();
+            }}
           />
         </aside>
 
         <main className="min-h-0 flex-1 p-3">
           {selected ? (
-            <SessionPanel session={selected} />
+            <SessionPanel
+              session={selected}
+              onChanged={() => void refresh()}
+              onDeleted={() => {
+                setSelectedId(null);
+                void refresh();
+              }}
+            />
           ) : (
             <EmptyState onNew={() => setCreating(true)} />
           )}
@@ -108,11 +120,13 @@ function SessionList({
   selectedId,
   onSelect,
   onStop,
+  onDelete,
 }: {
   sessions: Session[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onStop: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   if (sessions.length === 0) {
     return <p className="px-1 py-2 text-sm text-neutral-500">No sessions yet.</p>;
@@ -137,25 +151,12 @@ function SessionList({
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="truncate text-xs text-neutral-500">{session.command}</span>
-              {session.status === 'running' && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onStop(session.id);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.stopPropagation();
-                      onStop(session.id);
-                    }
-                  }}
-                  className="shrink-0 text-xs text-neutral-500 hover:text-red-400"
-                >
-                  stop
-                </span>
-              )}
+              <RowAction
+                label={session.status === 'running' ? 'stop' : 'delete'}
+                onAction={() =>
+                  session.status === 'running' ? onStop(session.id) : onDelete(session.id)
+                }
+              />
             </div>
           </button>
         </li>
@@ -189,7 +190,42 @@ function ActivityBadge({ session }: { session: Session }) {
   );
 }
 
-function SessionPanel({ session }: { session: Session }) {
+function RowAction({ label, onAction }: { label: string; onAction: () => void }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(event) => {
+        event.stopPropagation();
+        onAction();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.stopPropagation();
+          onAction();
+        }
+      }}
+      className="shrink-0 text-xs text-neutral-500 hover:text-red-400"
+    >
+      {label}
+    </span>
+  );
+}
+
+function isClaudeCommand(command: string): boolean {
+  const trimmed = command.trim();
+  return trimmed === 'claude' || trimmed.startsWith('claude ');
+}
+
+function SessionPanel({
+  session,
+  onChanged,
+  onDeleted,
+}: {
+  session: Session;
+  onChanged: () => void;
+  onDeleted: () => void;
+}) {
   return (
     <div className="flex h-full flex-col rounded-lg border border-neutral-800 bg-neutral-950">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
@@ -203,12 +239,73 @@ function SessionPanel({ session }: { session: Session }) {
         {session.status === 'running' ? (
           <Terminal key={session.id} sessionId={session.id} />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-            Session stopped.
-          </div>
+          <StoppedActions session={session} onChanged={onChanged} onDeleted={onDeleted} />
         )}
       </div>
       {session.status === 'running' && <QuickKeys sessionId={session.id} />}
+    </div>
+  );
+}
+
+function StoppedActions({
+  session,
+  onChanged,
+  onDeleted,
+}: {
+  session: Session;
+  onChanged: () => void;
+  onDeleted: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const canResume = isClaudeCommand(session.command);
+
+  const run = async (label: string, action: () => Promise<unknown>, after: () => void) => {
+    setBusy(label);
+    try {
+      await action();
+      after();
+    } catch {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+      <p className="text-sm text-neutral-500">Session stopped.</p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {canResume && (
+          <button
+            disabled={busy !== null}
+            onClick={() => run('resume', () => api.resumeSession(session.id), onChanged)}
+            className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
+          >
+            {busy === 'resume' ? 'Resuming…' : 'Resume'}
+          </button>
+        )}
+        <button
+          disabled={busy !== null}
+          onClick={() => run('restart', () => api.restartSession(session.id), onChanged)}
+          className={`rounded-md px-3 py-1.5 text-sm disabled:opacity-50 ${
+            canResume
+              ? 'border border-neutral-700 text-neutral-200 hover:bg-neutral-900'
+              : 'bg-neutral-100 font-medium text-neutral-900 hover:bg-white'
+          }`}
+        >
+          {busy === 'restart' ? 'Restarting…' : 'Restart'}
+        </button>
+        <button
+          disabled={busy !== null}
+          onClick={() => run('delete', () => api.deleteSession(session.id), onDeleted)}
+          className="rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-red-400 disabled:opacity-50"
+        >
+          {busy === 'delete' ? 'Deleting…' : 'Delete'}
+        </button>
+      </div>
+      {canResume && (
+        <p className="max-w-xs text-xs text-neutral-600">
+          Resume continues the previous Claude conversation; Restart starts a fresh one.
+        </p>
+      )}
     </div>
   );
 }
