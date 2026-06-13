@@ -72,9 +72,17 @@ sync from a single definition.
   and `tmux` between orchestrator and sessions, are all simple boundaries that
   can be hardened, replaced, or distributed later (see the roadmap).
 
+## Fleet
+
+The `fleet` module is the first non-session module and the template for the rest.
+It owns the `/api/fleet` + `/ws/fleet` namespaces and its own `fleet.db` store,
+holds a registry of remote servers, ingests their metrics/heartbeats, derives
+online/offline status, and publishes fleet events on the spine. See
+[fleet.md](fleet.md). The metrics-collecting agent, ingestion auth, and fleet UI
+are still ahead.
+
 ## Planned components
 
-The fleet-monitoring subsystem (remote agents, metrics/log ingestion, the alert
-and remediation engine) and the security layer (Tailscale-only access, passkey
-auth) are specified in [spec.md](spec.md) and tracked in [roadmap.md](roadmap.md).
-They are not yet implemented.
+The alert and remediation engine, the notification layer, and the security layer
+(Tailscale-only access, passkey auth) are specified in [spec.md](spec.md) and
+tracked in [roadmap.md](roadmap.md). They are not yet implemented.

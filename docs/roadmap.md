@@ -30,12 +30,16 @@ Create, attach, stream, and control `tmux`-backed Claude Code sessions.
 - [ ] Permission-prompt → push notification → approve/deny relay (needs a
       notification provider — see `.notes/TODO.md`)
 
-## Phase 2 — Fleet monitoring
+## Phase 2 — Fleet monitoring (current)
 
 Remote agent, metrics/log ingestion, server registry, basic alerting.
 
+- [x] `fleet` module: server registry (SQLite) + REST/`/ws/fleet`
+- [x] Metrics/heartbeat ingestion with online/offline/unknown status derivation
+- [x] Fleet events on the spine + tests
 - [ ] `lumpy-agent` (metrics, heartbeat, log tail) + agentless SSH fallback
-- [ ] Server registry and detail view with live charts/logs
+- [ ] Ingestion auth (token / mTLS over the tailnet)
+- [ ] Web UI: server list and detail view with live charts/logs
 - [ ] Threshold alert rules and notifications
 
 ## Phase 3 — Alerting & tiered remediation

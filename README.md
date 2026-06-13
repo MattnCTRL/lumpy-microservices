@@ -15,9 +15,14 @@ Lumpy does two intertwined jobs:
 
 ## Status
 
-Early development. The current build implements the session-orchestration core
-(Phase 1): create, attach, stream, and control `tmux`-backed Claude Code
-sessions from a web UI.
+Early development. The current build implements:
+
+- **Session orchestration (Phase 1)** — create, attach, stream, and control
+  `tmux`-backed Claude Code sessions from a web UI, with live activity detection
+  and an event spine.
+- **Fleet monitoring core (Phase 2, in progress)** — a server registry with
+  metrics/heartbeat ingestion and online/offline status (API + events; agent and
+  UI still ahead).
 
 See [`docs/roadmap.md`](docs/roadmap.md) for the full plan.
 

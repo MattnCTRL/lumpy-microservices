@@ -122,6 +122,77 @@ The web UI uses this to update activity badges and statuses live, without
 polling. Future subsystems (fleet, alerts) publish their own event types on the
 same channel.
 
+## Fleet
+
+Provided by the `fleet` module. Base path `/api/fleet`.
+
+### `GET /api/fleet/servers`
+
+List registered servers with derived status and latest metrics.
+
+```json
+[
+  {
+    "id": "v6t2i6",
+    "name": "web-1",
+    "address": "10.0.0.1",
+    "tags": [],
+    "env": "prod",
+    "criticality": "high",
+    "status": "online",
+    "lastSeenAt": "2026-06-13T14:27:49.892Z",
+    "createdAt": "2026-06-13T14:27:49.800Z",
+    "metrics": {
+      "at": "...",
+      "cpuPercent": 23.5,
+      "memPercent": 61,
+      "diskPercent": 48,
+      "load1": 0.7,
+      "uptimeSeconds": 86400
+    }
+  }
+]
+```
+
+`status` is `online`, `offline`, or `unknown`. `metrics` is the latest sample or
+`null`.
+
+### `POST /api/fleet/servers`
+
+Register a server. `tags`, `env` (`prod`/`staging`/`dev`), and `criticality`
+(`low`/`medium`/`high`) are optional.
+
+```json
+{ "name": "web-1", "address": "10.0.0.1", "env": "prod", "criticality": "high" }
+```
+
+### `GET /api/fleet/servers/:id`
+
+Return one server plus its recent metrics `history`, or `404`.
+
+### `DELETE /api/fleet/servers/:id`
+
+Remove a server. `204`, or `404` if unknown.
+
+### `POST /api/fleet/servers/:id/metrics`
+
+Ingest a metrics sample (posted by an agent). The orchestrator stamps the
+timestamp and marks the server `online`. `204`, or `404` if the server is
+unknown.
+
+```json
+{ "cpuPercent": 23.5, "memPercent": 61, "diskPercent": 48, "load1": 0.7, "uptimeSeconds": 86400 }
+```
+
+### `GET /ws/fleet`
+
+Live stream of fleet events (JSON text frames):
+
+```json
+{ "type": "fleet.metrics", "id": "v6t2i6", "metrics": { "...": "..." }, "at": "..." }
+{ "type": "fleet.server.status", "id": "v6t2i6", "status": "offline", "at": "..." }
+```
+
 ## Errors
 
 Errors use standard HTTP status codes with a JSON body:

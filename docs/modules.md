@@ -66,16 +66,17 @@ discover available capabilities at runtime.
   interface and calling `.add(...)`. If a module needs something the context does
   not expose, extend `ModuleContext` deliberately rather than bypassing it.
 
-## Roadmap modules
+## Modules today and ahead
 
-The subsystems in [spec.md](spec.md) map onto future modules:
+The subsystems in [spec.md](spec.md) map onto modules:
 
-| Module (planned) | Responsibility                                         |
-| ---------------- | ------------------------------------------------------ |
-| `fleet`          | Server registry, agent ingestion, metrics/log streams. |
-| `alerts`         | Rule evaluation, severity, notifications.              |
-| `remediation`    | Playbooks and tiered autonomy.                         |
-| `notify`         | Push/ntfy/Pushover delivery with actionable responses. |
+| Module        | Status      | Responsibility                                                        |
+| ------------- | ----------- | --------------------------------------------------------------------- |
+| `sessions`    | implemented | tmux-backed Claude Code sessions (built-in).                          |
+| `fleet`       | implemented | Server registry, metrics ingestion, status. See [fleet.md](fleet.md). |
+| `alerts`      | planned     | Rule evaluation, severity, notifications.                             |
+| `remediation` | planned     | Playbooks and tiered autonomy.                                        |
+| `notify`      | planned     | Push/ntfy/Pushover delivery with actionable responses.                |
 
 Each will follow the contract above. Splitting any of them into a separate
 process later is a deployment change, not a rewrite, because the boundaries are

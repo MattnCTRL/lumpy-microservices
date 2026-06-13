@@ -47,11 +47,60 @@ export type ServerMessage =
   | { type: 'status'; status: SessionStatus }
   | { type: 'error'; message: string };
 
+// --- Fleet ---------------------------------------------------------------
+
+export type ServerEnv = 'prod' | 'staging' | 'dev';
+export type ServerCriticality = 'low' | 'medium' | 'high';
+
+/** `unknown` = registered but never reported; `offline` = heartbeat went stale. */
+export type ServerStatus = 'online' | 'offline' | 'unknown';
+
+export interface ServerMetrics {
+  at: string;
+  cpuPercent: number;
+  memPercent: number;
+  diskPercent: number;
+  load1: number;
+  uptimeSeconds: number;
+}
+
+export interface Server {
+  id: string;
+  name: string;
+  address: string;
+  tags: string[];
+  env: ServerEnv;
+  criticality: ServerCriticality;
+  status: ServerStatus;
+  lastSeenAt: string | null;
+  createdAt: string;
+  metrics: ServerMetrics | null;
+}
+
+export interface ServerDetail extends Server {
+  history: ServerMetrics[];
+}
+
+export interface CreateServerInput {
+  name: string;
+  address: string;
+  tags?: string[];
+  env?: ServerEnv;
+  criticality?: ServerCriticality;
+}
+
+/** Metrics payload posted by an agent; the orchestrator stamps `at`. */
+export type MetricsReport = Omit<ServerMetrics, 'at'>;
+
+// --- Event spine ---------------------------------------------------------
+
 /**
- * Events published on the orchestrator's event spine and streamed to clients
- * over the `/ws/sessions` channel. New subsystems (fleet, alerts) extend this
- * union as they land.
+ * Events published on the orchestrator's event spine. Session events stream
+ * over `/ws/sessions`; fleet events over `/ws/fleet`. New subsystems extend
+ * this union as they land.
  */
 export type LumpyEvent =
   | { type: 'session.activity'; id: string; activity: SessionActivity; at: string }
-  | { type: 'session.status'; id: string; status: SessionStatus; at: string };
+  | { type: 'session.status'; id: string; status: SessionStatus; at: string }
+  | { type: 'fleet.server.status'; id: string; status: ServerStatus; at: string }
+  | { type: 'fleet.metrics'; id: string; metrics: ServerMetrics; at: string };
