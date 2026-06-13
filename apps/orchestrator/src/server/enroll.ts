@@ -12,11 +12,24 @@ NAME="\${LUMPY_AGENT_NAME:-$(hostname)}"
 DIR="$HOME/.lumpy"
 mkdir -p "$DIR"
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "Lumpy: Node.js is required. Install Node 18+ (e.g. 'brew install node' on macOS) and re-run." >&2
-  exit 1
+if command -v node >/dev/null 2>&1; then
+  NODE="$(command -v node)"
+elif [ -x "$DIR/node/bin/node" ]; then
+  NODE="$DIR/node/bin/node"
+else
+  # No Node present — fetch a private runtime (no admin, no Homebrew needed).
+  NV="v20.18.1"
+  OS_L="$(uname | tr '[:upper:]' '[:lower:]')"
+  case "$(uname -m)" in
+    arm64|aarch64) A=arm64 ;;
+    x86_64|amd64) A=x64 ;;
+    *) echo "Lumpy: unsupported CPU architecture $(uname -m)" >&2; exit 1 ;;
+  esac
+  echo "Lumpy: installing a private Node runtime (no admin needed)..."
+  mkdir -p "$DIR/node"
+  curl -fsSL "https://nodejs.org/dist/$NV/node-$NV-$OS_L-$A.tar.gz" | tar -xzf - -C "$DIR/node" --strip-components=1
+  NODE="$DIR/node/bin/node"
 fi
-NODE="$(command -v node)"
 
 echo "Lumpy: downloading agent..."
 curl -fsSL "$LUMPY_URL/agent.mjs" -o "$DIR/agent.mjs"
