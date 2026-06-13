@@ -1,5 +1,21 @@
 import { homedir } from 'node:os';
-import { isAbsolute, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Load a .env from the monorepo root (and the current directory) if present, so
+// configuration can live in a file. Real environment variables still win.
+function loadEnvFiles(): void {
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+  for (const candidate of [resolve(repoRoot, '.env'), resolve(process.cwd(), '.env')]) {
+    try {
+      process.loadEnvFile(candidate);
+    } catch {
+      // No file at this path; ignore.
+    }
+  }
+}
+
+loadEnvFiles();
 
 function env(name: string, fallback: string): string {
   const value = process.env[name];

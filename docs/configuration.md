@@ -27,6 +27,9 @@ and adjust. The orchestrator reads its own variables; the web app reads the
 
 ## Notes
 
+- Put `.env` at the **repository root** (`cp .env.example .env`). The orchestrator
+  loads it automatically on startup; real environment variables take precedence,
+  so `LUMPY_HOST=0.0.0.0 npm run dev` also works without a file.
 - `.env` is git-ignored. Only `.env.example` is committed.
 - Production secrets (SSH keys, agent tokens, auth secrets) are out of scope for
   the current build and will be managed by a secrets manager, not `.env`. See
