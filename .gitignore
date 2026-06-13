@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Local data (sqlite, runtime state)
+data/
+*.db
+*.db-journal
+*.sqlite
+
+# Working notes, AI commentary, scratch — never committed.
+# All authored notation and assistant-generated commentary lives here
+# so the tracked source tree stays clean. See docs/documentation-policy.md.
+.notes/
+*.scratch.md
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
