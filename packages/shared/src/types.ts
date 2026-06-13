@@ -15,6 +15,10 @@ export interface Session {
   tags: string[];
   status: SessionStatus;
   activity: SessionActivity;
+  /** When true, Claude runs with permissions auto-approved (autonomous). */
+  autonomous: boolean;
+  /** Optional task the session was started with. */
+  task: string | null;
   createdAt: string;
   lastActivityAt: string | null;
 }
@@ -24,6 +28,10 @@ export interface CreateSessionInput {
   workspace?: string;
   command?: string;
   tags?: string[];
+  /** Default true: Claude executes without pausing for permission. */
+  autonomous?: boolean;
+  /** An initial task to start the session working on immediately. */
+  task?: string;
 }
 
 export interface HealthResponse {

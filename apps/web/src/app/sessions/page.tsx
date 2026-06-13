@@ -361,6 +361,8 @@ function CreateDialog({
   const [name, setName] = useState('');
   const [workspace, setWorkspace] = useState('');
   const [command, setCommand] = useState('claude');
+  const [task, setTask] = useState('');
+  const [autonomous, setAutonomous] = useState(true);
   const [workspaceRoot, setWorkspaceRoot] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -381,6 +383,8 @@ function CreateDialog({
         name: name.trim(),
         workspace: workspace.trim() || undefined,
         command: command.trim() || undefined,
+        autonomous,
+        task: task.trim() || undefined,
       });
       onCreated(session);
     } catch (err) {
@@ -430,6 +434,29 @@ function CreateDialog({
               className="input"
             />
           </Field>
+          <Field label="Task" hint="optional — what Claude should start working on">
+            <textarea
+              value={task}
+              onChange={(e) => setTask(e.target.value)}
+              placeholder="e.g. review the open PR and fix any failing tests"
+              className="input h-20"
+            />
+          </Field>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={autonomous}
+              onChange={(e) => setAutonomous(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-sm text-neutral-200">
+              Autonomous
+              <span className="mt-0.5 block text-xs text-neutral-500">
+                Claude runs commands without pausing for permission. Powerful — only on trusted
+                workspaces.
+              </span>
+            </span>
+          </label>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}

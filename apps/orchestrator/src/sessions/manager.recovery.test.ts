@@ -28,6 +28,8 @@ test(
         workspace: dir,
         command: 'cat',
         tags: [],
+        autonomous: false,
+        task: null,
       });
       id = session.id;
       assert.equal(session.status, 'running');

@@ -10,6 +10,8 @@ const createSchema = z.object({
   workspace: z.string().optional(),
   command: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  autonomous: z.boolean().optional(),
+  task: z.string().optional(),
 });
 
 function send(socket: WebSocket, message: ServerMessage): void {
@@ -36,6 +38,8 @@ function registerRest(ctx: ModuleContext): void {
       workspace: resolveWorkspace(input.workspace),
       command: input.command || config.defaultCommand,
       tags: input.tags ?? [],
+      autonomous: input.autonomous ?? true,
+      task: input.task?.trim() || null,
     });
     return reply.status(201).send(session);
   });

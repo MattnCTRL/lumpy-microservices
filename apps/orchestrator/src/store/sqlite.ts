@@ -8,6 +8,8 @@ export interface SessionRecord {
   workspace: string;
   command: string;
   tags: string[];
+  autonomous: boolean;
+  task: string | null;
   createdAt: string;
   lastActivityAt: string | null;
 }
@@ -18,6 +20,8 @@ interface SessionRow {
   workspace: string;
   command: string;
   tags: string;
+  autonomous: number;
+  task: string | null;
   created_at: string;
   last_activity_at: string | null;
 }
@@ -29,6 +33,8 @@ function toRecord(row: SessionRow): SessionRecord {
     workspace: row.workspace,
     command: row.command,
     tags: JSON.parse(row.tags) as string[],
+    autonomous: row.autonomous === 1,
+    task: row.task,
     createdAt: row.created_at,
     lastActivityAt: row.last_activity_at,
   };
@@ -49,17 +55,26 @@ export class Store {
         workspace TEXT NOT NULL,
         command TEXT NOT NULL,
         tags TEXT NOT NULL DEFAULT '[]',
+        autonomous INTEGER NOT NULL DEFAULT 1,
+        task TEXT,
         created_at TEXT NOT NULL,
         last_activity_at TEXT
       );
     `);
+    for (const column of ['autonomous INTEGER NOT NULL DEFAULT 1', 'task TEXT']) {
+      try {
+        this.db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`);
+      } catch {
+        // Column already exists.
+      }
+    }
   }
 
   createSession(record: SessionRecord): void {
     this.db
       .prepare(
-        `INSERT INTO sessions (id, name, workspace, command, tags, created_at, last_activity_at)
-         VALUES (@id, @name, @workspace, @command, @tags, @created_at, @last_activity_at)`,
+        `INSERT INTO sessions (id, name, workspace, command, tags, autonomous, task, created_at, last_activity_at)
+         VALUES (@id, @name, @workspace, @command, @tags, @autonomous, @task, @created_at, @last_activity_at)`,
       )
       .run({
         id: record.id,
@@ -67,6 +82,8 @@ export class Store {
         workspace: record.workspace,
         command: record.command,
         tags: JSON.stringify(record.tags),
+        autonomous: record.autonomous ? 1 : 0,
+        task: record.task,
         created_at: record.createdAt,
         last_activity_at: record.lastActivityAt,
       });

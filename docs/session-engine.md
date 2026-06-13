@@ -85,6 +85,23 @@ Status and activity changes are published on an in-process event bus
 deliberately small so it can be backed by Redis Streams later without changing
 publishers. New subsystems publish their own event types on the same bus.
 
+## Autonomous sessions
+
+Sessions default to **autonomous**: a Claude session launches with
+`--dangerously-skip-permissions` so it executes without pausing for approval, and
+an optional **task** is passed as the initial prompt so it starts working
+immediately. This is the core of Lumpy "doing things on your behalf".
+
+The launch command is derived from the base command, the autonomous flag, and the
+task (`apps/orchestrator/src/sessions/launch.ts`). `IS_SANDBOX=1` is set so
+skip-permissions is allowed when the orchestrator runs as root. Turn the flag off
+for an interactive session that asks before acting.
+
+**Caution:** an autonomous session runs commands on the orchestrator host without
+asking. On the current deployment it runs as root, so only point it at trusted
+workspaces. Running sessions under a dedicated non-root user is a planned
+hardening (see [roadmap.md](roadmap.md)).
+
 ## Permission relay (in progress)
 
 Detecting `awaiting_permission` is the first half of remote approvals. The web

@@ -5,6 +5,7 @@ import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
 import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
+import { buildLaunchCommand } from './launch.js';
 import { resumeCommand } from './resume.js';
 import * as tmux from './tmux.js';
 
@@ -19,6 +20,8 @@ export interface CreateSessionArgs {
   workspace: string;
   command: string;
   tags: string[];
+  autonomous: boolean;
+  task: string | null;
 }
 
 export class SessionManager {
@@ -52,7 +55,7 @@ export class SessionManager {
     await tmux.newSession({
       name,
       cwd: args.workspace,
-      command: args.command,
+      command: buildLaunchCommand(args.command, { autonomous: args.autonomous, task: args.task }),
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
     });
@@ -63,6 +66,8 @@ export class SessionManager {
       workspace: args.workspace,
       command: args.command,
       tags: args.tags,
+      autonomous: args.autonomous,
+      task: args.task,
       createdAt: new Date().toISOString(),
       lastActivityAt: null,
     };
@@ -103,16 +108,18 @@ export class SessionManager {
     return true;
   }
 
-  /** Relaunch a stopped session with its original command. */
+  /** Relaunch a stopped session with its original command and task. */
   async restart(id: string): Promise<Session | null> {
-    return this.relaunch(id);
+    const record = this.store.getSession(id);
+    if (!record) return null;
+    return this.relaunch(id, record.command, record.task);
   }
 
-  /** Relaunch a stopped session, continuing its prior context where possible. */
+  /** Relaunch a stopped session, continuing its prior context (no re-injected task). */
   async resume(id: string): Promise<Session | null> {
     const record = this.store.getSession(id);
     if (!record) return null;
-    return this.relaunch(id, resumeCommand(record.command));
+    return this.relaunch(id, resumeCommand(record.command), null);
   }
 
   /** Permanently remove a session: kill it if alive, then drop its metadata. */
@@ -127,7 +134,7 @@ export class SessionManager {
     return true;
   }
 
-  private async relaunch(id: string, commandOverride?: string): Promise<Session | null> {
+  private async relaunch(id: string, base: string, task: string | null): Promise<Session | null> {
     const record = this.store.getSession(id);
     if (!record) return null;
     if (await tmux.sessionExists(this.tmuxName(id))) {
@@ -137,7 +144,7 @@ export class SessionManager {
       throw new Error('cannot relaunch a session with no recorded workspace');
     }
 
-    const command = commandOverride ?? record.command;
+    const command = buildLaunchCommand(base, { autonomous: record.autonomous, task });
     await tmux.newSession({
       name: this.tmuxName(id),
       cwd: record.workspace,
@@ -171,6 +178,8 @@ export class SessionManager {
             workspace: '',
             command: '',
             tags: ['recovered'],
+            autonomous: false,
+            task: null,
             createdAt: new Date().toISOString(),
             lastActivityAt: null,
           });
@@ -258,6 +267,8 @@ export class SessionManager {
       tags: record.tags,
       status: live ? 'running' : 'stopped',
       activity: live ? (this.activities.get(record.id) ?? 'unknown') : 'unknown',
+      autonomous: record.autonomous,
+      task: record.task,
       createdAt: record.createdAt,
       lastActivityAt: record.lastActivityAt,
     };
