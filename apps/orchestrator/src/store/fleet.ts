@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import type { ServerCriticality, ServerEnv } from '@lumpy/shared';
+import type { FleetNodeKind, ServerCriticality, ServerEnv } from '@lumpy/shared';
 import { decryptSecret, encryptSecret, loadOrCreateKey } from '../crypto/secret.js';
 
 export interface SshCredentials {
@@ -16,6 +16,7 @@ export interface ServerRecord {
   id: string;
   name: string;
   address: string;
+  kind: FleetNodeKind;
   tags: string[];
   env: ServerEnv;
   criticality: ServerCriticality;
@@ -28,6 +29,7 @@ interface ServerRow {
   id: string;
   name: string;
   address: string;
+  kind: FleetNodeKind | null;
   tags: string;
   env: ServerEnv;
   criticality: ServerCriticality;
@@ -45,6 +47,7 @@ function toRecord(row: ServerRow, key: Buffer): ServerRecord {
     id: row.id,
     name: row.name,
     address: row.address,
+    kind: row.kind ?? 'server',
     tags: JSON.parse(row.tags) as string[],
     env: row.env,
     criticality: row.criticality,
@@ -81,6 +84,7 @@ export class FleetStore {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         address TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'server',
         tags TEXT NOT NULL DEFAULT '[]',
         env TEXT NOT NULL DEFAULT 'prod',
         criticality TEXT NOT NULL DEFAULT 'medium',
@@ -93,8 +97,9 @@ export class FleetStore {
         ssh_password TEXT
       );
     `);
-    // Migrate older databases that predate the SSH columns.
+    // Migrate older databases that predate later columns.
     for (const column of [
+      "kind TEXT NOT NULL DEFAULT 'server'",
       'ssh_host TEXT',
       'ssh_port INTEGER',
       'ssh_user TEXT',
@@ -113,16 +118,17 @@ export class FleetStore {
     this.db
       .prepare(
         `INSERT INTO servers
-           (id, name, address, tags, env, criticality, created_at, last_seen_at,
+           (id, name, address, kind, tags, env, criticality, created_at, last_seen_at,
             ssh_host, ssh_port, ssh_user, ssh_private_key, ssh_password)
          VALUES
-           (@id, @name, @address, @tags, @env, @criticality, @created_at, @last_seen_at,
+           (@id, @name, @address, @kind, @tags, @env, @criticality, @created_at, @last_seen_at,
             @ssh_host, @ssh_port, @ssh_user, @ssh_private_key, @ssh_password)`,
       )
       .run({
         id: record.id,
         name: record.name,
         address: record.address,
+        kind: record.kind,
         tags: JSON.stringify(record.tags),
         env: record.env,
         criticality: record.criticality,
@@ -158,6 +164,10 @@ export class FleetStore {
 
   renameServer(id: string, name: string): boolean {
     return this.db.prepare('UPDATE servers SET name = ? WHERE id = ?').run(name, id).changes > 0;
+  }
+
+  setKind(id: string, kind: FleetNodeKind): boolean {
+    return this.db.prepare('UPDATE servers SET kind = ? WHERE id = ?').run(kind, id).changes > 0;
   }
 
   deleteServer(id: string): void {

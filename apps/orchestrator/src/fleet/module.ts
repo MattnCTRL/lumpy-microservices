@@ -18,11 +18,19 @@ const sshSchema = z.object({
 const createServerSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),
+  kind: z.enum(['server', 'machine']).optional(),
   tags: z.array(z.string()).optional(),
   env: z.enum(['prod', 'staging', 'dev']).optional(),
   criticality: z.enum(['low', 'medium', 'high']).optional(),
   ssh: sshSchema.optional(),
+  // Reported by agents so the kind can be inferred when not specified.
+  platform: z.string().optional(),
 });
+
+/** Personal computers (Macs, Windows) are machines; everything else is a server. */
+function inferKind(platform: string | undefined): 'server' | 'machine' {
+  return platform === 'darwin' || platform === 'win32' ? 'machine' : 'server';
+}
 
 const metricsSchema = z.object({
   cpuPercent: z.number().min(0).max(100),
@@ -70,6 +78,7 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     const server = fleet.register({
       name: input.name,
       address: input.address,
+      kind: input.kind ?? inferKind(input.platform),
       tags: input.tags ?? [],
       env: input.env ?? 'prod',
       criticality: input.criticality ?? 'medium',
@@ -88,11 +97,18 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
 
   app.patch('/api/fleet/servers/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = z.object({ name: z.string().min(1) }).safeParse(request.body);
-    if (!body.success) return reply.status(400).send({ error: 'name is required' });
-    if (!fleet.rename(id, body.data.name)) {
-      return reply.status(404).send({ error: 'server not found' });
+    const body = z
+      .object({
+        name: z.string().min(1).optional(),
+        kind: z.enum(['server', 'machine']).optional(),
+      })
+      .safeParse(request.body);
+    if (!body.success || (body.data.name === undefined && body.data.kind === undefined)) {
+      return reply.status(400).send({ error: 'name or kind is required' });
     }
+    if (!fleet.get(id)) return reply.status(404).send({ error: 'server not found' });
+    if (body.data.name !== undefined) fleet.rename(id, body.data.name);
+    if (body.data.kind !== undefined) fleet.setKind(id, body.data.kind);
     return fleet.get(id);
   });
 

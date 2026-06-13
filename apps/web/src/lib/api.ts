@@ -81,6 +81,8 @@ export const api = {
     send('/api/fleet/servers', 'POST', input).then(parse<Server>),
   renameServer: (id: string, name: string) =>
     send(`/api/fleet/servers/${id}`, 'PATCH', { name }).then(parse<ServerDetail>),
+  setServerKind: (id: string, kind: 'server' | 'machine') =>
+    send(`/api/fleet/servers/${id}`, 'PATCH', { kind }).then(parse<ServerDetail>),
   deleteServer: (id: string) => send(`/api/fleet/servers/${id}`, 'DELETE'),
 
   listAlerts: () => req('/api/alerts').then(parse<Alert[]>),

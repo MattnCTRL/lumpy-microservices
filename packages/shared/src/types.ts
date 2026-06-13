@@ -114,6 +114,13 @@ export type ServerMessage =
 export type ServerEnv = 'prod' | 'staging' | 'dev';
 export type ServerCriticality = 'low' | 'medium' | 'high';
 
+/**
+ * `server` = always-on infrastructure (cloud hosts, VPSes). `machine` = a
+ * personal computer (laptop/desktop) that is intermittent and may sleep. They
+ * are monitored the same way but presented and reasoned about separately.
+ */
+export type FleetNodeKind = 'server' | 'machine';
+
 /** `unknown` = registered but never reported; `offline` = heartbeat went stale. */
 export type ServerStatus = 'online' | 'offline' | 'unknown';
 
@@ -133,6 +140,7 @@ export interface Server {
   id: string;
   name: string;
   address: string;
+  kind: FleetNodeKind;
   tags: string[];
   env: ServerEnv;
   criticality: ServerCriticality;
@@ -159,11 +167,14 @@ export interface ServerDetail extends Server {
 export interface CreateServerInput {
   name: string;
   address: string;
+  kind?: FleetNodeKind;
   tags?: string[];
   env?: ServerEnv;
   criticality?: ServerCriticality;
   /** When provided, Lumpy monitors the server agentlessly over SSH. */
   ssh?: SshConnectionInput;
+  /** Reported by agents (os.platform()) so the kind can be inferred. */
+  platform?: string;
 }
 
 /** Metrics payload posted by an agent; the orchestrator stamps `at`. */

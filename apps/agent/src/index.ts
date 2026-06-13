@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir, hostname, networkInterfaces } from 'node:os';
+import { homedir, hostname, networkInterfaces, platform } from 'node:os';
 import { join } from 'node:path';
 import type { Server } from '@lumpy/shared';
 import { collect, cpuSnapshot, type CpuSnapshot } from './metrics.js';
@@ -61,7 +61,7 @@ async function register(): Promise<string> {
   const response = await fetch(`${base}/api/fleet/servers`, {
     method: 'POST',
     headers: postHeaders(),
-    body: JSON.stringify({ name, address: primaryAddress() }),
+    body: JSON.stringify({ name, address: primaryAddress(), platform: platform() }),
   });
   if (!response.ok) throw new Error(`registration failed: ${response.status}`);
   const server = (await response.json()) as Server;

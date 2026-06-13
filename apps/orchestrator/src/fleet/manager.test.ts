@@ -37,6 +37,7 @@ test('a newly registered server is unknown with no metrics', () => {
       name: 'web',
       address: '10.0.0.1',
       tags: [],
+      kind: 'server',
       env: 'prod',
       criticality: 'high',
     });
@@ -55,6 +56,7 @@ test('ingesting metrics marks a server online and emits events', () => {
       name: 'web',
       address: '10.0.0.1',
       tags: [],
+      kind: 'server',
       env: 'prod',
       criticality: 'high',
     });
@@ -95,6 +97,7 @@ test('a server goes offline once its heartbeat is stale', () => {
       name: 'web',
       address: '10.0.0.1',
       tags: [],
+      kind: 'server',
       env: 'prod',
       criticality: 'high',
     });

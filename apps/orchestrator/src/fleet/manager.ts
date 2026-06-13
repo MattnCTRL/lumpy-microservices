@@ -19,6 +19,7 @@ const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
 export interface RegisterServerArgs {
   name: string;
   address: string;
+  kind: ServerRecord['kind'];
   tags: string[];
   env: ServerRecord['env'];
   criticality: ServerRecord['criticality'];
@@ -49,6 +50,7 @@ export class FleetManager {
       id,
       name: args.name,
       address: args.address,
+      kind: args.kind,
       tags: args.tags,
       env: args.env,
       criticality: args.criticality,
@@ -71,6 +73,10 @@ export class FleetManager {
 
   rename(id: string, name: string): boolean {
     return this.store.renameServer(id, name);
+  }
+
+  setKind(id: string, kind: ServerRecord['kind']): boolean {
+    return this.store.setKind(id, kind);
   }
 
   list(): Server[] {
@@ -154,6 +160,7 @@ export class FleetManager {
       id: record.id,
       name: record.name,
       address: record.address,
+      kind: record.kind,
       tags: record.tags,
       env: record.env,
       criticality: record.criticality,

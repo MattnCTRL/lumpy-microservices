@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type {
+  FleetNodeKind,
   LumpyEvent,
   Server,
   ServerCriticality,
@@ -84,9 +85,9 @@ export default function FleetPage() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="w-full shrink-0 overflow-y-auto border-b border-neutral-800 p-3 md:w-80 md:border-b-0 md:border-r">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Machines</h2>
+        <aside className="w-full shrink-0 space-y-5 overflow-y-auto border-b border-neutral-800 p-3 md:w-80 md:border-b-0 md:border-r">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Fleet</h2>
             <button
               onClick={() => setAdding(true)}
               className="rounded-md bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-900 hover:bg-white"
@@ -94,8 +95,17 @@ export default function FleetPage() {
               Add
             </button>
           </div>
-          <ServerList
-            servers={servers}
+          <FleetGroup
+            title="Servers"
+            empty="No servers yet."
+            servers={servers.filter((s) => s.kind === 'server')}
+            selectedId={selectedId}
+            onSelect={(id) => void select(id)}
+          />
+          <FleetGroup
+            title="Machines"
+            empty="No machines yet."
+            servers={servers.filter((s) => s.kind === 'machine')}
             selectedId={selectedId}
             onSelect={(id) => void select(id)}
           />
@@ -149,6 +159,36 @@ function StatusBadge({ status }: { status: ServerStatus }) {
   );
 }
 
+function FleetGroup({
+  title,
+  empty,
+  servers,
+  selectedId,
+  onSelect,
+}: {
+  title: string;
+  empty: string;
+  servers: Server[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-2 px-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          {title}
+        </span>
+        <span className="text-xs text-neutral-600">{servers.length}</span>
+      </div>
+      {servers.length === 0 ? (
+        <p className="px-1 py-1 text-sm text-neutral-600">{empty}</p>
+      ) : (
+        <ServerList servers={servers} selectedId={selectedId} onSelect={onSelect} />
+      )}
+    </div>
+  );
+}
+
 function ServerList({
   servers,
   selectedId,
@@ -158,9 +198,6 @@ function ServerList({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  if (servers.length === 0) {
-    return <p className="px-1 py-2 text-sm text-neutral-500">No machines yet.</p>;
-  }
   return (
     <ul className="space-y-1.5">
       {servers.map((server) => (
@@ -199,11 +236,16 @@ function ServerDetailPanel({
   onDelete: () => void;
 }) {
   const rename = async () => {
-    const next = window.prompt('Rename server', server.name);
+    const next = window.prompt('Rename', server.name);
     if (next && next.trim() && next.trim() !== server.name) {
       await api.renameServer(server.id, next.trim());
       onChanged();
     }
+  };
+
+  const toggleKind = async () => {
+    await api.setServerKind(server.id, server.kind === 'server' ? 'machine' : 'server');
+    onChanged();
   };
 
   return (
@@ -212,8 +254,8 @@ function ServerDetailPanel({
         <div className="min-w-0">
           <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
           <p className="truncate text-xs text-neutral-500">
-            {server.address} · {server.monitoring === 'ssh' ? 'SSH' : 'agent'} · {server.env} ·{' '}
-            {server.criticality} ·{' '}
+            {server.kind} · {server.address} · {server.monitoring === 'ssh' ? 'SSH' : 'agent'} ·{' '}
+            {server.env} · {server.criticality} ·{' '}
             {server.lastSeenAt
               ? `seen ${new Date(server.lastSeenAt).toLocaleTimeString()}`
               : 'never seen'}
@@ -221,6 +263,13 @@ function ServerDetailPanel({
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={server.status} />
+          <button
+            onClick={toggleKind}
+            className="text-xs text-neutral-500 hover:text-neutral-200"
+            title="Switch between server and machine"
+          >
+            {server.kind === 'server' ? '→ machine' : '→ server'}
+          </button>
           <button onClick={rename} className="text-xs text-neutral-500 hover:text-neutral-200">
             rename
           </button>
@@ -344,6 +393,7 @@ function AddServerDialog({
 }) {
   const [mode, setMode] = useState<'ssh' | 'manual'>('ssh');
   const [name, setName] = useState('');
+  const [kind, setKind] = useState<FleetNodeKind>('server');
   const [env, setEnv] = useState<ServerEnv>('prod');
   const [criticality, setCriticality] = useState<ServerCriticality>('medium');
 
@@ -370,6 +420,7 @@ function AddServerDialog({
           ? await api.createServer({
               name: name.trim(),
               address: host.trim(),
+              kind,
               env,
               criticality,
               ssh: {
@@ -383,6 +434,7 @@ function AddServerDialog({
           : await api.createServer({
               name: name.trim(),
               address: address.trim(),
+              kind,
               env,
               criticality,
             });
@@ -507,7 +559,17 @@ function AddServerDialog({
             </Field>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Type">
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as FleetNodeKind)}
+                className="input"
+              >
+                <option value="server">server</option>
+                <option value="machine">machine</option>
+              </select>
+            </Field>
             <Field label="Environment">
               <select
                 value={env}
