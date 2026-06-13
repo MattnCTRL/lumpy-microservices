@@ -56,7 +56,16 @@ fusermount -u /home/lumpy/macs/<name>
   user reach a mount created by root.
 - `reconnect` + `ServerAliveInterval` keep the mount alive across brief network
   blips; if the Mac sleeps, the mount stalls until it wakes.
-- This is a manual mount today. A persistent/auto-remount on boot (systemd
-  automount) is a planned extension; for now re-run the script after a reboot.
+- **Always-on:** to keep the mount across reboots and reconnect when the Mac
+  wakes, install it as a service after the first successful `mount-mac.sh` run:
+
+  ```bash
+  MAC_HOST=100.125.22.103 MAC_USER=matthewwhiteman bash scripts/install-mac-mount.sh
+  ```
+
+  This writes a `lumpy-mac-mount` systemd unit (sshfs in the foreground, supervised
+  with `Restart=always`). Status: `systemctl status lumpy-mac-mount`. Remove:
+  `systemctl disable --now lumpy-mac-mount`. While the Mac sleeps the mount stalls
+  and resumes on wake; if sshfs exits, systemd remounts within ~10s.
 - Revoke access by removing the `lumpy-mac-mount@box` key line from the Mac's
   `~/.ssh/authorized_keys`.
