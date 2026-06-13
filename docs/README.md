@@ -24,6 +24,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [auth.md](auth.md)                                 | Sign in with GitHub and profile mirroring.              |
 | [security.md](security.md)                         | Access model, network posture, and hardening.           |
 | [deploy.md](deploy.md)                             | Deploy Lumpy always-on on a tailnet host.               |
+| [sshfs.md](sshfs.md)                               | Edit a Mac's files from a box session over the tailnet. |
 | [roadmap.md](roadmap.md)                           | Phased delivery plan and current status.                |
 | [documentation-policy.md](documentation-policy.md) | How docs, notes, and code stay separated and clean.     |
 
