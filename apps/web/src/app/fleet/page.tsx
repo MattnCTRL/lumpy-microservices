@@ -9,6 +9,7 @@ import type {
   ServerEnv,
   ServerMetrics,
   ServerStatus,
+  TailnetDevice,
 } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { Sparkline } from '@/components/Sparkline';
@@ -409,6 +410,21 @@ function AddServerDialog({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discovered, setDiscovered] = useState<TailnetDevice[]>([]);
+
+  useEffect(() => {
+    api
+      .discoverDevices()
+      .then(setDiscovered)
+      .catch(() => setDiscovered([]));
+  }, []);
+
+  const pick = (d: TailnetDevice) => {
+    setName(d.name);
+    setKind(d.kind);
+    setMode('manual');
+    setAddress(d.address);
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -455,7 +471,33 @@ function AddServerDialog({
         onSubmit={submit}
         className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
       >
-        <h2 className="mb-4 text-base font-semibold text-neutral-100">Add machine</h2>
+        <h2 className="mb-4 text-base font-semibold text-neutral-100">Add to fleet</h2>
+
+        {discovered.length > 0 && (
+          <div className="mb-4">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              On your tailnet — tap to fill
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {discovered.map((d) => (
+                <button
+                  key={d.address}
+                  type="button"
+                  onClick={() => pick(d)}
+                  title={`${d.address} · ${d.os || 'unknown OS'}${d.online ? '' : ' · offline'}`}
+                  className="flex items-center gap-1.5 rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${d.online ? 'bg-emerald-500' : 'bg-neutral-600'}`} />
+                  {d.name}
+                  <span className="text-neutral-500">{d.kind === 'machine' ? '💻' : '🖥'}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-neutral-600">
+              Machines need the agent — see the install command in the docs after adding.
+            </p>
+          </div>
+        )}
 
         <div className="mb-4 flex gap-1 rounded-md border border-neutral-800 p-1 text-sm">
           <ModeTab active={mode === 'ssh'} onClick={() => setMode('ssh')}>

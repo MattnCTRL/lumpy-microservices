@@ -1,7 +1,9 @@
 import type { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { MetricsReport } from '@lumpy/shared';
+import type { TailnetDevice } from '@lumpy/shared';
 import { collectOverSsh, type SshTarget } from '../ssh/collect.js';
+import { kindFromOs, tailnetDevices } from './discover.js';
 import { FleetStore } from '../store/fleet.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { FleetManager } from './manager.js';
@@ -44,6 +46,15 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
   const { app } = ctx;
 
   app.get('/api/fleet/servers', async () => fleet.list());
+
+  // Tailnet devices not yet in the fleet — "available to add".
+  app.get('/api/fleet/discover', async (): Promise<TailnetDevice[]> => {
+    const existing = new Set(fleet.list().map((s) => s.address));
+    const devices = await tailnetDevices();
+    return devices
+      .filter((d) => !existing.has(d.address))
+      .map((d) => ({ ...d, kind: kindFromOs(d.os) }));
+  });
 
   app.post('/api/fleet/servers', async (request, reply) => {
     const parsed = createServerSchema.safeParse(request.body);

@@ -10,6 +10,7 @@ import type {
   Session,
   SessionConnectorsView,
   SettingsResponse,
+  TailnetDevice,
   UpdateConnectorsInput,
 } from '@lumpy/shared';
 
@@ -78,6 +79,7 @@ export const api = {
   sendInput: (id: string, data: string) => send(`/api/sessions/${id}/input`, 'POST', { data }),
 
   listServers: () => req('/api/fleet/servers').then(parse<Server[]>),
+  discoverDevices: () => req('/api/fleet/discover').then(parse<TailnetDevice[]>),
   getServer: (id: string) => req(`/api/fleet/servers/${id}`).then(parse<ServerDetail>),
   createServer: (input: CreateServerInput) =>
     send('/api/fleet/servers', 'POST', input).then(parse<Server>),

@@ -38,6 +38,8 @@ export function gateDecision(
   agentAuthorized = false,
 ): GateDecision {
   if (path === '/api/health' || path.startsWith('/api/auth/')) return 'allow';
+  // Public bootstrap so a new machine can enroll before it has any identity.
+  if (path === '/enroll' || path === '/agent.mjs') return 'allow';
   if (agentAuthorized && isAgentIngestPath(method, path)) return 'allow';
   if (!user) return 'unauthenticated';
   if (user.role !== 'admin' && method.toUpperCase() !== 'GET') return 'forbidden';

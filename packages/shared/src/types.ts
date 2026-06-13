@@ -222,6 +222,16 @@ export interface CreateServerInput {
 /** Metrics payload posted by an agent; the orchestrator stamps `at`. */
 export type MetricsReport = Omit<ServerMetrics, 'at'>;
 
+/** A device seen on the tailnet that is not yet in the fleet. */
+export interface TailnetDevice {
+  name: string;
+  address: string;
+  os: string;
+  online: boolean;
+  /** Suggested kind based on OS. */
+  kind: FleetNodeKind;
+}
+
 // --- Alerts --------------------------------------------------------------
 
 export type AlertSeverity = 'warning' | 'critical';

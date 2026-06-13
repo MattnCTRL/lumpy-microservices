@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
@@ -5,6 +8,12 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { HealthResponse } from '@lumpy/shared';
 import { gateDecision, readUser } from '../auth/session.js';
 import { config } from '../config.js';
+import { enrollScript } from './enroll.js';
+
+const agentBundlePath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../apps/agent/dist/agent.mjs',
+);
 import type { EventBus } from '../events/bus.js';
 import { logger, loggerOptions } from '../logger.js';
 import type { ModuleRegistry } from '../modules/registry.js';
@@ -69,6 +78,21 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
   });
 
   app.get('/api/modules', async () => deps.registry.list());
+
+  // One-line machine enrollment: `curl -fsSL <box>/enroll | sh` downloads the
+  // self-contained agent below and registers it. Public (a new machine has no
+  // identity yet); it only reaches the box over the private tailnet.
+  const enrollBase = config.publicUrl || `http://${config.host}:${config.port}`;
+  app.get('/enroll', async (_request, reply) => {
+    return reply.type('text/x-shellscript').send(enrollScript(enrollBase));
+  });
+  app.get('/agent.mjs', async (_request, reply) => {
+    try {
+      return reply.type('application/javascript').send(readFileSync(agentBundlePath, 'utf8'));
+    } catch {
+      return reply.status(404).send('agent bundle not built');
+    }
+  });
 
   await deps.registry.init({
     app,
