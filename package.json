@@ -14,6 +14,7 @@
     "apps/*"
   ],
   "scripts": {
+    "postinstall": "node scripts/fix-pty-perms.mjs",
     "dev": "concurrently -n orchestrator,web -c blue,magenta \"npm:dev:orchestrator\" \"npm:dev:web\"",
     "dev:orchestrator": "npm run dev -w @lumpy/orchestrator",
     "dev:web": "npm run dev -w @lumpy/web",
