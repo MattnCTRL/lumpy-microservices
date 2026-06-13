@@ -59,6 +59,7 @@ interface ProjectRow {
   slug: string;
   workspace: string;
   description: string | null;
+  origin: string | null;
   repo: string | null;
   machine_id: string | null;
   source_paths: string;
@@ -73,6 +74,7 @@ function toProject(row: ProjectRow): Project {
     slug: row.slug,
     workspace: row.workspace,
     description: row.description,
+    origin: row.origin === 'import' ? 'import' : 'new',
     sources: {
       repo: row.repo,
       machineId: row.machine_id,
@@ -142,6 +144,7 @@ export class Store {
         slug TEXT NOT NULL,
         workspace TEXT NOT NULL,
         description TEXT,
+        origin TEXT NOT NULL DEFAULT 'new',
         repo TEXT,
         machine_id TEXT,
         source_paths TEXT NOT NULL DEFAULT '[]',
@@ -149,15 +152,20 @@ export class Store {
         created_at TEXT NOT NULL
       );
     `);
+    try {
+      this.db.exec("ALTER TABLE projects ADD COLUMN origin TEXT NOT NULL DEFAULT 'new'");
+    } catch {
+      // Column already exists.
+    }
   }
 
   createProject(project: Project): void {
     this.db
       .prepare(
         `INSERT INTO projects
-           (id, name, slug, workspace, description, repo, machine_id, source_paths, use_connectors, created_at)
+           (id, name, slug, workspace, description, origin, repo, machine_id, source_paths, use_connectors, created_at)
          VALUES
-           (@id, @name, @slug, @workspace, @description, @repo, @machine_id, @source_paths, @use_connectors, @created_at)`,
+           (@id, @name, @slug, @workspace, @description, @origin, @repo, @machine_id, @source_paths, @use_connectors, @created_at)`,
       )
       .run({
         id: project.id,
@@ -165,6 +173,7 @@ export class Store {
         slug: project.slug,
         workspace: project.workspace,
         description: project.description,
+        origin: project.origin,
         repo: project.sources.repo,
         machine_id: project.sources.machineId,
         source_paths: JSON.stringify(project.sources.sourcePaths),

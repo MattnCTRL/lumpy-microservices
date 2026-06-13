@@ -60,6 +60,7 @@ const createSchema = z.object({
   name: z.string().min(1),
   workspace: z.string().optional(),
   description: z.string().optional(),
+  origin: z.enum(['import', 'new']).optional(),
   sources: sourcesSchema.optional(),
 });
 
@@ -132,6 +133,7 @@ export const projectsModule: LumpyModule = {
         slug: s,
         workspace,
         description: input.description?.trim() || null,
+        origin: input.origin ?? 'new',
         sources: mergeSources(EMPTY_SOURCES, input.sources),
         createdAt: new Date().toISOString(),
       };

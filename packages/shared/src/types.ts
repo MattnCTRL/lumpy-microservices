@@ -77,12 +77,20 @@ export interface ProjectSources {
  * (CLAUDE.md + .lumpy/knowledge) governs every Claude session launched in it,
  * and is derived from the project's cumulative sources.
  */
+/**
+ * `import` = an existing project: collect and analyze its sources first, then
+ * move forward. `new` = built from scratch: scaffold the mapping/connectors to
+ * save and distribute data going forward.
+ */
+export type ProjectOrigin = 'import' | 'new';
+
 export interface Project {
   id: string;
   name: string;
   slug: string;
   workspace: string;
   description: string | null;
+  origin: ProjectOrigin;
   sources: ProjectSources;
   createdAt: string;
 }
@@ -91,6 +99,7 @@ export interface CreateProjectInput {
   name: string;
   workspace?: string;
   description?: string;
+  origin?: ProjectOrigin;
   sources?: Partial<ProjectSources>;
 }
 

@@ -429,6 +429,7 @@ function CreateProjectDialog({
   const [name, setName] = useState('');
   const [workspace, setWorkspace] = useState('');
   const [description, setDescription] = useState('');
+  const [origin, setOrigin] = useState<'import' | 'new'>('import');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -441,6 +442,7 @@ function CreateProjectDialog({
         name: name.trim(),
         workspace: workspace.trim() || undefined,
         description: description.trim() || undefined,
+        origin,
       });
       onCreated(p);
     } catch (err) {
@@ -453,6 +455,36 @@ function CreateProjectDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-4">
       <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5">
         <h2 className="mb-4 text-base font-semibold text-neutral-100">New project</h2>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setOrigin('import')}
+            className={`rounded-md border p-3 text-left text-sm ${
+              origin === 'import'
+                ? 'border-neutral-500 bg-neutral-900 text-neutral-100'
+                : 'border-neutral-800 text-neutral-400 hover:bg-neutral-900/50'
+            }`}
+          >
+            Import existing
+            <span className="mt-0.5 block text-xs text-neutral-500">
+              Collect &amp; analyze its sources first, then move forward.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setOrigin('new')}
+            className={`rounded-md border p-3 text-left text-sm ${
+              origin === 'new'
+                ? 'border-neutral-500 bg-neutral-900 text-neutral-100'
+                : 'border-neutral-800 text-neutral-400 hover:bg-neutral-900/50'
+            }`}
+          >
+            Create new
+            <span className="mt-0.5 block text-xs text-neutral-500">
+              Scaffold mapping &amp; connectors to save data going forward.
+            </span>
+          </button>
+        </div>
         <div className="space-y-3">
           <Field label="Name">
             <input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Latchkey" />
