@@ -7,6 +7,7 @@ import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
 import { SessionManager } from './sessions/manager.js';
+import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
 import { createApp } from './server/http.js';
 import { Store } from './store/sqlite.js';
@@ -18,7 +19,21 @@ async function main(): Promise<void> {
 
   const store = new Store(config.dataDir);
   const bus = new EventBus();
-  const sessions = new SessionManager(store, bus, config.tmuxPrefix);
+
+  let runAs = null;
+  if (config.sessionUser) {
+    try {
+      runAs = resolveRunAs(config.sessionUser);
+      logger.info({ user: runAs.user, uid: runAs.uid }, 'sessions run as dedicated user');
+    } catch (error) {
+      logger.error(
+        { user: config.sessionUser, error },
+        'could not resolve session user; running sessions as orchestrator user',
+      );
+    }
+  }
+
+  const sessions = new SessionManager(store, bus, config.tmuxPrefix, runAs);
   await sessions.recover();
 
   const registry = new ModuleRegistry()

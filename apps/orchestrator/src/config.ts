@@ -38,6 +38,9 @@ export const config = {
   logLevel: env('LUMPY_LOG_LEVEL', 'info'),
   tmuxPrefix: env('LUMPY_TMUX_PREFIX', 'lumpy'),
   defaultCommand: env('LUMPY_DEFAULT_COMMAND', 'claude'),
+  // Run sessions as this OS user (non-root sandboxing). Empty = run as the
+  // orchestrator's own user.
+  sessionUser: env('LUMPY_SESSION_USER', ''),
   workspaceRoot,
   // Notifications (ntfy). Leave the topic empty to disable push notifications.
   ntfyUrl: env('LUMPY_NTFY_URL', 'https://ntfy.sh'),

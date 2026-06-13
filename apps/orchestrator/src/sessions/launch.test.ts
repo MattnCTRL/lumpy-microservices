@@ -2,9 +2,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLaunchCommand } from './launch.js';
 
-test('autonomous claude gets skip-permissions with the sandbox env', () => {
+test('autonomous claude gets skip-permissions', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: true }),
+    'claude --dangerously-skip-permissions',
+  );
+});
+
+test('the sandbox flag adds IS_SANDBOX (for running as root)', () => {
+  assert.equal(
+    buildLaunchCommand('claude', { autonomous: true, sandbox: true }),
     'env IS_SANDBOX=1 claude --dangerously-skip-permissions',
   );
 });
@@ -16,7 +23,7 @@ test('interactive claude runs plainly', () => {
 test('a task is appended as a quoted prompt', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: true, task: 'fix the build' }),
-    "env IS_SANDBOX=1 claude --dangerously-skip-permissions 'fix the build'",
+    "claude --dangerously-skip-permissions 'fix the build'",
   );
 });
 
@@ -34,6 +41,6 @@ test('non-claude commands run verbatim', () => {
 test('claude --continue (resume) still gets autonomous flags', () => {
   assert.equal(
     buildLaunchCommand('claude --continue', { autonomous: true }),
-    'env IS_SANDBOX=1 claude --continue --dangerously-skip-permissions',
+    'claude --continue --dangerously-skip-permissions',
   );
 });

@@ -1,4 +1,5 @@
 import { spawn, type IPty } from 'node-pty';
+import { type RunAs, runAsEnv } from './runas.js';
 
 const MAX_RING_BYTES = 256 * 1024;
 
@@ -22,12 +23,14 @@ export class Broker {
     readonly tmuxName: string,
     cols: number,
     rows: number,
+    runAs?: RunAs | null,
   ) {
     this.pty = spawn('tmux', ['attach-session', '-t', tmuxName], {
       name: 'xterm-256color',
       cols,
       rows,
-      env: process.env as Record<string, string>,
+      env: (runAs ? runAsEnv(runAs) : process.env) as Record<string, string>,
+      ...(runAs ? { uid: runAs.uid, gid: runAs.gid } : {}),
     });
 
     this.pty.onData((data) => {

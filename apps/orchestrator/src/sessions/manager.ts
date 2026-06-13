@@ -7,6 +7,7 @@ import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
 import { buildLaunchCommand } from './launch.js';
 import { resumeCommand } from './resume.js';
+import type { RunAs } from './runas.js';
 import * as tmux from './tmux.js';
 
 const DEFAULT_COLS = 120;
@@ -34,7 +35,16 @@ export class SessionManager {
     private readonly store: Store,
     private readonly bus: EventBus,
     private readonly prefix: string,
-  ) {}
+    private readonly runAs: RunAs | null = null,
+  ) {
+    tmux.configureRunAs(runAs);
+  }
+
+  // IS_SANDBOX is only needed to allow skip-permissions when sessions run as
+  // root; when they run as a dedicated user it is not required.
+  private get sandbox(): boolean {
+    return !this.runAs && (process.getuid?.() ?? 0) === 0;
+  }
 
   private tmuxName(id: string): string {
     return `${this.prefix}-${id}`;
@@ -55,7 +65,11 @@ export class SessionManager {
     await tmux.newSession({
       name,
       cwd: args.workspace,
-      command: buildLaunchCommand(args.command, { autonomous: args.autonomous, task: args.task }),
+      command: buildLaunchCommand(args.command, {
+        autonomous: args.autonomous,
+        task: args.task,
+        sandbox: this.sandbox,
+      }),
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
     });
@@ -144,7 +158,11 @@ export class SessionManager {
       throw new Error('cannot relaunch a session with no recorded workspace');
     }
 
-    const command = buildLaunchCommand(base, { autonomous: record.autonomous, task });
+    const command = buildLaunchCommand(base, {
+      autonomous: record.autonomous,
+      task,
+      sandbox: this.sandbox,
+    });
     await tmux.newSession({
       name: this.tmuxName(id),
       cwd: record.workspace,
@@ -202,7 +220,7 @@ export class SessionManager {
   }
 
   private attachBroker(id: string): Broker {
-    const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS);
+    const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS, this.runAs);
     const tracker = new ActivityTracker((activity) => this.setActivity(id, activity));
 
     broker.onData((chunk) => {
