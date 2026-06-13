@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { HealthResponse, Session } from '@lumpy/shared';
+import type { HealthResponse, LumpyEvent, Session, SessionActivity } from '@lumpy/shared';
 import { Terminal } from '@/components/Terminal';
-import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
 
 export default function Page() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -31,6 +31,25 @@ export default function Page() {
       .catch(() => setHealth(null));
     const interval = setInterval(() => void refresh(), 4000);
     return () => clearInterval(interval);
+  }, [refresh]);
+
+  // Live updates from the orchestrator event spine.
+  useEffect(() => {
+    const socket = new WebSocket(eventsSocketUrl());
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data as string) as LumpyEvent;
+      if (message.type === 'session.activity') {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === message.id ? { ...s, activity: message.activity } : s)),
+        );
+      } else if (message.type === 'session.status') {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === message.id ? { ...s, status: message.status } : s)),
+        );
+        if (message.status === 'stopped') void refresh();
+      }
+    };
+    return () => socket.close();
   }, [refresh]);
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null;
@@ -132,14 +151,16 @@ function SessionList({
           <button
             onClick={() => onSelect(session.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
-              session.id === selectedId
-                ? 'border-neutral-600 bg-neutral-900'
-                : 'border-transparent hover:bg-neutral-900/60'
+              session.status === 'running' && session.activity === 'awaiting_permission'
+                ? 'border-amber-600/70 bg-amber-950/20'
+                : session.id === selectedId
+                  ? 'border-neutral-600 bg-neutral-900'
+                  : 'border-transparent hover:bg-neutral-900/60'
             }`}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-medium text-neutral-100">{session.name}</span>
-              <StatusDot status={session.status} />
+              <ActivityBadge session={session} />
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="truncate text-xs text-neutral-500">{session.command}</span>
@@ -170,26 +191,40 @@ function SessionList({
   );
 }
 
-function StatusDot({ status }: { status: Session['status'] }) {
+const ACTIVITY_STYLE: Record<SessionActivity, { dot: string; label: string }> = {
+  working: { dot: 'bg-blue-500 animate-pulse', label: 'working' },
+  awaiting_permission: { dot: 'bg-amber-500 animate-pulse', label: 'needs you' },
+  idle: { dot: 'bg-emerald-500', label: 'idle' },
+  unknown: { dot: 'bg-neutral-600', label: '' },
+};
+
+function ActivityBadge({ session }: { session: Session }) {
+  if (session.status === 'stopped') {
+    return (
+      <span className="flex shrink-0 items-center gap-1.5 text-xs text-neutral-500">
+        <span className="h-2 w-2 rounded-full bg-neutral-600" />
+        stopped
+      </span>
+    );
+  }
+  const style = ACTIVITY_STYLE[session.activity];
   return (
-    <span
-      title={status}
-      className={`h-2 w-2 shrink-0 rounded-full ${
-        status === 'running' ? 'bg-emerald-500' : 'bg-neutral-600'
-      }`}
-    />
+    <span className="flex shrink-0 items-center gap-1.5 text-xs text-neutral-400">
+      <span className={`h-2 w-2 rounded-full ${style.dot}`} />
+      {style.label}
+    </span>
   );
 }
 
 function SessionPanel({ session }: { session: Session }) {
   return (
     <div className="flex h-full flex-col rounded-lg border border-neutral-800 bg-neutral-950">
-      <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-2">
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-medium text-neutral-100">{session.name}</h2>
           <p className="truncate text-xs text-neutral-500">{session.workspace}</p>
         </div>
-        <StatusDot status={session.status} />
+        <ActivityBadge session={session} />
       </div>
       <div className="min-h-0 flex-1 p-2">
         {session.status === 'running' ? (
@@ -200,6 +235,34 @@ function SessionPanel({ session }: { session: Session }) {
           </div>
         )}
       </div>
+      {session.status === 'running' && <QuickKeys sessionId={session.id} />}
+    </div>
+  );
+}
+
+const QUICK_KEYS: { label: string; data: string }[] = [
+  { label: '1', data: '1' },
+  { label: '2', data: '2' },
+  { label: '3', data: '3' },
+  { label: 'y', data: 'y' },
+  { label: 'n', data: 'n' },
+  { label: '⏎', data: '\r' },
+  { label: 'esc', data: '\x1b' },
+  { label: '⌃C', data: '\x03' },
+];
+
+function QuickKeys({ sessionId }: { sessionId: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 border-t border-neutral-800 px-2 py-2">
+      {QUICK_KEYS.map((key) => (
+        <button
+          key={key.label}
+          onClick={() => void api.sendInput(sessionId, key.data)}
+          className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {key.label}
+        </button>
+      ))}
     </div>
   );
 }

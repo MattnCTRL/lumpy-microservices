@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { config } from '../config.js';
+import type { EventBus } from '../events/bus.js';
 import type { SessionManager } from '../sessions/manager.js';
 
 /**
@@ -13,6 +14,7 @@ export interface ModuleContext {
   logger: Logger;
   config: typeof config;
   sessions: SessionManager;
+  bus: EventBus;
 }
 
 /**

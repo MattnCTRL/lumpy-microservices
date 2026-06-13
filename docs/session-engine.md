@@ -57,12 +57,40 @@ create ─► tmux new-session -d ─► start broker ─► running
 If the orchestrator restarts while a session is running, the broker is
 recreated on startup and clients can reconnect transparently.
 
-## Status detection (planned)
+## Activity detection
 
-A future iteration parses the terminal stream to detect session state
-(`idle`, `working`, `awaiting_input`, `awaiting_permission`) and surfaces
-Claude Code permission prompts as push notifications with approve/deny actions.
-See [spec.md](spec.md) §4.1.
+Each broker feeds an `ActivityTracker` that infers what the session is doing
+from its terminal output:
+
+- **`working`** — output was produced within the last ~1.2s.
+- **`awaiting_permission`** — the recent output matches a permission prompt
+  (e.g. "Do you want to proceed?", a numbered yes/no menu, `(y/n)`).
+- **`idle`** — quiet and not awaiting.
+- **`unknown`** — no output seen yet (or the session is stopped).
+
+The tracker strips ANSI sequences, keeps a bounded tail of recent output, and
+re-evaluates on each chunk and on a 1s timer (so idle transitions are detected
+even when output stops). On every change it publishes a `session.activity`
+event on the [event spine](#event-spine), and the current value is included in
+the REST session list.
+
+Detection is intentionally tolerant — the terminal stream is the ground truth
+and the operator can always act manually. The pattern set will expand as the
+Claude Code prompt formats are pinned down.
+
+## Event spine
+
+Status and activity changes are published on an in-process event bus
+(`EventBus`) and streamed to clients over `GET /ws/sessions`. The interface is
+deliberately small so it can be backed by Redis Streams later without changing
+publishers. New subsystems publish their own event types on the same bus.
+
+## Permission relay (in progress)
+
+Detecting `awaiting_permission` is the first half of remote approvals. The web
+UI surfaces it (highlighted session + a quick-keys bar to answer prompts by
+thumb). Push notifications with approve/deny actions are next and depend on a
+configured notification provider. See [spec.md](spec.md) §4.1 and §4.5.
 
 ## Requirements & caveats
 

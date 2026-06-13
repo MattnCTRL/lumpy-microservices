@@ -1,7 +1,9 @@
 import { customAlphabet } from 'nanoid';
-import type { Session } from '@lumpy/shared';
+import type { Session, SessionActivity, SessionStatus } from '@lumpy/shared';
+import type { EventBus } from '../events/bus.js';
 import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
+import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
 import * as tmux from './tmux.js';
 
@@ -20,10 +22,13 @@ export interface CreateSessionArgs {
 
 export class SessionManager {
   private readonly brokers = new Map<string, Broker>();
+  private readonly trackers = new Map<string, ActivityTracker>();
+  private readonly activities = new Map<string, SessionActivity>();
   private readonly lastTouch = new Map<string, number>();
 
   constructor(
     private readonly store: Store,
+    private readonly bus: EventBus,
     private readonly prefix: string,
   ) {}
 
@@ -61,7 +66,14 @@ export class SessionManager {
       lastActivityAt: null,
     };
     this.store.createSession(record);
-    this.attachBroker(id);
+    try {
+      this.attachBroker(id);
+    } catch (error) {
+      await tmux.killSession(name);
+      this.store.deleteSession(id);
+      throw error;
+    }
+    this.publishStatus(id, 'running');
 
     logger.info({ id, workspace: args.workspace, command: args.command }, 'session created');
     return this.toSession(record, true);
@@ -85,8 +97,7 @@ export class SessionManager {
     const record = this.store.getSession(id);
     if (!record) return false;
     await tmux.killSession(this.tmuxName(id));
-    this.brokers.get(id)?.dispose();
-    this.brokers.delete(id);
+    this.teardown(id);
     logger.info({ id }, 'session stopped');
     return true;
   }
@@ -117,16 +128,50 @@ export class SessionManager {
   }
 
   disposeAll(): void {
-    for (const broker of this.brokers.values()) broker.dispose();
-    this.brokers.clear();
+    // Detach without emitting "stopped": the tmux sessions intentionally
+    // survive an orchestrator shutdown.
+    for (const id of [...this.brokers.keys()]) this.detach(id);
   }
 
   private attachBroker(id: string): Broker {
     const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS);
-    broker.onData(() => this.touch(id));
-    broker.onExit(() => this.brokers.delete(id));
+    const tracker = new ActivityTracker((activity) => this.setActivity(id, activity));
+
+    broker.onData((chunk) => {
+      tracker.feed(chunk);
+      this.touch(id);
+    });
+    broker.onExit(() => this.teardown(id));
+
     this.brokers.set(id, broker);
+    this.trackers.set(id, tracker);
     return broker;
+  }
+
+  /** Remove and dispose a session's broker and tracker. Idempotent. */
+  private detach(id: string): boolean {
+    const broker = this.brokers.get(id);
+    const tracker = this.trackers.get(id);
+    if (!broker && !tracker) return false;
+    this.brokers.delete(id);
+    this.trackers.delete(id);
+    this.activities.delete(id);
+    tracker?.stop();
+    broker?.dispose();
+    return true;
+  }
+
+  private teardown(id: string): void {
+    if (this.detach(id)) this.publishStatus(id, 'stopped');
+  }
+
+  private setActivity(id: string, activity: SessionActivity): void {
+    this.activities.set(id, activity);
+    this.bus.publish({ type: 'session.activity', id, activity, at: new Date().toISOString() });
+  }
+
+  private publishStatus(id: string, status: SessionStatus): void {
+    this.bus.publish({ type: 'session.status', id, status, at: new Date().toISOString() });
   }
 
   private touch(id: string): void {
@@ -145,6 +190,7 @@ export class SessionManager {
       command: record.command,
       tags: record.tags,
       status: live ? 'running' : 'stopped',
+      activity: live ? (this.activities.get(record.id) ?? 'unknown') : 'unknown',
       createdAt: record.createdAt,
       lastActivityAt: record.lastActivityAt,
     };

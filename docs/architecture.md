@@ -35,8 +35,11 @@ concerns:
 - **HTTP API** — create, list, inspect, and stop sessions. See [api.md](api.md).
 - **WebSocket gateway** — one channel per session that streams raw terminal
   output to clients and relays input/resize back. See [api.md](api.md).
-- **Session Manager** — owns the lifecycle of `tmux`-backed sessions. See
-  [session-engine.md](session-engine.md).
+- **Session Manager** — owns the lifecycle of `tmux`-backed sessions and infers
+  their activity from the terminal stream. See [session-engine.md](session-engine.md).
+- **Event spine** — an in-process `EventBus` carries domain events (session
+  activity/status today; fleet and alerts later). It is exposed to clients over
+  `GET /ws/sessions` and to modules through the `ModuleContext`.
 
 State is split deliberately:
 

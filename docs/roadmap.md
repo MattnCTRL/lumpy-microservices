@@ -22,9 +22,12 @@ Create, attach, stream, and control `tmux`-backed Claude Code sessions.
 - [x] REST API for session lifecycle
 - [x] WebSocket gateway for live terminal I/O
 - [x] Web UI: session grid, live terminals, create/stop
+- [x] Event spine (`EventBus`) + `/ws/sessions` live event stream
+- [x] Activity detection (working / awaiting_permission / idle) with live badges
+- [x] Mobile quick-keys to answer prompts by thumb
 - [ ] Session recovery on orchestrator restart (wired; needs hardening)
-- [ ] Status detection (idle / working / awaiting input / awaiting permission)
-- [ ] Permission-prompt → push notification → approve/deny relay
+- [ ] Permission-prompt → push notification → approve/deny relay (needs a
+      notification provider — see `.notes/TODO.md`)
 
 ## Phase 2 — Fleet monitoring
 

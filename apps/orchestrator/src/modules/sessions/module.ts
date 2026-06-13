@@ -105,6 +105,16 @@ function registerWebSocket(ctx: ModuleContext): void {
   });
 }
 
+function registerEventsWebSocket(ctx: ModuleContext): void {
+  ctx.app.get('/ws/sessions', { websocket: true }, (socket: WebSocket) => {
+    const unsubscribe = ctx.bus.subscribe((event) => {
+      if (!event.type.startsWith('session.')) return;
+      if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
+    });
+    socket.on('close', unsubscribe);
+  });
+}
+
 export const sessionsModule: LumpyModule = {
   id: 'sessions',
   name: 'Session Orchestration',
@@ -113,5 +123,6 @@ export const sessionsModule: LumpyModule = {
   register(ctx) {
     registerRest(ctx);
     registerWebSocket(ctx);
+    registerEventsWebSocket(ctx);
   },
 };

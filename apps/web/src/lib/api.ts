@@ -2,11 +2,19 @@ import type { CreateSessionInput, HealthResponse, Session } from '@lumpy/shared'
 
 export const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? 'http://127.0.0.1:4317';
 
-export function sessionSocketUrl(id: string): string {
+function socketUrl(pathname: string): string {
   const url = new URL(ORCHESTRATOR_URL);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = `/ws/session/${id}`;
+  url.pathname = pathname;
   return url.toString();
+}
+
+export function sessionSocketUrl(id: string): string {
+  return socketUrl(`/ws/session/${id}`);
+}
+
+export function eventsSocketUrl(): string {
+  return socketUrl('/ws/sessions');
 }
 
 async function parse<T>(response: Response): Promise<T> {
@@ -28,4 +36,10 @@ export const api = {
     }).then(parse<Session>),
   stopSession: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/stop`, { method: 'POST' }),
+  sendInput: (id: string, data: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/sessions/${id}/input`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ data }),
+    }),
 };

@@ -35,6 +35,7 @@ export interface ModuleContext {
   logger: Logger;
   config: Config;
   sessions: SessionManager; // orchestrate Claude Code sessions
+  bus: EventBus; // publish/subscribe domain events
 }
 ```
 
