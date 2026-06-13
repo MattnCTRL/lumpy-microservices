@@ -32,6 +32,7 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
       version: VERSION,
       uptimeSeconds: Math.floor(process.uptime()),
       publicUrl: config.publicUrl,
+      workspaceRoot: config.workspaceRoot,
     };
   });
 

@@ -361,8 +361,16 @@ function CreateDialog({
   const [name, setName] = useState('');
   const [workspace, setWorkspace] = useState('');
   const [command, setCommand] = useState('claude');
+  const [workspaceRoot, setWorkspaceRoot] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .health()
+      .then((h) => setWorkspaceRoot(h.workspaceRoot))
+      .catch(() => {});
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -399,11 +407,18 @@ function CreateDialog({
               className="input"
             />
           </Field>
-          <Field label="Workspace" hint="absolute or relative to the workspace root">
+          <Field
+            label="Workspace"
+            hint={
+              workspaceRoot
+                ? `on the orchestrator host — blank uses ${workspaceRoot}`
+                : 'absolute path on the orchestrator host, or blank for its home'
+            }
+          >
             <input
               value={workspace}
               onChange={(e) => setWorkspace(e.target.value)}
-              placeholder="~/dev/lumpy"
+              placeholder={workspaceRoot || '/path/to/project'}
               className="input"
             />
           </Field>

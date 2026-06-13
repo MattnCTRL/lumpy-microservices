@@ -33,6 +33,8 @@ export interface HealthResponse {
   uptimeSeconds: number;
   /** Tailnet-reachable base URL agents should report to, if configured. */
   publicUrl: string;
+  /** Default root (on the orchestrator host) under which session workspaces resolve. */
+  workspaceRoot: string;
 }
 
 /** Control messages sent from client to server over the session WebSocket. */
