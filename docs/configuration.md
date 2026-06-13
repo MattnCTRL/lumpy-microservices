@@ -37,6 +37,7 @@ and adjust. The orchestrator reads its own variables; the web app reads the
 | `LUMPY_AUTH_SECRET`          | _(random)_ | Secret for signing auth cookies. Set it to stay signed in across restarts.                       |
 | `LUMPY_REQUIRE_AUTH`         | `false`   | Opt-in: require a signed-in user for the API. Only enforced when sign-in is also configured.       |
 | `LUMPY_ADMIN_LOGINS`         | _(empty)_ | Comma-separated GitHub logins with the admin role. Empty = everyone who signs in is an admin.      |
+| `LUMPY_AGENT_TOKEN`          | _(empty)_ | Token agents send (`x-lumpy-agent-token`) to push metrics while gated. Empty = telemetry trusted on the tailnet. Set the same value on agents to require it. |
 
 ## Web
 

@@ -76,6 +76,10 @@ export const config = {
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
+  // Shared token agents send (x-lumpy-agent-token) to push metrics / register
+  // while auth gating is on. Empty = agent telemetry is allowed on trust (the
+  // tailnet is the boundary); set it to require the token from agents too.
+  agentToken: env('LUMPY_AGENT_TOKEN', ''),
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

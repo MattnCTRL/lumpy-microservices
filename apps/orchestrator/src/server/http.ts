@@ -42,7 +42,12 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
     logger.info('auth gating enabled (signed-in GitHub user required)');
     app.addHook('onRequest', async (request, reply) => {
       const path = request.url.split('?')[0] ?? request.url;
-      const decision = gateDecision(readUser(request), request.method, path);
+      // Agents are authorized when no token is configured (tailnet trust) or
+      // when they present the matching token.
+      const agentAuthorized = config.agentToken
+        ? request.headers['x-lumpy-agent-token'] === config.agentToken
+        : true;
+      const decision = gateDecision(readUser(request), request.method, path, agentAuthorized);
       if (decision === 'unauthenticated') {
         return reply.status(401).send({ error: 'authentication required' });
       }

@@ -13,6 +13,15 @@ const base = env('LUMPY_URL', 'http://127.0.0.1:4317');
 const interval = Number(env('LUMPY_AGENT_INTERVAL', '5000'));
 const diskPath = env('LUMPY_DISK_PATH', '/');
 const name = env('LUMPY_AGENT_NAME', hostname());
+const agentToken = env('LUMPY_AGENT_TOKEN', '');
+
+// Sent so the orchestrator accepts telemetry while auth gating is on. Harmless
+// when gating or the token is not configured.
+function postHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (agentToken) headers['x-lumpy-agent-token'] = agentToken;
+  return headers;
+}
 
 const stateDir = join(homedir(), '.lumpy');
 const stateFile = join(stateDir, 'agent.json');
@@ -51,7 +60,7 @@ function primaryAddress(): string {
 async function register(): Promise<string> {
   const response = await fetch(`${base}/api/fleet/servers`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: postHeaders(),
     body: JSON.stringify({ name, address: primaryAddress() }),
   });
   if (!response.ok) throw new Error(`registration failed: ${response.status}`);
@@ -81,7 +90,7 @@ async function main(): Promise<void> {
       try {
         const response = await fetch(`${base}/api/fleet/servers/${serverId}/metrics`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: postHeaders(),
           body: JSON.stringify(report),
         });
         if (response.status === 404 && !process.env.LUMPY_SERVER_ID) {

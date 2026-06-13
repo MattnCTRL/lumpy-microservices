@@ -24,6 +24,13 @@ items marked _planned_ are specified but not yet implemented.
   `403`). `LUMPY_ADMIN_LOGINS` lists admins; empty means every signed-in user is
   an admin, so enabling auth can't lock the owner out.
 
+**Agent telemetry** (self-registration and metric pushes) is machine-to-machine
+and not subject to the user gate — agents have no GitHub login. While gating is
+on, those endpoints are still reachable; set `LUMPY_AGENT_TOKEN` (and the same on
+each agent) to require a shared token for them, otherwise they are trusted on the
+tailnet. Human control actions (sessions, settings, remediation, server
+add/remove) remain fully gated.
+
 Planned: WebAuthn/passkeys for device login and short-lived API tokens for
 programmatic access.
 

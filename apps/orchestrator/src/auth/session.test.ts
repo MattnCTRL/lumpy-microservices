@@ -32,3 +32,14 @@ test('viewers are read-only; admins may mutate', () => {
   assert.equal(gateDecision(admin, 'POST', '/api/fleet/servers'), 'allow');
   assert.equal(gateDecision(admin, 'DELETE', '/api/alerts/x'), 'allow');
 });
+
+test('authorized agents may push telemetry without a user', () => {
+  // metric push and self-registration, agent authorized
+  assert.equal(gateDecision(null, 'POST', '/api/fleet/servers/abc/metrics', true), 'allow');
+  assert.equal(gateDecision(null, 'POST', '/api/fleet/servers', true), 'allow');
+  // unauthorized agent (wrong/missing token) still needs a user
+  assert.equal(gateDecision(null, 'POST', '/api/fleet/servers/abc/metrics', false), 'unauthenticated');
+  // the exemption is scoped to ingestion only — not arbitrary writes
+  assert.equal(gateDecision(null, 'DELETE', '/api/fleet/servers/abc', true), 'unauthenticated');
+  assert.equal(gateDecision(null, 'POST', '/api/sessions', true), 'unauthenticated');
+});
