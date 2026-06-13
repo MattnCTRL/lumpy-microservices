@@ -40,6 +40,10 @@ Run both apps together:
 npm run dev
 ```
 
+This starts the orchestrator and the web app, and once the UI is ready it opens
+it in your default browser automatically. To run without auto-opening, start the
+apps individually (below).
+
 Or run them individually:
 
 ```bash
