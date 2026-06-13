@@ -48,13 +48,24 @@ function clearServerId(): void {
   writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
 }
 
+// Tailscale assigns addresses in 100.64.0.0/10 (CGNAT). Preferring it means a
+// machine registers under its tailnet IP, so it dedupes against tailnet
+// discovery and is reachable from the orchestrator regardless of LAN.
+function isTailscaleIp(ip: string): boolean {
+  const m = /^100\.(\d+)\./.exec(ip);
+  return m ? Number(m[1]) >= 64 && Number(m[1]) <= 127 : false;
+}
+
 function primaryAddress(): string {
+  let firstPublic = '';
   for (const addresses of Object.values(networkInterfaces())) {
     for (const address of addresses ?? []) {
-      if (!address.internal && address.family === 'IPv4') return address.address;
+      if (address.internal || address.family !== 'IPv4') continue;
+      if (isTailscaleIp(address.address)) return address.address;
+      if (!firstPublic) firstPublic = address.address;
     }
   }
-  return name;
+  return firstPublic || name;
 }
 
 async function register(): Promise<string> {
