@@ -248,7 +248,12 @@ function AccountSettings({
         />
         <div className="min-w-0">
           <p className="text-sm text-neutral-100">{auth.user.name ?? auth.user.login}</p>
-          <p className="text-xs text-neutral-500">@{auth.user.login} · GitHub</p>
+          <p className="text-xs text-neutral-500">
+            @{auth.user.login} · GitHub ·{' '}
+            <span className={auth.user.role === 'admin' ? 'text-emerald-400' : 'text-amber-400'}>
+              {auth.user.role}
+            </span>
+          </p>
         </div>
         <button
           onClick={() => void api.authLogout().then(onSignedOut)}

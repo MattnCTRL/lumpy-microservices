@@ -12,12 +12,20 @@ items marked _planned_ are specified but not yet implemented.
 - **No public control ingress.** All control actions (creating sessions,
   sending input, future remediation) require being on the private mesh.
 
-## Authentication (planned)
+## Authentication
 
-- OIDC + WebAuthn/passkeys for device login.
-- Short-lived API tokens for programmatic access.
-- Role-based access (`owner` / `operator` / `viewer`) with per-action scopes,
-  so the system can support multiple operators without widening blast radius.
+- **GitHub sign-in** (optional) mirrors your GitHub identity in the UI. See
+  [auth.md](auth.md).
+- **Opt-in access gating** (`LUMPY_REQUIRE_AUTH`): require a signed-in user for
+  the API. Fail-safe — only enforced when sign-in is configured, and
+  `/api/health` + the sign-in flow always stay reachable, so it can't lock you
+  out. The tailnet remains the primary boundary; this is defense in depth.
+- **Roles:** admins have full access; viewers are read-only (mutations return
+  `403`). `LUMPY_ADMIN_LOGINS` lists admins; empty means every signed-in user is
+  an admin, so enabling auth can't lock the owner out.
+
+Planned: WebAuthn/passkeys for device login and short-lived API tokens for
+programmatic access.
 
 ## Session execution
 

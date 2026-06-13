@@ -19,6 +19,25 @@ and adjust. The orchestrator reads its own variables; the web app reads the
 | `LUMPY_NTFY_TOPIC`      | _(empty)_         | ntfy topic. Empty disables notifications. Treat it as a secret.                                                          |
 | `LUMPY_PUBLIC_URL`      | _(empty)_         | Tailnet-reachable base URL for notification links and approve/reject buttons.                                            |
 
+## Sessions & remediation
+
+| Variable                          | Default       | Description                                                                                      |
+| --------------------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| `LUMPY_SESSION_USER`              | _(empty)_     | OS user to run sessions as (non-root sandboxing). Empty = the orchestrator's own user.           |
+| `LUMPY_REMEDIATION_MODE`          | `off`         | `off`, `investigate` (diagnose only), or `auto` (also fix). Live-editable from Settings.          |
+| `LUMPY_REMEDIATION_AUTO_SEVERITIES` | `warning`   | Comma-separated severities that remediate automatically; others need one-tap approval.           |
+
+## Authentication (Sign in with GitHub)
+
+| Variable                     | Default   | Description                                                                                       |
+| ---------------------------- | --------- | ------------------------------------------------------------------------------------------------- |
+| `LUMPY_GITHUB_CLIENT_ID`     | _(empty)_ | GitHub OAuth app Client ID (starts with `Ov23li…`). Empty = sign-in disabled.                     |
+| `LUMPY_GITHUB_CLIENT_SECRET` | _(empty)_ | GitHub OAuth app client secret. Treat as a secret.                                                |
+| `LUMPY_WEB_URL`              | _(empty)_ | Web UI URL to return to after sign-in.                                                            |
+| `LUMPY_AUTH_SECRET`          | _(random)_ | Secret for signing auth cookies. Set it to stay signed in across restarts.                       |
+| `LUMPY_REQUIRE_AUTH`         | `false`   | Opt-in: require a signed-in user for the API. Only enforced when sign-in is also configured.       |
+| `LUMPY_ADMIN_LOGINS`         | _(empty)_ | Comma-separated GitHub logins with the admin role. Empty = everyone who signs in is an admin.      |
+
 ## Web
 
 | Variable                       | Default                 | Description                                       |

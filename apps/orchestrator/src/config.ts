@@ -65,6 +65,17 @@ export const config = {
   },
   // Secret for signing auth cookies; random per boot if unset (re-login on restart).
   authSecret: env('LUMPY_AUTH_SECRET', '') || randomBytes(32).toString('hex'),
+  // Opt-in: require a signed-in GitHub user for the API. Off by default so the
+  // live deployment is never locked out; only enforced when sign-in is also
+  // configured (see server/http.ts).
+  requireAuth: env('LUMPY_REQUIRE_AUTH', '') === 'true',
+  // GitHub logins with the admin role (full access). Empty = everyone who signs
+  // in is an admin, so enabling auth can't lock the owner out. When set, logins
+  // not listed get the read-only viewer role.
+  adminLogins: env('LUMPY_ADMIN_LOGINS', '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

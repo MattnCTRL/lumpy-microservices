@@ -33,14 +33,31 @@ signing in, your avatar and name show there; click it to sign out.
 - `GET /api/auth/github/login` → redirects to GitHub with a signed `state`.
 - `GET /api/auth/github/callback` → verifies state, exchanges the code for a
   token, fetches the GitHub profile, and stores it in a signed, http-only cookie.
-- `GET /api/auth/me` → returns `{ configured, user }` for the UI.
+- `GET /api/auth/me` → returns `{ configured, required, user }` for the UI.
 - `POST /api/auth/logout` → clears the cookie.
 
 The callback redirects the browser to a tailnet URL, so your device must be on
 the tailnet. Cookies are scoped to the host, so the web (`:3000`) and
 orchestrator (`:4317`) share them.
 
-## Notes
+## Access gating and roles (opt-in)
 
-- Sign-in currently surfaces identity; it does not yet gate access (the tailnet
-  does). Role-based gating is a future enhancement.
+By default sign-in only surfaces identity — the tailnet is the access boundary.
+You can additionally require sign-in for the API and split access into roles:
+
+```
+LUMPY_REQUIRE_AUTH=true              # require a signed-in user for the API
+LUMPY_ADMIN_LOGINS=mattnctrl         # comma-separated GitHub logins that are admins
+```
+
+- **Gating is opt-in and fail-safe.** It is only enforced when GitHub sign-in is
+  also configured; if `LUMPY_REQUIRE_AUTH=true` is set without credentials, the
+  orchestrator logs a warning and leaves the API open rather than locking you out.
+- `/api/health` and the `/api/auth/*` sign-in flow stay reachable while gated, so
+  you can always sign in.
+- **Roles:** if `LUMPY_ADMIN_LOGINS` is empty, **everyone who signs in is an
+  admin** (so enabling auth can't lock the owner out). When set, listed logins
+  are admins (full access) and everyone else is a **viewer** (read-only — `GET`
+  allowed, mutations return `403`). Your role shows on the Settings page.
+
+Enable it only after you've confirmed you can sign in successfully.

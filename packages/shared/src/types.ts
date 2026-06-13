@@ -34,14 +34,20 @@ export interface CreateSessionInput {
   task?: string;
 }
 
+export type Role = 'admin' | 'viewer';
+
 export interface GithubUser {
   login: string;
   name: string | null;
   avatarUrl: string;
+  /** admin = full access; viewer = read-only. */
+  role: Role;
 }
 
 export interface AuthState {
   configured: boolean;
+  /** Whether sign-in is enforced (opt-in). When false the API is open. */
+  required: boolean;
   user: GithubUser | null;
 }
 

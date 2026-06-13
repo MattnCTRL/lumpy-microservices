@@ -1,18 +1,13 @@
 import { randomBytes } from 'node:crypto';
+import type { GithubUser } from '@lumpy/shared';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { USER_COOKIE, readUser, roleFor } from './session.js';
 
 const AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
 const TOKEN_URL = 'https://github.com/login/oauth/access_token';
 const USER_URL = 'https://api.github.com/user';
-const USER_COOKIE = 'lumpy_user';
 const STATE_COOKIE = 'lumpy_oauth_state';
-
-interface GithubProfile {
-  login: string;
-  name: string | null;
-  avatarUrl: string;
-}
 
 /**
  * Sign in with GitHub. The Lumpy profile mirrors the GitHub account (avatar,
@@ -35,19 +30,11 @@ export const authModule: LumpyModule = {
     }
 
     app.get('/api/auth/me', async (request) => {
-      const raw = request.cookies[USER_COOKIE];
-      let user: GithubProfile | null = null;
-      if (raw) {
-        const unsigned = request.unsignCookie(raw);
-        if (unsigned.valid && unsigned.value) {
-          try {
-            user = JSON.parse(unsigned.value) as GithubProfile;
-          } catch {
-            user = null;
-          }
-        }
-      }
-      return { configured: Boolean(clientId && clientSecret), user };
+      return {
+        configured: Boolean(clientId && clientSecret),
+        required: config.requireAuth && Boolean(clientId && clientSecret),
+        user: readUser(request),
+      };
     });
 
     app.get('/api/auth/github/login', async (_request, reply) => {
@@ -100,7 +87,12 @@ export const authModule: LumpyModule = {
           name: string | null;
           avatar_url: string;
         };
-        const profile: GithubProfile = { login: gh.login, name: gh.name, avatarUrl: gh.avatar_url };
+        const profile: GithubUser = {
+          login: gh.login,
+          name: gh.name,
+          avatarUrl: gh.avatar_url,
+          role: roleFor(gh.login, config.adminLogins),
+        };
 
         reply.setCookie(USER_COOKIE, JSON.stringify(profile), {
           path: '/',
