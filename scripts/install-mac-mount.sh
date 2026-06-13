@@ -45,10 +45,12 @@ owner_uid="$(id -u "$SESSION_USER")"
 owner_gid="$(id -g "$SESSION_USER")"
 MAC_PATH="${MAC_PATH:-/Users/$MAC_USER}"
 MOUNT="$owner_home/macs/$NAME"
+# Per-host service name so multiple machines can be mounted side by side.
+SVC="lumpy-mac-mount-$NAME"
 
 # Run sshfs in the foreground (-f) so systemd supervises it directly and
 # restarts it if it dies; reconnect keeps the mount alive across Mac sleep.
-cat >/etc/systemd/system/lumpy-mac-mount.service <<EOF
+cat >"/etc/systemd/system/$SVC.service" <<EOF
 [Unit]
 Description=Lumpy SSHFS mount of ${MAC_USER}@${MAC_HOST}
 After=network-online.target tailscaled.service
@@ -78,9 +80,9 @@ if mountpoint -q "$MOUNT"; then
 fi
 
 systemctl daemon-reload
-systemctl enable --now lumpy-mac-mount
+systemctl enable --now "$SVC"
 
 echo
-echo "Installed lumpy-mac-mount. ${MAC_USER}@${MAC_HOST}:${MAC_PATH} -> ${MOUNT}"
-echo "  status: systemctl status lumpy-mac-mount"
-echo "  logs:   journalctl -u lumpy-mac-mount -f"
+echo "Installed $SVC. ${MAC_USER}@${MAC_HOST}:${MAC_PATH} -> ${MOUNT}"
+echo "  status: systemctl status $SVC"
+echo "  logs:   journalctl -u $SVC -f"
