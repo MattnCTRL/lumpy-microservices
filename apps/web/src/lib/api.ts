@@ -1,4 +1,11 @@
-import type { CreateSessionInput, HealthResponse, Session } from '@lumpy/shared';
+import type {
+  CreateServerInput,
+  CreateSessionInput,
+  HealthResponse,
+  Server,
+  ServerDetail,
+  Session,
+} from '@lumpy/shared';
 
 export const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? 'http://127.0.0.1:4317';
 
@@ -15,6 +22,10 @@ export function sessionSocketUrl(id: string): string {
 
 export function eventsSocketUrl(): string {
   return socketUrl('/ws/sessions');
+}
+
+export function fleetSocketUrl(): string {
+  return socketUrl('/ws/fleet');
 }
 
 async function parse<T>(response: Response): Promise<T> {
@@ -42,4 +53,16 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ data }),
     }),
+
+  listServers: () => fetch(`${ORCHESTRATOR_URL}/api/fleet/servers`).then(parse<Server[]>),
+  getServer: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`).then(parse<ServerDetail>),
+  createServer: (input: CreateServerInput) =>
+    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then(parse<Server>),
+  deleteServer: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, { method: 'DELETE' }),
 };

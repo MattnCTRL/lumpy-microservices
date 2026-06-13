@@ -58,6 +58,19 @@ Open the web UI at `http://127.0.0.1:3000`.
 4. Closing the browser does not stop the session — it keeps running in `tmux`.
    Reopen the UI to reattach.
 
+## Monitoring a server (Fleet)
+
+Open the **Fleet** tab, click **Add**, and register a server (name + address).
+To see it report without a real host, stream synthetic metrics with the demo
+agent:
+
+```bash
+node scripts/demo-agent.mjs <serverId> --interval 1500
+```
+
+The server flips to `online` and its metric cards update live. See
+[fleet.md](fleet.md) for the real ingestion contract.
+
 ## Verifying the engine without `claude`
 
 To confirm the session pipeline works independently of Claude Code, create a

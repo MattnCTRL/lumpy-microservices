@@ -37,9 +37,12 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 - [x] `fleet` module: server registry (SQLite) + REST/`/ws/fleet`
 - [x] Metrics/heartbeat ingestion with online/offline/unknown status derivation
 - [x] Fleet events on the spine + tests
+- [x] Web UI: Sessions/Fleet navigation; server list + detail with live metric
+      cards and sparklines, driven by `/ws/fleet`
+- [x] Demo metrics agent (`scripts/demo-agent.mjs`) for exercising the UI
 - [ ] `lumpy-agent` (metrics, heartbeat, log tail) + agentless SSH fallback
 - [ ] Ingestion auth (token / mTLS over the tailnet)
-- [ ] Web UI: server list and detail view with live charts/logs
+- [ ] Live log streaming in the server detail view
 - [ ] Threshold alert rules and notifications
 
 ## Phase 3 — Alerting & tiered remediation

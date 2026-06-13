@@ -35,6 +35,18 @@ curl -X POST http://orchestrator:4317/api/fleet/servers/<id>/metrics \
 The orchestrator stamps the timestamp, updates the server's status to `online`,
 and publishes the events. See [api.md](api.md#fleet) for the full surface.
 
+## Trying it without a real host
+
+Register a server in the **Fleet** tab of the web UI (or via the API), then run
+the demo agent against its id to stream synthetic metrics:
+
+```bash
+node scripts/demo-agent.mjs <serverId> --interval 1500
+```
+
+The server flips to `online` and its metric cards and sparklines update live.
+This is a development helper, not the production agent.
+
 ## Roadmap
 
 This is the ingestion and status core. Still ahead (see [roadmap.md](roadmap.md)):

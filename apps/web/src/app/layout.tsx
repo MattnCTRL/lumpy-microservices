@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@xterm/xterm/css/xterm.css';
 import './globals.css';
+import { TopNav } from '@/components/TopNav';
 
 export const metadata: Metadata = {
   title: 'Lumpy Micro Services',
@@ -17,7 +18,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="font-mono">{children}</body>
+      <body className="font-mono">
+        <div className="flex h-screen flex-col">
+          <TopNav />
+          <div className="min-h-0 flex-1">{children}</div>
+        </div>
+      </body>
     </html>
   );
 }
