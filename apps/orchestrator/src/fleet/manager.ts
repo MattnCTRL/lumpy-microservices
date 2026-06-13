@@ -84,12 +84,19 @@ export class FleetManager {
   }
 
   remove(id: string): boolean {
-    if (!this.store.getServer(id)) return false;
+    const record = this.store.getServer(id);
+    if (!record) return false;
     this.store.deleteServer(id);
     this.latest.delete(id);
     this.history.delete(id);
     this.statuses.delete(id);
     this.lastSeenMs.delete(id);
+    this.bus.publish({
+      type: 'fleet.server.removed',
+      id,
+      name: record.name,
+      at: new Date().toISOString(),
+    });
     logger.info({ id }, 'server removed');
     return true;
   }

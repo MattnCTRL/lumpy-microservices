@@ -18,10 +18,20 @@ function metrics(over: Partial<ServerMetrics>): ServerMetrics {
 
 function harness() {
   const bus = new EventBus();
-  new AlertsManager(bus);
+  const manager = new AlertsManager(bus);
   const events: LumpyEvent[] = [];
   bus.subscribe((e) => events.push(e));
-  return { bus, events };
+  return { bus, events, manager };
+}
+
+function diskMetric(diskPercent: number) {
+  return {
+    type: 'fleet.metrics' as const,
+    id: 's1',
+    name: 'web',
+    metrics: metrics({ diskPercent }),
+    at: 't',
+  };
 }
 
 test('fires a critical alert when disk crosses 90%', () => {
@@ -101,6 +111,31 @@ test('a sustained CPU rule needs repeated samples', () => {
     at: 't',
   });
   assert.ok(events.some((e) => e.type === 'alert.fired'));
+});
+
+test('dismiss suppresses re-firing until the condition clears and recurs', () => {
+  const { bus, events, manager } = harness();
+  bus.publish(diskMetric(92));
+  const fired = events.find((e) => e.type === 'alert.fired');
+  assert.ok(fired && fired.type === 'alert.fired');
+  manager.dismiss(fired.alert.id);
+
+  events.length = 0;
+  bus.publish(diskMetric(92));
+  bus.publish(diskMetric(92));
+  assert.equal(events.filter((e) => e.type === 'alert.fired').length, 0);
+
+  bus.publish(diskMetric(40)); // clears
+  bus.publish(diskMetric(92)); // recurs -> fires again
+  assert.ok(events.some((e) => e.type === 'alert.fired'));
+});
+
+test('removing a server clears its active alerts', () => {
+  const { bus, manager } = harness();
+  bus.publish(diskMetric(92));
+  assert.equal(manager.activeAlerts().length, 1);
+  bus.publish({ type: 'fleet.server.removed', id: 's1', name: 'web', at: 't' });
+  assert.equal(manager.activeAlerts().length, 0);
 });
 
 test('an offline server fires a critical alert and resolves on return', () => {

@@ -12,6 +12,12 @@ export const alertsModule: LumpyModule = {
 
     ctx.app.get('/api/alerts', async () => alerts.activeAlerts());
 
+    ctx.app.delete('/api/alerts/:id', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (!alerts.dismiss(id)) return reply.status(404).send({ error: 'alert not found' });
+      return reply.status(204).send();
+    });
+
     ctx.app.get('/ws/alerts', { websocket: true }, (socket: WebSocket) => {
       const unsubscribe = ctx.bus.subscribe((event) => {
         if (!event.type.startsWith('alert.')) return;

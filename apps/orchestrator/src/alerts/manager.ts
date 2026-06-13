@@ -13,6 +13,8 @@ const OFFLINE_RULE = 'offline';
 export class AlertsManager {
   private readonly counts = new Map<string, number>();
   private readonly active = new Map<string, Alert>();
+  // Dismissed alerts stay suppressed until their condition clears and recurs.
+  private readonly acknowledged = new Set<string>();
   // Rules grouped by metric so only the most severe breached tier fires.
   private readonly ruleGroups = new Map<MetricKey, AlertRule[]>();
 
@@ -34,13 +36,37 @@ export class AlertsManager {
         this.evaluate(event.id, event.name, event.metrics);
       } else if (event.type === 'fleet.server.status') {
         if (event.status === 'offline') this.fireOffline(event.id, event.name);
-        else if (event.status === 'online') this.resolve(`${event.id}:${OFFLINE_RULE}`);
+        else if (event.status === 'online') this.clear(`${event.id}:${OFFLINE_RULE}`);
+      } else if (event.type === 'fleet.server.removed') {
+        this.resolveServer(event.id);
       }
     });
   }
 
   activeAlerts(): Alert[] {
     return [...this.active.values()].sort((a, b) => (a.severity === 'critical' ? -1 : 1));
+  }
+
+  /** Manually dismiss an alert; it stays suppressed until its condition recurs. */
+  dismiss(id: string): boolean {
+    if (!this.active.has(id)) return false;
+    this.acknowledged.add(id);
+    this.resolve(id);
+    return true;
+  }
+
+  private resolveServer(serverId: string): void {
+    const prefix = `${serverId}:`;
+    for (const key of [...this.active.keys()]) {
+      if (key.startsWith(prefix)) this.clear(key);
+    }
+  }
+
+  /** Resolve and re-arm: the condition genuinely cleared, so allow future alerts. */
+  private clear(key: string): void {
+    this.counts.set(key, 0);
+    this.acknowledged.delete(key);
+    this.resolve(key);
   }
 
   private evaluate(serverId: string, serverName: string, metrics: ServerMetrics): void {
@@ -52,7 +78,7 @@ export class AlertsManager {
         if (rule === breached) {
           const count = (this.counts.get(key) ?? 0) + 1;
           this.counts.set(key, count);
-          if (count >= rule.forSamples && !this.active.has(key)) {
+          if (count >= rule.forSamples && !this.active.has(key) && !this.acknowledged.has(key)) {
             const value = metrics[metric];
             this.fire({
               id: key,
@@ -68,8 +94,7 @@ export class AlertsManager {
             });
           }
         } else {
-          this.counts.set(key, 0);
-          this.resolve(key);
+          this.clear(key);
         }
       }
     }
@@ -77,7 +102,7 @@ export class AlertsManager {
 
   private fireOffline(serverId: string, serverName: string): void {
     const key = `${serverId}:${OFFLINE_RULE}`;
-    if (this.active.has(key)) return;
+    if (this.active.has(key) || this.acknowledged.has(key)) return;
     this.fire({
       id: key,
       serverId,

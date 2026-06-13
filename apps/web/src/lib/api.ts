@@ -82,4 +82,6 @@ export const api = {
     fetch(`${ORCHESTRATOR_URL}/api/fleet/servers/${id}`, { method: 'DELETE' }),
 
   listAlerts: () => fetch(`${ORCHESTRATOR_URL}/api/alerts`).then(parse<Alert[]>),
+  dismissAlert: (id: string) =>
+    fetch(`${ORCHESTRATOR_URL}/api/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

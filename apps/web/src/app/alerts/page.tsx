@@ -52,15 +52,26 @@ export default function AlertsPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-neutral-100">{alert.serverName}</span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    alert.severity === 'critical'
-                      ? 'bg-red-500/20 text-red-300'
-                      : 'bg-amber-500/20 text-amber-300'
-                  }`}
-                >
-                  {alert.severity}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      alert.severity === 'critical'
+                        ? 'bg-red-500/20 text-red-300'
+                        : 'bg-amber-500/20 text-amber-300'
+                    }`}
+                  >
+                    {alert.severity}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      await api.dismissAlert(alert.id);
+                      void refresh();
+                    }}
+                    className="text-xs text-neutral-500 hover:text-neutral-200"
+                  >
+                    dismiss
+                  </button>
+                </div>
               </div>
               <p className="mt-1 text-sm text-neutral-300">{alert.message}</p>
               <p className="mt-1 text-xs text-neutral-500">
