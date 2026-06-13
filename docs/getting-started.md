@@ -71,6 +71,15 @@ node scripts/demo-agent.mjs <serverId> --interval 1500
 The server flips to `online` and its metric cards update live. See
 [fleet.md](fleet.md) for the real ingestion contract.
 
+To report **real** metrics from a machine, run the agent on it — it
+self-registers and starts streaming actual CPU/memory/disk/load:
+
+```bash
+LUMPY_URL=http://127.0.0.1:4317 npm run start -w @lumpy/agent
+```
+
+See [agent.md](agent.md) for configuration and deployment.
+
 ## Verifying the engine without `claude`
 
 To confirm the session pipeline works independently of Claude Code, create a

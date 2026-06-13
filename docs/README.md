@@ -12,6 +12,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [getting-started.md](getting-started.md)           | Install, configure, and run locally.                    |
 | [session-engine.md](session-engine.md)             | How `tmux` + PTY session orchestration works.           |
 | [fleet.md](fleet.md)                               | Remote server registry, metrics ingestion, and status.  |
+| [agent.md](agent.md)                               | The metrics-collecting agent that runs on a host.       |
 | [modules.md](modules.md)                           | The module/extension contract for adding bespoke tools. |
 | [api.md](api.md)                                   | REST and WebSocket surface of the orchestrator.         |
 | [configuration.md](configuration.md)               | Environment variables and runtime options.              |

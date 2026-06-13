@@ -40,7 +40,8 @@ Remote agent, metrics/log ingestion, server registry, basic alerting.
 - [x] Web UI: Sessions/Fleet navigation; server list + detail with live metric
       cards and sparklines, driven by `/ws/fleet`
 - [x] Demo metrics agent (`scripts/demo-agent.mjs`) for exercising the UI
-- [ ] `lumpy-agent` (metrics, heartbeat, log tail) + agentless SSH fallback
+- [x] `lumpy-agent` (CPU/mem/disk/load/uptime, self-registration) — Node v0
+- [ ] Agent: log tailing + agentless SSH fallback; static-binary build
 - [ ] Ingestion auth (token / mTLS over the tailnet)
 - [ ] Live log streaming in the server detail view
 - [ ] Threshold alert rules and notifications

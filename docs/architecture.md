@@ -57,11 +57,17 @@ terminals via xterm.js, talking to the orchestrator over REST for control
 actions and over WebSocket for live terminal I/O. It holds no server state of
 its own; the orchestrator is authoritative.
 
+## Agent
+
+`apps/agent` is `lumpy-agent`, the metrics collector that runs on a monitored
+host and pushes CPU/memory/disk/load/uptime samples to the fleet ingestion
+endpoint. It self-registers on first run. See [agent.md](agent.md).
+
 ## Shared
 
-`packages/shared` contains the TypeScript types exchanged between orchestrator
-and web (session shapes, WebSocket message envelopes), so both sides stay in
-sync from a single definition.
+`packages/shared` contains the TypeScript types exchanged between the
+orchestrator, web, and agent (session and server shapes, WebSocket and event
+envelopes), so all sides stay in sync from a single definition.
 
 ## Why this shape
 
