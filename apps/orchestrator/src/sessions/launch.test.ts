@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildLaunchCommand } from './launch.js';
+import { PROGRESS_NOTE, buildLaunchCommand } from './launch.js';
 
 test('autonomous claude gets skip-permissions', () => {
   assert.equal(
@@ -20,10 +20,17 @@ test('interactive claude runs plainly', () => {
   assert.equal(buildLaunchCommand('claude', { autonomous: false }), 'claude');
 });
 
-test('a task is appended as a quoted prompt', () => {
+test('an autonomous task is appended with a progress-handoff note', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: true, task: 'fix the build' }),
-    "claude --dangerously-skip-permissions 'fix the build'",
+    `claude --dangerously-skip-permissions 'fix the build\n\n${PROGRESS_NOTE}'`,
+  );
+});
+
+test('a non-autonomous task is appended verbatim (no progress note)', () => {
+  assert.equal(
+    buildLaunchCommand('claude', { autonomous: false, task: 'fix the build' }),
+    "claude 'fix the build'",
   );
 });
 

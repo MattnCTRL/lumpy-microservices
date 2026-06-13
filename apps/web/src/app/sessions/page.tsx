@@ -324,7 +324,8 @@ function StoppedActions({
       </div>
       {canResume && (
         <p className="max-w-xs text-xs text-neutral-600">
-          Resume continues the previous Claude conversation; Restart starts a fresh one.
+          Resume continues the previous conversation. Restart starts fresh but first reviews{' '}
+          <code className="text-neutral-500">.lumpy/PROGRESS.md</code> to build on prior work.
         </p>
       )}
     </div>

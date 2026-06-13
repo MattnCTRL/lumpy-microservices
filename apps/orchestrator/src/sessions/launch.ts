@@ -12,6 +12,16 @@ function shquote(value: string): string {
 }
 
 /**
+ * Appended to an autonomous session's task so it leaves a durable handoff. The
+ * session auto-stops when idle; this note means a later resume/restart can pick
+ * up from recorded progress instead of starting over.
+ */
+export const PROGRESS_NOTE =
+  'As you work, keep a concise running log at .lumpy/PROGRESS.md — what you have done, ' +
+  'the current state, and the next steps — and update it before you stop, so this work ' +
+  'can be resumed later without losing context.';
+
+/**
  * Build the shell command to run inside tmux from a base command.
  *
  * For Claude sessions, autonomous mode adds --dangerously-skip-permissions so it
@@ -31,7 +41,11 @@ export function buildLaunchCommand(base: string, options: LaunchOptions): string
   }
 
   const task = options.task?.trim();
-  if (task) parts.push(shquote(task));
+  if (task) {
+    // Autonomous sessions auto-stop when idle; ask them to leave a handoff.
+    const full = options.autonomous ? `${task}\n\n${PROGRESS_NOTE}` : task;
+    parts.push(shquote(full));
+  }
 
   return parts.join(' ');
 }

@@ -17,7 +17,7 @@ import type { SessionRecord, Store } from '../store/sqlite.js';
 import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
 import { buildLaunchCommand } from './launch.js';
-import { resumeCommand } from './resume.js';
+import { isClaudeCommand, resumeCommand } from './resume.js';
 import type { RunAs } from './runas.js';
 import * as tmux from './tmux.js';
 
@@ -222,11 +222,19 @@ export class SessionManager {
     return true;
   }
 
-  /** Relaunch a stopped session with its original command and task. */
+  /**
+   * Relaunch a stopped session. For Claude sessions with a recorded task, the
+   * task is wrapped so the session first reviews prior progress and continues
+   * from it rather than starting over. (Use resume() for pure continuation.)
+   */
   async restart(id: string): Promise<Session | null> {
     const record = this.store.getSession(id);
     if (!record) return null;
-    return this.relaunch(id, record.command, record.task);
+    const task =
+      record.task && isClaudeCommand(record.command)
+        ? `First read .lumpy/PROGRESS.md (if it exists) to see what prior work was done, then continue from there.\n\nOriginal task: ${record.task}`
+        : record.task;
+    return this.relaunch(id, record.command, task);
   }
 
   /** Relaunch a stopped session, continuing its prior context (no re-injected task). */
