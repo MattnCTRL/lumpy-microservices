@@ -38,9 +38,26 @@ To bind to an existing server entry instead, set `LUMPY_SERVER_ID`.
 | `LUMPY_AGENT_NAME`     | hostname                | Name used when self-registering.                                             |
 | `LUMPY_DISK_PATH`      | `/`                     | Filesystem to report disk usage for.                                         |
 
-## Deploying
+## Deploying to a server (one command)
 
-On a server reachable over the tailnet, run the agent under a process manager so
-it restarts on boot. A systemd unit recipe will accompany the deployment guide.
-Until ingestion auth lands, only run the agent on hosts that reach the
-orchestrator over the private network — see [security.md](security.md).
+On a Debian/Ubuntu host that is on the same Tailscale tailnet as the
+orchestrator, run the installer as root. It installs Node if needed, fetches the
+agent, and registers a systemd service that restarts on failure and boot:
+
+```bash
+LUMPY_URL=http://<orchestrator-tailnet-ip>:4317 \
+  bash <(curl -fsSL https://raw.githubusercontent.com/MattnCTRL/lumpy-microservices/main/scripts/install-agent.sh)
+```
+
+Then:
+
+```bash
+systemctl status lumpy-agent     # confirm it's running
+journalctl -u lumpy-agent -f     # follow its logs
+```
+
+The server self-registers and appears in the Fleet tab as `online`. The
+orchestrator must be reachable from the host — keep both on the tailnet and use
+the orchestrator's tailnet IP. Until ingestion auth lands, only run the agent on
+hosts that reach the orchestrator over the private network — see
+[security.md](security.md).
