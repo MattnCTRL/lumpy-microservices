@@ -7,7 +7,15 @@ import type {
   Server,
   ServerDetail,
   Session,
+  SettingsResponse,
 } from '@lumpy/shared';
+
+export interface ModuleInfo {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+}
 
 export const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? 'http://127.0.0.1:4317';
 
@@ -85,6 +93,15 @@ export const api = {
   listAlerts: () => fetch(`${ORCHESTRATOR_URL}/api/alerts`).then(parse<Alert[]>),
   dismissAlert: (id: string) =>
     fetch(`${ORCHESTRATOR_URL}/api/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  listModules: () => fetch(`${ORCHESTRATOR_URL}/api/modules`).then(parse<ModuleInfo[]>),
+  getSettings: () => fetch(`${ORCHESTRATOR_URL}/api/settings`).then(parse<SettingsResponse>),
+  updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
+    fetch(`${ORCHESTRATOR_URL}/api/settings`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    }).then(parse<SettingsResponse>),
 
   authMe: () =>
     fetch(`${ORCHESTRATOR_URL}/api/auth/me`, { credentials: 'include' }).then(parse<AuthState>),

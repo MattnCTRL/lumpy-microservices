@@ -19,6 +19,7 @@ and maintained alongside the code — keep them current as the system evolves.
 | [modules.md](modules.md)                           | The module/extension contract for adding bespoke tools. |
 | [api.md](api.md)                                   | REST and WebSocket surface of the orchestrator.         |
 | [configuration.md](configuration.md)               | Environment variables and runtime options.              |
+| [settings.md](settings.md)                         | The Settings page: runtime config + system overview.    |
 | [auth.md](auth.md)                                 | Sign in with GitHub and profile mirroring.              |
 | [security.md](security.md)                         | Access model, network posture, and hardening.           |
 | [deploy.md](deploy.md)                             | Deploy Lumpy always-on on a tailnet host.               |

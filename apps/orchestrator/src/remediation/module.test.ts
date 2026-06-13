@@ -42,10 +42,12 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
       },
     },
     config: {
-      remediationMode: mode,
-      remediationAutoSeverities: autoSeverities,
       workspaceRoot: '/home/lumpy/projects',
       defaultCommand: 'claude',
+    },
+    settings: {
+      get: () => ({ remediationMode: mode, remediationAutoSeverities: autoSeverities }),
+      update: () => ({ remediationMode: mode, remediationAutoSeverities: autoSeverities }),
     },
     logger: {},
   } as unknown as ModuleContext;

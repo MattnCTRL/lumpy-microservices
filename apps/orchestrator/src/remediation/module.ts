@@ -5,9 +5,9 @@ import { buildRemediationTask } from './task.js';
 
 /**
  * Closes the loop: when an alert fires, handle it with an autonomous Claude
- * session. Tiered by severity — auto-run for the configured severities, and for
- * the rest publish a pending request that you approve with one tap (which calls
- * the approve endpoint). One action per active alert; cleared when it resolves.
+ * session. Tiered by severity — auto-run for the configured severities, others
+ * wait for one-tap approval. Mode/policy are read live from settings, so they can
+ * be changed from the UI without a restart.
  */
 export const remediationModule: LumpyModule = {
   id: 'remediation',
@@ -15,17 +15,10 @@ export const remediationModule: LumpyModule = {
   version: '0.1.0',
   description: 'Autonomous Claude sessions to investigate or fix alerts, tiered by severity.',
   register(ctx: ModuleContext) {
-    const mode = ctx.config.remediationMode;
-    if (mode === 'off' || mode === undefined) {
-      logger.info('remediation disabled (set LUMPY_REMEDIATION_MODE to investigate or auto)');
-      return;
-    }
-
-    const autoSeverities = new Set(ctx.config.remediationAutoSeverities);
     const handling = new Set<string>(); // already acted on
     const pending = new Map<string, Alert>(); // awaiting approval
 
-    const start = async (alert: Alert): Promise<void> => {
+    const start = async (alert: Alert, mode: 'investigate' | 'auto'): Promise<void> => {
       try {
         const session = await ctx.sessions.create({
           name: `${mode === 'auto' ? 'Fix' : 'Investigate'}: ${alert.serverName} — ${alert.label}`,
@@ -56,7 +49,7 @@ export const remediationModule: LumpyModule = {
       if (!alert) return reply.status(404).send({ error: 'no pending remediation for this alert' });
       pending.delete(id);
       handling.add(id);
-      await start(alert);
+      await start(alert, ctx.settings.get().remediationMode === 'auto' ? 'auto' : 'investigate');
       return reply.status(202).send();
     });
 
@@ -68,12 +61,15 @@ export const remediationModule: LumpyModule = {
       }
       if (event.type !== 'alert.fired') return;
 
+      const { remediationMode: mode, remediationAutoSeverities } = ctx.settings.get();
+      if (mode === 'off') return;
+
       const alert = event.alert;
       if (handling.has(alert.id) || pending.has(alert.id)) return;
 
-      if (autoSeverities.has(alert.severity)) {
+      if (remediationAutoSeverities.includes(alert.severity)) {
         handling.add(alert.id);
-        void start(alert);
+        void start(alert, mode);
       } else {
         pending.set(alert.id, alert);
         ctx.bus.publish({
@@ -88,6 +84,6 @@ export const remediationModule: LumpyModule = {
       }
     });
 
-    logger.info({ mode, autoSeverities: [...autoSeverities] }, 'remediation enabled');
+    logger.info('remediation module ready (mode from settings)');
   },
 };

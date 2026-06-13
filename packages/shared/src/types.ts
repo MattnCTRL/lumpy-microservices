@@ -45,6 +45,21 @@ export interface AuthState {
   user: GithubUser | null;
 }
 
+export interface SettingsResponse {
+  remediation: {
+    mode: 'off' | 'investigate' | 'auto';
+    autoSeverities: string[];
+  };
+  system: {
+    version: string;
+    sessionUser: string | null;
+    workspaceRoot: string;
+    publicUrl: string | null;
+    defaultCommand: string;
+    notifications: { configured: boolean; topic: string | null; server: string };
+  };
+}
+
 export interface HealthResponse {
   status: 'ok';
   tmux: boolean;

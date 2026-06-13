@@ -1,0 +1,52 @@
+import { z } from 'zod';
+import type { SettingsResponse } from '@lumpy/shared';
+import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { VERSION } from '../version.js';
+
+const patchSchema = z.object({
+  remediationMode: z.enum(['off', 'investigate', 'auto']).optional(),
+  remediationAutoSeverities: z.array(z.enum(['warning', 'critical'])).optional(),
+});
+
+function view(ctx: ModuleContext): SettingsResponse {
+  const current = ctx.settings.get();
+  return {
+    remediation: {
+      mode: current.remediationMode,
+      autoSeverities: current.remediationAutoSeverities,
+    },
+    system: {
+      version: VERSION,
+      sessionUser: ctx.config.sessionUser || null,
+      workspaceRoot: ctx.config.workspaceRoot,
+      publicUrl: ctx.config.publicUrl || null,
+      defaultCommand: ctx.config.defaultCommand,
+      notifications: {
+        configured: Boolean(ctx.config.ntfyTopic),
+        topic: ctx.config.ntfyTopic || null,
+        server: ctx.config.ntfyUrl,
+      },
+    },
+  };
+}
+
+export const settingsModule: LumpyModule = {
+  id: 'settings',
+  name: 'Settings',
+  version: '0.1.0',
+  description: 'Runtime configuration and system overview.',
+  register(ctx: ModuleContext) {
+    ctx.app.get('/api/settings', async () => view(ctx));
+
+    ctx.app.patch('/api/settings', async (request, reply) => {
+      const parsed = patchSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
+          .status(400)
+          .send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
+      }
+      ctx.settings.update(parsed.data);
+      return view(ctx);
+    });
+  },
+};

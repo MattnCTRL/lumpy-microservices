@@ -89,6 +89,18 @@ export function TopNav() {
       </div>
       <div className="flex items-center gap-4">
         <HealthBadge health={health} />
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          title="Settings"
+          className={`text-base leading-none ${
+            pathname.startsWith('/settings')
+              ? 'text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          ⚙
+        </Link>
         <Profile auth={auth} onSignedOut={() => setAuth((a) => (a ? { ...a, user: null } : a))} />
       </div>
     </header>

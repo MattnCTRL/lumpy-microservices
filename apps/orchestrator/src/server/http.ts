@@ -9,12 +9,14 @@ import { logger, loggerOptions } from '../logger.js';
 import type { ModuleRegistry } from '../modules/registry.js';
 import type { SessionManager } from '../sessions/manager.js';
 import * as tmux from '../sessions/tmux.js';
+import type { SettingsStore } from '../settings/store.js';
 import { VERSION } from '../version.js';
 
 export interface AppDependencies {
   sessions: SessionManager;
   registry: ModuleRegistry;
   bus: EventBus;
+  settings: SettingsStore;
 }
 
 export async function createApp(deps: AppDependencies): Promise<FastifyInstance> {
@@ -46,6 +48,7 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
     config,
     sessions: deps.sessions,
     bus: deps.bus,
+    settings: deps.settings,
   });
 
   return app;

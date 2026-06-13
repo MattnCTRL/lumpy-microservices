@@ -12,6 +12,8 @@ import { SessionManager } from './sessions/manager.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
 import { createApp } from './server/http.js';
+import { settingsModule } from './settings/module.js';
+import { SettingsStore } from './settings/store.js';
 import { Store } from './store/sqlite.js';
 
 async function main(): Promise<void> {
@@ -21,6 +23,10 @@ async function main(): Promise<void> {
 
   const store = new Store(config.dataDir);
   const bus = new EventBus();
+  const settingsStore = new SettingsStore(config.dataDir, {
+    remediationMode: config.remediationMode,
+    remediationAutoSeverities: config.remediationAutoSeverities,
+  });
 
   let runAs = null;
   if (config.sessionUser) {
@@ -40,12 +46,13 @@ async function main(): Promise<void> {
 
   const registry = new ModuleRegistry()
     .add(authModule)
+    .add(settingsModule)
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)
     .add(remediationModule)
     .add(notifyModule);
-  const app = await createApp({ sessions, registry, bus });
+  const app = await createApp({ sessions, registry, bus, settings: settingsStore });
 
   await app.listen({ host: config.host, port: config.port });
 
