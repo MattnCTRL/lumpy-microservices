@@ -109,21 +109,26 @@ export class SessionManager {
       const id = this.idFromTmuxName(name);
       if (this.brokers.has(id)) continue;
 
-      if (!this.store.getSession(id)) {
-        this.store.createSession({
-          id,
-          name: `recovered ${id}`,
-          workspace: '',
-          command: '',
-          tags: ['recovered'],
-          createdAt: new Date().toISOString(),
-          lastActivityAt: null,
-        });
-      }
+      try {
+        if (!this.store.getSession(id)) {
+          this.store.createSession({
+            id,
+            name: `recovered ${id}`,
+            workspace: '',
+            command: '',
+            tags: ['recovered'],
+            createdAt: new Date().toISOString(),
+            lastActivityAt: null,
+          });
+        }
 
-      const broker = this.attachBroker(id);
-      broker.prime(await tmux.capturePane(name));
-      logger.info({ id }, 'session recovered');
+        const broker = this.attachBroker(id);
+        broker.prime(await tmux.capturePane(name));
+        logger.info({ id }, 'session recovered');
+      } catch (error) {
+        // One unrecoverable session must not abort recovery of the rest.
+        logger.error({ id, error }, 'failed to recover session');
+      }
     }
   }
 

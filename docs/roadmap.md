@@ -25,7 +25,8 @@ Create, attach, stream, and control `tmux`-backed Claude Code sessions.
 - [x] Event spine (`EventBus`) + `/ws/sessions` live event stream
 - [x] Activity detection (working / awaiting_permission / idle) with live badges
 - [x] Mobile quick-keys to answer prompts by thumb
-- [ ] Session recovery on orchestrator restart (wired; needs hardening)
+- [x] Session recovery on orchestrator restart (hardened; integration-tested)
+- [x] Tests: activity detection (unit) + restart recovery (integration)
 - [ ] Permission-prompt → push notification → approve/deny relay (needs a
       notification provider — see `.notes/TODO.md`)
 

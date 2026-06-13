@@ -64,10 +64,25 @@ To confirm the session pipeline works independently of Claude Code, create a
 session with the command set to `bash`. You should get an interactive shell in
 the chosen workspace, streamed to the browser.
 
+## Testing
+
+Tests use Node's built-in test runner (via `tsx`), so there are no extra
+dependencies:
+
+```bash
+npm test              # run every workspace's tests
+npm test -w @lumpy/orchestrator
+```
+
+Pure-logic tests (e.g. activity detection) run anywhere. Some tests are
+integration tests that spawn real `tmux` sessions; they skip automatically when
+`tmux` is not installed (e.g. in CI without it).
+
 ## Useful checks
 
 ```bash
 npm run typecheck     # type-check every workspace
+npm test              # run all tests
 npm run format:check  # verify formatting
 tmux ls               # list live sessions (look for the lumpy- prefix)
 ```
