@@ -1,12 +1,15 @@
 import type {
   Alert,
   AuthState,
+  CreateProjectInput,
   CreateServerInput,
   CreateSessionInput,
   FleetMounts,
   FleetNodeKind,
   HealthResponse,
+  KnowledgeBase,
   Playbook,
+  Project,
   Server,
   ServerDetail,
   Session,
@@ -14,6 +17,7 @@ import type {
   SettingsResponse,
   TailnetDevice,
   UpdateConnectorsInput,
+  UpdateProjectInput,
 } from '@lumpy/shared';
 
 export interface ModuleInfo {
@@ -101,6 +105,23 @@ export const api = {
   getSettings: () => req('/api/settings').then(parse<SettingsResponse>),
   updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
+
+  listProjects: () => req('/api/projects').then(parse<Project[]>),
+  getProject: (id: string) => req(`/api/projects/${id}`).then(parse<Project>),
+  createProject: (input: CreateProjectInput) =>
+    send('/api/projects', 'POST', input).then(parse<Project>),
+  updateProject: (id: string, patch: UpdateProjectInput) =>
+    send(`/api/projects/${id}`, 'PATCH', patch).then(parse<Project>),
+  deleteProject: (id: string) => send(`/api/projects/${id}`, 'DELETE'),
+  getKnowledge: (id: string) =>
+    req(`/api/projects/${id}/knowledge`).then(parse<KnowledgeBase>),
+  putKnowledge: (id: string, claudeMd: string) =>
+    send(`/api/projects/${id}/knowledge`, 'PUT', { claudeMd }).then(parse<KnowledgeBase>),
+  deriveKnowledge: (id: string) =>
+    send(`/api/projects/${id}/derive`, 'POST').then(parse<{ sessionId: string }>),
+  approveKnowledge: (id: string) =>
+    send(`/api/projects/${id}/knowledge/approve`, 'POST').then(parse<KnowledgeBase>),
+  discardKnowledge: (id: string) => send(`/api/projects/${id}/knowledge/discard`, 'POST'),
 
   getConnectors: (id: string) =>
     req(`/api/sessions/${id}/connectors`).then(parse<SessionConnectorsView>),

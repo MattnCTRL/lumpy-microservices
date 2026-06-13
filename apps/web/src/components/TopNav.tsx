@@ -7,6 +7,7 @@ import type { AuthState, HealthResponse } from '@lumpy/shared';
 import { api } from '@/lib/api';
 
 const TABS = [
+  { href: '/projects', label: 'Projects' },
   { href: '/sessions', label: 'Sessions' },
   { href: '/fleet', label: 'Fleet' },
   { href: '/alerts', label: 'Alerts' },
