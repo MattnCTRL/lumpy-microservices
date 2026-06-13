@@ -11,8 +11,14 @@ Open a running session and click **🔌 Connectors**.
 
 - **MCP servers (plugins).** Written to `<workspace>/.mcp.json`, which Claude
   Code loads automatically. One-click presets cover Supabase, GitHub, Postgres,
-  the filesystem (stdio servers via `npx`), and Vercel (hosted HTTP MCP). You can
-  remove any of them.
+  the filesystem (stdio servers via `npx`), Vercel (hosted HTTP MCP), and
+  **TensorGarden** (the portal's built-in MCP at `https://tensorgarden.ai/api/mcp`,
+  authed with a `tg_live_…` API key). You can remove any of them.
+- **Custom connectors.** The **+ Custom** button adds any MCP/API connection:
+  an **HTTP/API** server (URL + optional Bearer token — the token is stored as an
+  encrypted env var and referenced from the auth header) or a **local stdio**
+  server (a `command` line). This is how to wire up any portal that exposes an
+  MCP endpoint, like TensorGarden's.
 - **Environment / secrets.** Key/value pairs (e.g. `SUPABASE_ACCESS_TOKEN`,
   `DATABASE_URL`). Values are **encrypted at rest** (AES-256-GCM, like SSH creds)
   and **injected into the session's environment at launch** via tmux — they never

@@ -61,6 +61,18 @@ const PRESETS: Preset[] = [
     envKey: null,
     note: 'exposes the project directory',
   },
+  {
+    key: 'tensorgarden',
+    label: 'TensorGarden',
+    name: 'tensorgarden',
+    def: {
+      type: 'http',
+      url: 'https://tensorgarden.ai/api/mcp',
+      headers: { Authorization: 'Bearer ${TENSORGARDEN_API_KEY}' },
+    },
+    envKey: 'TENSORGARDEN_API_KEY',
+    note: 'portal MCP — create an API key (tg_live_…) in the TensorGarden portal',
+  },
 ];
 
 function describe(def: McpServerDef): string {
@@ -86,6 +98,14 @@ export function ConnectorsDialog({
   const [removeEnv, setRemoveEnv] = useState<string[]>([]); // existing keys to drop
   const [newKey, setNewKey] = useState('');
   const [newVal, setNewVal] = useState('');
+
+  // Custom connector form.
+  const [showCustom, setShowCustom] = useState(false);
+  const [cName, setCName] = useState('');
+  const [cType, setCType] = useState<'http' | 'stdio'>('http');
+  const [cUrl, setCUrl] = useState('');
+  const [cAuth, setCAuth] = useState(''); // bearer token or full header value
+  const [cCmd, setCCmd] = useState('');
 
   useEffect(() => {
     api
@@ -113,6 +133,32 @@ export function ConnectorsDialog({
       delete next[name];
       return next;
     });
+  };
+
+  const addCustom = () => {
+    const name = cName.trim();
+    if (!name) return;
+    let def: McpServerDef;
+    if (cType === 'http') {
+      if (!cUrl.trim()) return;
+      def = { type: 'http', url: cUrl.trim() };
+      if (cAuth.trim()) {
+        // Store the secret as an env var and reference it from the header.
+        const key = `${name.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_TOKEN`;
+        def.headers = { Authorization: `Bearer \${${key}}` };
+        setSetEnv((prev) => ({ ...prev, [key]: cAuth.trim() }));
+      }
+    } else {
+      if (!cCmd.trim()) return;
+      const [command, ...args] = cCmd.trim().split(/\s+/);
+      def = { command, args };
+    }
+    setMcpServers((prev) => ({ ...prev, [name]: def }));
+    setShowCustom(false);
+    setCName('');
+    setCUrl('');
+    setCAuth('');
+    setCCmd('');
   };
 
   const addEnv = () => {
@@ -189,7 +235,68 @@ export function ConnectorsDialog({
                     + {p.label}
                   </button>
                 ))}
+                <button
+                  onClick={() => setShowCustom((s) => !s)}
+                  className={`rounded border px-2.5 py-1 text-xs ${
+                    showCustom
+                      ? 'border-neutral-500 bg-neutral-800 text-neutral-100'
+                      : 'border-dashed border-neutral-600 text-neutral-300 hover:bg-neutral-800'
+                  }`}
+                >
+                  + Custom
+                </button>
               </div>
+
+              {showCustom && (
+                <div className="mb-2 space-y-2 rounded-md border border-neutral-800 bg-neutral-900/40 p-3">
+                  <div className="flex gap-2">
+                    <input
+                      value={cName}
+                      onChange={(e) => setCName(e.target.value)}
+                      placeholder="name (e.g. my-portal)"
+                      className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+                    />
+                    <select
+                      value={cType}
+                      onChange={(e) => setCType(e.target.value as 'http' | 'stdio')}
+                      className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-200"
+                    >
+                      <option value="http">HTTP / API</option>
+                      <option value="stdio">Local (stdio)</option>
+                    </select>
+                  </div>
+                  {cType === 'http' ? (
+                    <>
+                      <input
+                        value={cUrl}
+                        onChange={(e) => setCUrl(e.target.value)}
+                        placeholder="https://your-portal.com/api/mcp"
+                        className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+                      />
+                      <input
+                        value={cAuth}
+                        onChange={(e) => setCAuth(e.target.value)}
+                        type="password"
+                        placeholder="Bearer token (optional — stored encrypted)"
+                        className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+                      />
+                    </>
+                  ) : (
+                    <input
+                      value={cCmd}
+                      onChange={(e) => setCCmd(e.target.value)}
+                      placeholder="command, e.g. npx -y @scope/mcp-server"
+                      className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 font-mono text-xs text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+                    />
+                  )}
+                  <button
+                    onClick={addCustom}
+                    className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
+                  >
+                    Add connector
+                  </button>
+                </div>
+              )}
               {Object.keys(mcpServers).length === 0 ? (
                 <p className="text-xs text-neutral-600">None yet — add one above.</p>
               ) : (
