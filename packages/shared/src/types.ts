@@ -31,6 +31,8 @@ export interface Session {
   tags: string[];
   status: SessionStatus;
   activity: SessionActivity;
+  /** The project this session belongs to, if any. */
+  projectId: string | null;
   /** The current prompt when awaiting_permission, else null. Best-effort. */
   prompt: SessionPrompt | null;
   /** When true, Claude runs with permissions auto-approved (autonomous). */
@@ -50,6 +52,58 @@ export interface CreateSessionInput {
   autonomous?: boolean;
   /** An initial task to start the session working on immediately. */
   task?: string;
+  /** Launch the session inside this project (uses its workspace). */
+  projectId?: string;
+}
+
+// --- Projects (governed workspaces with a knowledge base) ----------------
+
+/** Where a project's knowledge base is derived from — the full picture. */
+export interface ProjectSources {
+  /** Git repo (url or path) to ingest. */
+  repo: string | null;
+  /** Fleet node id whose local files to read over SSHFS (this Mac, Atlas, …). */
+  machineId: string | null;
+  /** Paths on that machine to ingest. */
+  sourcePaths: string[];
+  /** Also review connected data sources (Supabase, TensorGarden, …). */
+  useConnectors: boolean;
+}
+
+/**
+ * A first-class project: a governed workspace on the box. Its operating manual
+ * (CLAUDE.md + .lumpy/knowledge) governs every Claude session launched in it,
+ * and is derived from the project's cumulative sources.
+ */
+export interface Project {
+  id: string;
+  name: string;
+  slug: string;
+  workspace: string;
+  description: string | null;
+  sources: ProjectSources;
+  createdAt: string;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  workspace?: string;
+  description?: string;
+  sources?: Partial<ProjectSources>;
+}
+
+export interface UpdateProjectInput {
+  name?: string;
+  description?: string | null;
+  sources?: Partial<ProjectSources>;
+}
+
+/** A project's operating manual: the governing CLAUDE.md, supporting docs, and any pending draft. */
+export interface KnowledgeBase {
+  claudeMd: string;
+  docs: { name: string; content: string }[];
+  /** A librarian-proposed manual awaiting approval, or null. */
+  draft: string | null;
 }
 
 // --- Session connectors (per-project data sources) ----------------------

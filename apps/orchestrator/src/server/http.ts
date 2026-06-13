@@ -20,6 +20,7 @@ import type { ModuleRegistry } from '../modules/registry.js';
 import type { SessionManager } from '../sessions/manager.js';
 import * as tmux from '../sessions/tmux.js';
 import type { SettingsStore } from '../settings/store.js';
+import type { Store } from '../store/sqlite.js';
 import { VERSION } from '../version.js';
 
 export interface AppDependencies {
@@ -27,6 +28,7 @@ export interface AppDependencies {
   registry: ModuleRegistry;
   bus: EventBus;
   settings: SettingsStore;
+  store: Store;
 }
 
 export async function createApp(deps: AppDependencies): Promise<FastifyInstance> {
@@ -122,6 +124,7 @@ echo "Lumpy: this machine now allows the orchestrator to mount its files."
     sessions: deps.sessions,
     bus: deps.bus,
     settings: deps.settings,
+    store: deps.store,
   });
 
   return app;

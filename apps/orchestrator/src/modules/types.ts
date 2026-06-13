@@ -4,6 +4,7 @@ import type { config } from '../config.js';
 import type { EventBus } from '../events/bus.js';
 import type { SessionManager } from '../sessions/manager.js';
 import type { SettingsStore } from '../settings/store.js';
+import type { Store } from '../store/sqlite.js';
 
 /**
  * Services exposed to every module at registration time. This is the seam
@@ -17,6 +18,7 @@ export interface ModuleContext {
   sessions: SessionManager;
   bus: EventBus;
   settings: SettingsStore;
+  store: Store;
 }
 
 /**

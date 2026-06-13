@@ -12,6 +12,7 @@ const createSchema = z.object({
   tags: z.array(z.string()).optional(),
   autonomous: z.boolean().optional(),
   task: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 const mcpServerSchema = z.object({
@@ -49,14 +50,25 @@ function registerRest(ctx: ModuleContext): void {
     }
 
     const input = parsed.data;
+
+    // A session can belong to a project, in which case it runs in the project's
+    // governed workspace (inheriting its CLAUDE.md operating manual).
+    let workspace = input.workspace?.trim() ? resolveWorkspace(input.workspace) : undefined;
+    if (input.projectId) {
+      const project = ctx.store.getProject(input.projectId);
+      if (!project) return reply.status(400).send({ error: 'project not found' });
+      workspace = project.workspace;
+    }
+
     const session = await sessions.create({
       // Blank workspace → the manager isolates the session in its own directory.
-      workspace: input.workspace?.trim() ? resolveWorkspace(input.workspace) : undefined,
+      workspace,
       name: input.name,
       command: input.command || config.defaultCommand,
       tags: input.tags ?? [],
       autonomous: input.autonomous ?? true,
       task: input.task?.trim() || null,
+      projectId: input.projectId ?? null,
     });
     return reply.status(201).send(session);
   });

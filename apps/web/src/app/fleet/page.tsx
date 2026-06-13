@@ -723,8 +723,8 @@ function AddServerDialog({
                 ? 'Connecting…'
                 : 'Adding…'
               : mode === 'ssh'
-                ? 'Connect & add'
-                : 'Add server'}
+                ? `Connect & add ${kind}`
+                : `Add ${kind}`}
           </button>
         </div>
       </form>

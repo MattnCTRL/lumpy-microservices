@@ -49,6 +49,8 @@ export interface CreateSessionArgs {
   tags: string[];
   autonomous: boolean;
   task: string | null;
+  /** The project this session belongs to, if any. */
+  projectId?: string | null;
 }
 
 export class SessionManager {
@@ -115,6 +117,7 @@ export class SessionManager {
       tags: args.tags,
       autonomous: args.autonomous,
       task: args.task,
+      projectId: args.projectId ?? null,
       createdAt: new Date().toISOString(),
       lastActivityAt: null,
     };
@@ -307,6 +310,7 @@ export class SessionManager {
             tags: ['recovered'],
             autonomous: false,
             task: null,
+            projectId: null,
             createdAt: new Date().toISOString(),
             lastActivityAt: null,
           });
@@ -399,6 +403,7 @@ export class SessionManager {
       tags: record.tags,
       status: live ? 'running' : 'stopped',
       activity: live ? (this.activities.get(record.id) ?? 'unknown') : 'unknown',
+      projectId: record.projectId,
       prompt: live ? (this.prompts.get(record.id) ?? null) : null,
       autonomous: record.autonomous,
       task: record.task,
