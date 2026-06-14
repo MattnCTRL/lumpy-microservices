@@ -245,15 +245,36 @@ function HostedServicesSection({ services }: { services: ServerHostedService[] }
                 </a>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2 text-xs text-neutral-500">
-              {svc.statusCode != null && <span className="font-mono">{svc.statusCode}</span>}
-              <span className="truncate">{svc.projectName}</span>
+            <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs text-neutral-500">
+              <div className="flex items-center gap-2">
+                {svc.uptime24h != null && (
+                  <span title="uptime, last 24h">{formatUptimePct(svc.uptime24h)}</span>
+                )}
+                {svc.latencyMs != null && <span title="last response time">{svc.latencyMs}ms</span>}
+                {svc.statusCode != null && <span className="font-mono">{svc.statusCode}</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                {svc.certDaysLeft != null && (
+                  <span
+                    className={svc.certDaysLeft <= 14 ? 'text-amber-400' : ''}
+                    title="TLS certificate expiry"
+                  >
+                    🔒 {svc.certDaysLeft}d
+                  </span>
+                )}
+                <span className="truncate text-neutral-600">{svc.projectName}</span>
+              </div>
             </div>
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+function formatUptimePct(u: number): string {
+  const pct = u * 100;
+  return `${pct >= 99.995 ? '100' : pct.toFixed(2)}%`;
 }
 
 function FleetGroup({

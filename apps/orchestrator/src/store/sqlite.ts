@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import type {
+  HostedIncident,
   HostedService,
   McpServerDef,
   Project,
@@ -238,6 +240,20 @@ export class Store {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+    `);
+    // Uptime tracking: one row per continuous down period of a hosted service.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS hosted_incidents (
+        id TEXT PRIMARY KEY,
+        url TEXT NOT NULL,
+        name TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        project_name TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        resolved_at TEXT,
+        last_status_code INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_hosted_incidents_url ON hosted_incidents(url);
     `);
   }
 
@@ -506,5 +522,104 @@ export class Store {
   deleteSession(id: string): void {
     this.db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
     this.db.prepare('DELETE FROM session_connectors WHERE session_id = ?').run(id);
+  }
+
+  // --- Hosted-service uptime incidents ---
+
+  /** Open a down incident for a URL if none is open. Returns true if one was created. */
+  openHostedIncident(
+    svc: { url: string; name: string; projectId: string; projectName: string; statusCode: number | null },
+    at: string,
+  ): boolean {
+    const open = this.db
+      .prepare('SELECT id FROM hosted_incidents WHERE url = ? AND resolved_at IS NULL LIMIT 1')
+      .get(svc.url) as { id: string } | undefined;
+    if (open) {
+      this.db
+        .prepare('UPDATE hosted_incidents SET last_status_code = ? WHERE id = ?')
+        .run(svc.statusCode, open.id);
+      return false;
+    }
+    this.db
+      .prepare(
+        `INSERT INTO hosted_incidents (id, url, name, project_id, project_name, started_at, resolved_at, last_status_code)
+         VALUES (@id, @url, @name, @projectId, @projectName, @startedAt, NULL, @statusCode)`,
+      )
+      .run({
+        id: randomUUID(),
+        url: svc.url,
+        name: svc.name,
+        projectId: svc.projectId,
+        projectName: svc.projectName,
+        startedAt: at,
+        statusCode: svc.statusCode,
+      });
+    return true;
+  }
+
+  /** Resolve the open incident for a URL. Returns true if one was resolved. */
+  resolveHostedIncident(url: string, at: string): boolean {
+    return (
+      this.db
+        .prepare('UPDATE hosted_incidents SET resolved_at = ? WHERE url = ? AND resolved_at IS NULL')
+        .run(at, url).changes > 0
+    );
+  }
+
+  /** Uptime fraction (0–1) for a URL over the window [sinceMs, nowMs]. */
+  hostedUptime(url: string, sinceMs: number, nowMs: number): number {
+    const windowMs = Math.max(1, nowMs - sinceMs);
+    const rows = this.db
+      .prepare('SELECT started_at, resolved_at FROM hosted_incidents WHERE url = ?')
+      .all(url) as { started_at: string; resolved_at: string | null }[];
+    let downMs = 0;
+    for (const row of rows) {
+      const start = Date.parse(row.started_at);
+      const end = row.resolved_at ? Date.parse(row.resolved_at) : nowMs;
+      const overlapStart = Math.max(start, sinceMs);
+      const overlapEnd = Math.min(end, nowMs);
+      if (overlapEnd > overlapStart) downMs += overlapEnd - overlapStart;
+    }
+    return Math.max(0, Math.min(1, 1 - downMs / windowMs));
+  }
+
+  /** When the up/down status of a URL last changed (most recent incident boundary). */
+  hostedLastChange(url: string): string | null {
+    const row = this.db
+      .prepare(
+        `SELECT MAX(t) AS last FROM (
+           SELECT started_at AS t FROM hosted_incidents WHERE url = @url
+           UNION ALL
+           SELECT resolved_at AS t FROM hosted_incidents WHERE url = @url AND resolved_at IS NOT NULL
+         )`,
+      )
+      .get({ url }) as { last: string | null } | undefined;
+    return row?.last ?? null;
+  }
+
+  /** Recent incidents across all hosted services (newest first). */
+  listHostedIncidents(limit = 50): HostedIncident[] {
+    const rows = this.db
+      .prepare('SELECT * FROM hosted_incidents ORDER BY started_at DESC LIMIT ?')
+      .all(limit) as {
+      id: string;
+      url: string;
+      name: string;
+      project_id: string;
+      project_name: string;
+      started_at: string;
+      resolved_at: string | null;
+      last_status_code: number | null;
+    }[];
+    return rows.map((r) => ({
+      id: r.id,
+      url: r.url,
+      name: r.name,
+      projectId: r.project_id,
+      projectName: r.project_name,
+      startedAt: r.started_at,
+      resolvedAt: r.resolved_at,
+      lastStatusCode: r.last_status_code,
+    }));
   }
 }

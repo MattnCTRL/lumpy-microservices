@@ -323,6 +323,26 @@ export interface ServerHostedService {
   status: HostedServiceStatus;
   statusCode: number | null;
   checkedAt: string | null;
+  /** Response latency of the last probe, in ms. */
+  latencyMs: number | null;
+  /** Uptime fraction over the last 24h (0–1), from recorded incidents. */
+  uptime24h: number | null;
+  /** Days until the TLS certificate expires (https only). */
+  certDaysLeft: number | null;
+  /** When the up/down status last changed. */
+  lastChangeAt: string | null;
+}
+
+/** A continuous down period for a hosted service. */
+export interface HostedIncident {
+  id: string;
+  url: string;
+  name: string;
+  projectId: string;
+  projectName: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  lastStatusCode: number | null;
 }
 
 export interface ServerMetrics {
@@ -474,5 +494,22 @@ export type LumpyEvent =
       sessionId: string;
       serverName: string;
       mode: 'investigate' | 'auto';
+      at: string;
+    }
+  | {
+      type: 'hosted.status';
+      name: string;
+      url: string;
+      projectName: string;
+      status: HostedServiceStatus;
+      statusCode: number | null;
+      at: string;
+    }
+  | {
+      type: 'hosted.cert';
+      name: string;
+      url: string;
+      projectName: string;
+      daysLeft: number;
       at: string;
     };

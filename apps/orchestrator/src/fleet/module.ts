@@ -56,6 +56,9 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedSer
 
   app.get('/api/fleet/servers', async () => fleet.list().map(withHosted));
 
+  // Recent hosted-service uptime incidents (newest first).
+  app.get('/api/fleet/incidents', async () => ctx.store.listHostedIncidents(50));
+
   // SSHFS mount state per machine (mounted on the orchestrator + responsive).
   app.get('/api/fleet/mounts', async (): Promise<FleetMounts> => {
     const machines = fleet.list().filter((s) => s.kind === 'machine');
@@ -214,7 +217,7 @@ export const fleetModule: LumpyModule = {
   register(ctx) {
     const fleet = new FleetManager(new FleetStore(ctx.config.dataDir), ctx.bus);
     new SshMonitor(fleet);
-    const hosted = new HostedServicesMonitor(ctx.store);
+    const hosted = new HostedServicesMonitor(ctx.store, ctx.bus);
     hosted.start();
     registerRest(ctx, fleet, hosted);
     registerEventsWebSocket(ctx);

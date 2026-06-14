@@ -97,6 +97,29 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
+  if (event.type === 'hosted.status') {
+    const down = event.status === 'down';
+    return {
+      title: `${event.name} — ${down ? 'DOWN' : 'recovered'}`,
+      message: down
+        ? `${event.url} is not responding${event.statusCode ? ` (HTTP ${event.statusCode})` : ''}.`
+        : `${event.url} is back up.`,
+      priority: down ? 5 : 2,
+      tags: down ? ['rotating_light'] : ['white_check_mark'],
+      click: publicUrl ? `${publicUrl}/fleet` : undefined,
+    };
+  }
+
+  if (event.type === 'hosted.cert') {
+    return {
+      title: `${event.name} — TLS cert expiring`,
+      message: `Certificate for ${event.url} expires in ${event.daysLeft} day${event.daysLeft === 1 ? '' : 's'}.`,
+      priority: 4,
+      tags: ['warning'],
+      click: publicUrl ? `${publicUrl}/fleet` : undefined,
+    };
+  }
+
   return null;
 }
 
