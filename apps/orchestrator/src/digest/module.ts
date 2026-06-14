@@ -26,9 +26,10 @@ export const digestModule: LumpyModule = {
   register(ctx: ModuleContext) {
     const { app, store, bus } = ctx;
 
+    const base = config.publicUrl || `http://${config.host}:${config.port}`;
     const apiGet = async <T>(path: string): Promise<T | null> => {
       try {
-        const res = await fetch(`http://127.0.0.1:${config.port}${path}`, {
+        const res = await fetch(`${base}${path}`, {
           headers: { 'x-lumpy-admin-token': config.adminToken },
         });
         return res.ok ? ((await res.json()) as T) : null;
