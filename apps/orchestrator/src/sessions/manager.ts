@@ -98,7 +98,7 @@ export class SessionManager {
     // Without an explicit workspace, isolate each session in its own directory
     // so two concurrent Claude sessions never share project state via the cwd.
     const workspace = args.workspace ?? join(config.workspaceRoot, `${slug(args.name)}-${id}`);
-    this.ensureWorkspace(workspace, !args.workspace);
+    this.ensureWorkspace(workspace);
 
     // Persist any launch env as connectors so it is re-injected on every relaunch.
     if (args.env && Object.keys(args.env).length > 0) {
@@ -196,14 +196,15 @@ export class SessionManager {
   }
 
   /**
-   * Make sure a session's working directory exists. Auto-created (isolated)
-   * directories are chowned to the session's run-as user so the non-root
-   * session can write to them; explicit directories are left as-is.
+   * Make sure a session's working directory exists. When WE create it (it didn't
+   * exist), chown it to the run-as user so the non-root session can write into
+   * it — including explicit workspaces (services, new projects), not just
+   * auto-isolated ones. Pre-existing directories are left untouched.
    */
-  private ensureWorkspace(dir: string, created: boolean): void {
+  private ensureWorkspace(dir: string): void {
     if (existsSync(dir)) return;
     mkdirSync(dir, { recursive: true });
-    if (created && this.runAs) {
+    if (this.runAs) {
       try {
         chownSync(dir, this.runAs.uid, this.runAs.gid);
       } catch (error) {
