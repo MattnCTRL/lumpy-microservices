@@ -164,6 +164,36 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedSer
     }
     return reply.status(204).send();
   });
+
+  // Attach SSH monitoring to an existing server (e.g. one added manually).
+  // The connection is verified before the credentials are stored.
+  app.post('/api/fleet/servers/:id/ssh', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    if (!fleet.get(id)) return reply.status(404).send({ error: 'server not found' });
+    const parsed = sshSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
+    }
+    const ssh: SshTarget = {
+      host: parsed.data.host,
+      port: parsed.data.port ?? 22,
+      user: parsed.data.user,
+      privateKey: parsed.data.privateKey,
+      password: parsed.data.password,
+    };
+    let firstSample: MetricsReport;
+    try {
+      firstSample = await collectOverSsh(ssh);
+    } catch (error) {
+      return reply.status(400).send({
+        error: `SSH connection failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      });
+    }
+    fleet.configureSsh(id, ssh);
+    fleet.ingest(id, firstSample);
+    const updated = fleet.get(id);
+    return updated ? withHosted(updated) : updated;
+  });
 }
 
 function registerEventsWebSocket(ctx: ModuleContext): void {

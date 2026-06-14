@@ -170,6 +170,25 @@ export class FleetStore {
     return this.db.prepare('UPDATE servers SET kind = ? WHERE id = ?').run(kind, id).changes > 0;
   }
 
+  /** Attach or clear SSH credentials for agentless monitoring (encrypted at rest). */
+  setSsh(id: string, creds: SshCredentials | null): boolean {
+    return (
+      this.db
+        .prepare(
+          `UPDATE servers SET ssh_host=@host, ssh_port=@port, ssh_user=@user,
+             ssh_private_key=@key, ssh_password=@password WHERE id=@id`,
+        )
+        .run({
+          id,
+          host: creds?.host ?? null,
+          port: creds?.port ?? null,
+          user: creds?.user ?? null,
+          key: creds?.privateKey ? encryptSecret(creds.privateKey, this.key) : null,
+          password: creds?.password ? encryptSecret(creds.password, this.key) : null,
+        }).changes > 0
+    );
+  }
+
   deleteServer(id: string): void {
     this.db.prepare('DELETE FROM servers WHERE id = ?').run(id);
   }

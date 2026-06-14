@@ -367,6 +367,7 @@ function ServerDetailPanel({
   onChanged: () => void;
   onDelete: () => void;
 }) {
+  const [sshOpen, setSshOpen] = useState(false);
   const rename = async () => {
     const next = window.prompt('Rename', server.name);
     if (next && next.trim() && next.trim() !== server.name) {
@@ -416,6 +417,15 @@ function ServerDetailPanel({
             <option value="machine">machine</option>
             <option value="remote">remote</option>
           </select>
+          {server.kind !== 'remote' && server.monitoring !== 'ssh' && (
+            <button
+              onClick={() => setSshOpen(true)}
+              className="text-xs text-sky-500 hover:text-sky-300"
+              title="Monitor this server agentlessly over SSH"
+            >
+              set up SSH
+            </button>
+          )}
           <button onClick={rename} className="text-xs text-neutral-500 hover:text-neutral-200">
             rename
           </button>
@@ -466,6 +476,139 @@ function ServerDetailPanel({
       {server.hostedServices.length > 0 && (
         <HostedServicesSection services={server.hostedServices} />
       )}
+
+      {sshOpen && (
+        <SshSetupDialog
+          server={server}
+          onClose={() => setSshOpen(false)}
+          onDone={() => {
+            setSshOpen(false);
+            onChanged();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SshSetupDialog({
+  server,
+  onClose,
+  onDone,
+}: {
+  server: Server;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [host, setHost] = useState(server.address);
+  const [port, setPort] = useState('22');
+  const [user, setUser] = useState('root');
+  const [authType, setAuthType] = useState<'key' | 'password'>('key');
+  const [secret, setSecret] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.configureServerSsh(server.id, {
+        host: host.trim(),
+        port: Number(port) || 22,
+        user: user.trim(),
+        privateKey: authType === 'key' ? secret : undefined,
+        password: authType === 'password' ? secret : undefined,
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to set up SSH');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
+      <form
+        onSubmit={submit}
+        className="my-8 w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+      >
+        <h2 className="text-base font-semibold text-neutral-100">SSH monitoring · {server.name}</h2>
+        <p className="mb-4 mt-1 text-xs text-neutral-500">
+          Lumpy connects over SSH and polls metrics — no agent to install. The connection is tested
+          before credentials are saved (encrypted at rest).
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <Field label="Host" hint="Tailscale IP or public address">
+              <input
+                required
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
+                className="input"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="Port">
+              <input value={port} onChange={(e) => setPort(e.target.value)} className="input w-20" />
+            </Field>
+          </div>
+          <Field label="SSH user">
+            <input required value={user} onChange={(e) => setUser(e.target.value)} className="input" />
+          </Field>
+          <Field label="Authentication">
+            <select
+              value={authType}
+              onChange={(e) => setAuthType(e.target.value as 'key' | 'password')}
+              className="input"
+            >
+              <option value="key">Private key</option>
+              <option value="password">Password</option>
+            </select>
+          </Field>
+          <Field
+            label={authType === 'key' ? 'Private key (PEM)' : 'Password'}
+            hint={authType === 'key' ? 'paste the contents of your private key' : undefined}
+          >
+            {authType === 'key' ? (
+              <textarea
+                required
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                className="input h-28 font-mono text-xs"
+              />
+            ) : (
+              <input
+                required
+                type="password"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                className="input"
+              />
+            )}
+          </Field>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || !host.trim() || !user.trim() || !secret.trim()}
+            className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
+          >
+            {submitting ? 'Connecting…' : 'Connect & monitor'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import type {
   Session,
   SessionConnectorsView,
   SettingsResponse,
+  SshConnectionInput,
   TailnetDevice,
   UpdateConnectorsInput,
   UpdateProjectInput,
@@ -97,6 +98,8 @@ export const api = {
     send(`/api/fleet/servers/${id}`, 'PATCH', { name }).then(parse<ServerDetail>),
   setServerKind: (id: string, kind: FleetNodeKind) =>
     send(`/api/fleet/servers/${id}`, 'PATCH', { kind }).then(parse<ServerDetail>),
+  configureServerSsh: (id: string, ssh: SshConnectionInput) =>
+    send(`/api/fleet/servers/${id}/ssh`, 'POST', ssh).then(parse<ServerDetail>),
   deleteServer: (id: string) => send(`/api/fleet/servers/${id}`, 'DELETE'),
 
   listAlerts: () => req('/api/alerts').then(parse<Alert[]>),

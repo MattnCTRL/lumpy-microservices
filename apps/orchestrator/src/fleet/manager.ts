@@ -79,6 +79,12 @@ export class FleetManager {
     return this.store.setKind(id, kind);
   }
 
+  /** Attach SSH credentials to an existing server so it's monitored agentlessly. */
+  configureSsh(id: string, creds: SshCredentials): boolean {
+    if (!this.store.getServer(id)) return false;
+    return this.store.setSsh(id, creds);
+  }
+
   list(): Server[] {
     return this.store.listServers().map((record) => this.toServer(record));
   }
