@@ -7,6 +7,7 @@ import type {
   FleetMounts,
   FleetNodeKind,
   HealthResponse,
+  HostedIncident,
   KnowledgeBase,
   Playbook,
   Project,
@@ -92,6 +93,7 @@ export const api = {
   sendInput: (id: string, data: string) => send(`/api/sessions/${id}/input`, 'POST', { data }),
 
   listServers: () => req('/api/fleet/servers').then(parse<Server[]>),
+  listIncidents: () => req('/api/fleet/incidents').then(parse<HostedIncident[]>),
   discoverDevices: () => req('/api/fleet/discover').then(parse<TailnetDevice[]>),
   getMounts: () => req('/api/fleet/mounts').then(parse<FleetMounts>),
   getServer: (id: string) => req(`/api/fleet/servers/${id}`).then(parse<ServerDetail>),

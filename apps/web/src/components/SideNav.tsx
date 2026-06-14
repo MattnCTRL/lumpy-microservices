@@ -7,6 +7,7 @@ import type { AuthState, HealthResponse } from '@lumpy/shared';
 import { api } from '@/lib/api';
 
 const NAV = [
+  { href: '/', label: 'Home', icon: '🏠' },
   { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/sessions', label: 'Sessions', icon: '⌨' },
   { href: '/services', label: 'Services', icon: '🧩' },
@@ -59,15 +60,19 @@ export function SideNav() {
                  border-t md:h-full md:w-48 md:flex-col md:border-r md:border-t-0
                  md:bg-transparent md:px-3 md:py-4"
     >
-      <div className="mb-6 hidden px-1 md:block">
+      <Link href="/" className="mb-6 hidden px-1 md:block">
         <div className="text-lg font-semibold tracking-tight text-neutral-100">Lumpy</div>
         <div className="text-xs text-neutral-500">Micro Services</div>
-      </div>
+      </Link>
 
       {/* Primary nav: row on mobile, column on desktop. */}
       <div className="flex flex-1 justify-around md:flex-col md:justify-start md:gap-1">
         {NAV.map((item) => (
-          <NavItem key={item.href} {...item} active={pathname.startsWith(item.href)} />
+          <NavItem
+            key={item.href}
+            {...item}
+            active={item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)}
+          />
         ))}
       </div>
 

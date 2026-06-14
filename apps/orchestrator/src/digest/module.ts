@@ -46,8 +46,8 @@ export const digestModule: LumpyModule = {
       const schedules = store.listSchedules();
       const incidents = store.listHostedIncidents(200);
 
-      // Fleet (servers + machines; remotes sleep, so they're excluded here).
-      const nodes = servers.filter((s) => s.kind !== 'remote');
+      // Cloud servers only — machines/remotes are personal devices that sleep.
+      const nodes = servers.filter((s) => s.kind === 'server');
       const offline = nodes.filter((s) => s.status === 'offline');
       const onlineCount = nodes.filter((s) => s.status === 'online').length;
 
@@ -75,7 +75,7 @@ export const digestModule: LumpyModule = {
         : null;
 
       const lines = [
-        `🖥 Fleet: ${onlineCount}/${nodes.length} online${
+        `🖥 Servers: ${onlineCount}/${nodes.length} online${
           offline.length ? ` · down: ${offline.map((s) => s.name).join(', ')}` : ''
         }`,
         `🌐 Services: ${upCount} up, ${down.length} down${
