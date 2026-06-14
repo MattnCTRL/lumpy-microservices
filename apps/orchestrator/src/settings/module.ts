@@ -3,9 +3,13 @@ import type { SettingsResponse } from '@lumpy/shared';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { VERSION } from '../version.js';
 
+const SUPABASE_PAT = 'supabase_pat';
+
 const patchSchema = z.object({
   remediationMode: z.enum(['off', 'investigate', 'auto']).optional(),
   remediationAutoSeverities: z.array(z.enum(['warning', 'critical'])).optional(),
+  /** Account-level Supabase Personal Access Token (sbp_…); empty string clears it. */
+  supabaseToken: z.string().optional(),
 });
 
 function view(ctx: ModuleContext): SettingsResponse {
@@ -14,6 +18,9 @@ function view(ctx: ModuleContext): SettingsResponse {
     remediation: {
       mode: current.remediationMode,
       autoSeverities: current.remediationAutoSeverities,
+    },
+    integrations: {
+      supabaseConfigured: ctx.store.hasSecret(SUPABASE_PAT),
     },
     system: {
       version: VERSION,
@@ -45,7 +52,11 @@ export const settingsModule: LumpyModule = {
           .status(400)
           .send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
       }
-      ctx.settings.update(parsed.data);
+      const { supabaseToken, ...settings } = parsed.data;
+      ctx.settings.update(settings);
+      if (supabaseToken !== undefined) {
+        ctx.store.setSecret(SUPABASE_PAT, supabaseToken.trim() || null);
+      }
       return view(ctx);
     });
   },

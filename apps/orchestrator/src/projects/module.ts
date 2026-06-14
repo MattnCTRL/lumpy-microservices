@@ -51,7 +51,7 @@ function slug(name: string): string {
 }
 
 const sourcesSchema = z.object({
-  repo: z.string().nullable().optional(),
+  repos: z.array(z.string()).optional(),
   machineId: z.string().nullable().optional(),
   sourcePaths: z.array(z.string()).optional(),
   useConnectors: z.boolean().optional(),
@@ -76,7 +76,7 @@ const updateSchema = z.object({
 
 function mergeSources(base: ProjectSources, patch?: z.infer<typeof sourcesSchema>): ProjectSources {
   return {
-    repo: patch?.repo !== undefined ? patch.repo : base.repo,
+    repos: patch?.repos ?? base.repos,
     machineId: patch?.machineId !== undefined ? patch.machineId : base.machineId,
     sourcePaths: patch?.sourcePaths ?? base.sourcePaths,
     useConnectors: patch?.useConnectors ?? base.useConnectors,
@@ -85,12 +85,18 @@ function mergeSources(base: ProjectSources, patch?: z.infer<typeof sourcesSchema
 }
 
 const EMPTY_SOURCES: ProjectSources = {
-  repo: null,
+  repos: [],
   machineId: null,
   sourcePaths: [],
   useConnectors: false,
   supabaseUrl: null,
 };
+
+/** A project has Supabase access if it has a URL and a token (account-level or per-project). */
+function projectHasSupabase(store: ModuleContext['store'], id: string, url: string | null): boolean {
+  if (!url) return false;
+  return store.getProjectSupabaseToken(id) !== null || store.hasSecret('supabase_pat');
+}
 
 /** Extract a Supabase project ref from a URL (https://<ref>.supabase.co) or a bare ref. */
 function supabaseRef(url: string): string | null {
@@ -187,7 +193,7 @@ export const projectsModule: LumpyModule = {
       };
       store.createProject(project);
       if (input.supabaseToken) store.setProjectSupabaseToken(id, input.supabaseToken.trim());
-      writeProjectMcp(project, Boolean(input.supabaseToken), runAs);
+      writeProjectMcp(project, projectHasSupabase(store, id, project.sources.supabaseUrl), runAs);
       logger.info({ id, workspace }, 'project created');
       return reply.status(201).send(store.getProject(id));
     });
@@ -212,7 +218,7 @@ export const projectsModule: LumpyModule = {
       }
       // Refresh the project's isolated .mcp.json from its (possibly new) Supabase config.
       const fresh = store.getProject(id);
-      if (fresh) writeProjectMcp(fresh, store.getProjectSupabaseToken(id) !== null, runAs);
+      if (fresh) writeProjectMcp(fresh, projectHasSupabase(store, id, fresh.sources.supabaseUrl), runAs);
       return fresh ?? updated;
     });
 
@@ -258,7 +264,7 @@ export const projectsModule: LumpyModule = {
       }
 
       // Ensure the project's isolated .mcp.json (its own DB, nothing else) is current.
-      writeProjectMcp(project, store.getProjectSupabaseToken(id) !== null, runAs);
+      writeProjectMcp(project, projectHasSupabase(store, id, project.sources.supabaseUrl), runAs);
 
       const session = await ctx.sessions.create({
         name: `Librarian: ${project.name}`,

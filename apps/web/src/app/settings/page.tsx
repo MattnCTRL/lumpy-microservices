@@ -46,7 +46,11 @@ export default function SettingsPage() {
       .catch(() => {});
   }, []);
 
-  const patch = async (p: { remediationMode?: string; remediationAutoSeverities?: string[] }) => {
+  const patch = async (p: {
+    remediationMode?: string;
+    remediationAutoSeverities?: string[];
+    supabaseToken?: string;
+  }) => {
     try {
       setSettings(await api.updateSettings(p));
     } catch (e) {
@@ -64,6 +68,20 @@ export default function SettingsPage() {
           auth={auth}
           onSignedOut={() => setAuth((a) => (a ? { ...a, user: null } : a))}
         />
+      </Section>
+
+      <Section
+        title="Integrations"
+        hint="Account-level credentials shared across projects (scoped to each project at launch)."
+      >
+        {!settings ? (
+          <Loading />
+        ) : (
+          <SupabaseSetting
+            configured={settings.integrations.supabaseConfigured}
+            onSave={(token) => patch({ supabaseToken: token })}
+          />
+        )}
       </Section>
 
       <Section title="Remediation" hint="What Lumpy does automatically when an alert fires.">
@@ -227,6 +245,48 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 
 function Loading() {
   return <p className="text-sm text-neutral-500">Loading…</p>;
+}
+
+function SupabaseSetting({
+  configured,
+  onSave,
+}: {
+  configured: boolean;
+  onSave: (token: string) => void;
+}) {
+  const [token, setToken] = useState('');
+  const [saved, setSaved] = useState(false);
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-neutral-300">Supabase Personal Access Token</p>
+      <div className="flex gap-2">
+        <input
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder={configured ? '•••••••• (stored)' : 'sbp_…'}
+          className="input flex-1"
+        />
+        <button
+          onClick={() => {
+            onSave(token.trim());
+            setToken('');
+            setSaved(true);
+            setTimeout(() => setSaved(false), 1500);
+          }}
+          disabled={!token.trim()}
+          className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-40"
+        >
+          {saved ? 'Saved ✓' : 'Save'}
+        </button>
+      </div>
+      <p className="text-xs text-neutral-500">
+        {configured ? 'Stored (encrypted). Enter a new one to replace it. ' : 'Not set. '}
+        Covers all your Supabase projects; each Lumpy project scopes to its own DB via its URL.
+        Create one at supabase.com/dashboard/account/tokens.
+      </p>
+    </div>
+  );
 }
 
 function AccountSettings({

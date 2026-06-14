@@ -106,7 +106,11 @@ export const api = {
   listModules: () => req('/api/modules').then(parse<ModuleInfo[]>),
   listPlaybooks: () => req('/api/playbooks').then(parse<Playbook[]>),
   getSettings: () => req('/api/settings').then(parse<SettingsResponse>),
-  updateSettings: (patch: { remediationMode?: string; remediationAutoSeverities?: string[] }) =>
+  updateSettings: (patch: {
+    remediationMode?: string;
+    remediationAutoSeverities?: string[];
+    supabaseToken?: string;
+  }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
 
   listProjects: () => req('/api/projects').then(parse<Project[]>),

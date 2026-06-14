@@ -63,6 +63,7 @@ interface ProjectRow {
   description: string | null;
   origin: string | null;
   repo: string | null;
+  repos: string | null;
   machine_id: string | null;
   source_paths: string;
   use_connectors: number;
@@ -72,6 +73,9 @@ interface ProjectRow {
 }
 
 function toProject(row: ProjectRow): Project {
+  const repos = row.repos ? (JSON.parse(row.repos) as string[]) : [];
+  // Back-fill from the old single-repo column for rows created before multi-repo.
+  if (repos.length === 0 && row.repo) repos.push(row.repo);
   return {
     id: row.id,
     name: row.name,
@@ -80,7 +84,7 @@ function toProject(row: ProjectRow): Project {
     description: row.description,
     origin: row.origin === 'import' ? 'import' : 'new',
     sources: {
-      repo: row.repo,
+      repos,
       machineId: row.machine_id,
       sourcePaths: JSON.parse(row.source_paths) as string[],
       useConnectors: row.use_connectors === 1,
@@ -168,6 +172,14 @@ export class Store {
         repo TEXT
       );
     `);
+    // Account-level encrypted secrets (e.g. the Supabase Personal Access Token
+    // shared across all projects — scoped per-project at launch via --project-ref).
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS secrets (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
     // First-class projects (governed workspaces with a knowledge base).
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
@@ -190,6 +202,7 @@ export class Store {
       "origin TEXT NOT NULL DEFAULT 'new'",
       'supabase_url TEXT',
       'supabase_token TEXT',
+      "repos TEXT NOT NULL DEFAULT '[]'",
     ]) {
       try {
         this.db.exec(`ALTER TABLE projects ADD COLUMN ${column}`);
@@ -295,9 +308,9 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO projects
-           (id, name, slug, workspace, description, origin, repo, machine_id, source_paths, use_connectors, supabase_url, created_at)
+           (id, name, slug, workspace, description, origin, repo, repos, machine_id, source_paths, use_connectors, supabase_url, created_at)
          VALUES
-           (@id, @name, @slug, @workspace, @description, @origin, @repo, @machine_id, @source_paths, @use_connectors, @supabase_url, @created_at)`,
+           (@id, @name, @slug, @workspace, @description, @origin, @repo, @repos, @machine_id, @source_paths, @use_connectors, @supabase_url, @created_at)`,
       )
       .run({
         id: project.id,
@@ -306,7 +319,8 @@ export class Store {
         workspace: project.workspace,
         description: project.description,
         origin: project.origin,
-        repo: project.sources.repo,
+        repo: project.sources.repos[0] ?? null,
+        repos: JSON.stringify(project.sources.repos),
         machine_id: project.sources.machineId,
         source_paths: JSON.stringify(project.sources.sourcePaths),
         use_connectors: project.sources.useConnectors ? 1 : 0,
@@ -327,6 +341,30 @@ export class Store {
       | { supabase_token: string | null }
       | undefined;
     return row?.supabase_token ? decryptSecret(row.supabase_token, this.key) : null;
+  }
+
+  /** Account-level secret accessors (AES-256-GCM at rest). */
+  setSecret(key: string, value: string | null): void {
+    if (value) {
+      this.db
+        .prepare(
+          'INSERT INTO secrets (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+        )
+        .run(key, encryptSecret(value, this.key));
+    } else {
+      this.db.prepare('DELETE FROM secrets WHERE key = ?').run(key);
+    }
+  }
+
+  getSecret(key: string): string | null {
+    const row = this.db.prepare('SELECT value FROM secrets WHERE key = ?').get(key) as
+      | { value: string }
+      | undefined;
+    return row ? decryptSecret(row.value, this.key) : null;
+  }
+
+  hasSecret(key: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM secrets WHERE key = ?').get(key));
   }
 
   getProject(id: string): Project | null {
@@ -350,7 +388,7 @@ export class Store {
     const sources = patch.sources ?? current.sources;
     this.db
       .prepare(
-        `UPDATE projects SET name=@name, description=@description, repo=@repo,
+        `UPDATE projects SET name=@name, description=@description, repo=@repo, repos=@repos,
            machine_id=@machine_id, source_paths=@source_paths, use_connectors=@use_connectors,
            supabase_url=@supabase_url
          WHERE id=@id`,
@@ -359,7 +397,8 @@ export class Store {
         id,
         name,
         description,
-        repo: sources.repo,
+        repo: sources.repos[0] ?? null,
+        repos: JSON.stringify(sources.repos),
         machine_id: sources.machineId,
         source_paths: JSON.stringify(sources.sourcePaths),
         use_connectors: sources.useConnectors ? 1 : 0,

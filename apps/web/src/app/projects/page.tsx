@@ -166,12 +166,11 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 
 function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () => void }) {
   const [machines, setMachines] = useState<Server[]>([]);
-  const [repo, setRepo] = useState(project.sources.repo ?? '');
+  const [repos, setRepos] = useState(project.sources.repos.join('\n'));
   const [machineId, setMachineId] = useState(project.sources.machineId ?? '');
   const [paths, setPaths] = useState(project.sources.sourcePaths.join('\n'));
   const [useConnectors, setUseConnectors] = useState(project.sources.useConnectors);
   const [supabaseUrl, setSupabaseUrl] = useState(project.sources.supabaseUrl ?? '');
-  const [supabaseToken, setSupabaseToken] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -184,7 +183,10 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
   const save = async () => {
     await api.updateProject(project.id, {
       sources: {
-        repo: repo.trim() || null,
+        repos: repos
+          .split('\n')
+          .map((r) => r.trim())
+          .filter(Boolean),
         machineId: machineId || null,
         sourcePaths: paths
           .split('\n')
@@ -193,9 +195,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
         useConnectors,
         supabaseUrl: supabaseUrl.trim() || null,
       },
-      ...(supabaseToken.trim() ? { supabaseToken: supabaseToken.trim() } : {}),
     });
-    setSupabaseToken('');
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
     onChanged();
@@ -207,8 +207,16 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
       hint="The full picture the librarian draws from to build this project's manual."
     >
       <div className="space-y-3">
-        <Field label="Git repo" hint="url or path (optional)">
-          <input value={repo} onChange={(e) => setRepo(e.target.value)} className="input" placeholder="github.com/you/project" />
+        <Field label="Git repos" hint="one per line — a project can span several repos (optional)">
+          <textarea
+            value={repos}
+            onChange={(e) => setRepos(e.target.value)}
+            className="input h-16"
+            placeholder={'github.com/you/project\ngithub.com/you/project-api'}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
         </Field>
         <Field label="Linked machine" hint="read local files from this machine over SSHFS">
           <select value={machineId} onChange={(e) => setMachineId(e.target.value)} className="input">
@@ -227,7 +235,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
         )}
         <Field
           label="Supabase URL"
-          hint="this project's own database — https://<ref>.supabase.co. Scopes the connection to THIS project only."
+          hint="this project's own database — https://<ref>.supabase.co. Uses the account Supabase token (Settings), scoped to THIS project only."
         >
           <input
             value={supabaseUrl}
@@ -237,22 +245,6 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-          />
-        </Field>
-        <Field
-          label="Supabase access token"
-          hint={
-            project.supabaseConfigured
-              ? 'a token is stored (encrypted) — leave blank to keep it'
-              : 'sbp_… personal access token, stored encrypted'
-          }
-        >
-          <input
-            type="password"
-            value={supabaseToken}
-            onChange={(e) => setSupabaseToken(e.target.value)}
-            className="input"
-            placeholder={project.supabaseConfigured ? '•••••••• (stored)' : 'sbp_…'}
           />
         </Field>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">

@@ -177,10 +177,16 @@ export class SessionManager {
     return connectors.env;
   }
 
-  /** A project's Supabase token, injected as env so the project's MCP can reach its own DB. */
+  /**
+   * Supabase token injected so a project's MCP can reach ITS OWN DB. Only when the
+   * project declares a Supabase URL; uses the account-level token (shared across
+   * projects, scoped per-project via --project-ref), or a per-project override.
+   */
   private projectEnv(projectId: string | null | undefined): Record<string, string> {
     if (!projectId) return {};
-    const token = this.store.getProjectSupabaseToken(projectId);
+    const project = this.store.getProject(projectId);
+    if (!project?.sources.supabaseUrl) return {};
+    const token = this.store.getProjectSupabaseToken(projectId) ?? this.store.getSecret('supabase_pat');
     return token ? { SUPABASE_ACCESS_TOKEN: token } : {};
   }
 

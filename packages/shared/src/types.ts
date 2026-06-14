@@ -62,8 +62,8 @@ export interface CreateSessionInput {
 
 /** Where a project's knowledge base is derived from — the full picture. */
 export interface ProjectSources {
-  /** Git repo (url or path) to ingest. */
-  repo: string | null;
+  /** Git repos (urls or paths) to ingest — a project may span several. */
+  repos: string[];
   /** Fleet node id whose local files to read over SSHFS (this Mac, Atlas, …). */
   machineId: string | null;
   /** Paths on that machine to ingest. */
@@ -233,6 +233,11 @@ export interface SettingsResponse {
   remediation: {
     mode: 'off' | 'investigate' | 'auto';
     autoSeverities: string[];
+  };
+  /** Account-level integrations shared across projects. */
+  integrations: {
+    /** A Supabase Personal Access Token is stored (scoped per-project at launch). */
+    supabaseConfigured: boolean;
   };
   system: {
     version: string;
