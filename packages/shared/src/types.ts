@@ -550,4 +550,5 @@ export type LumpyEvent =
       projectName: string;
       daysLeft: number;
       at: string;
-    };
+    }
+  | { type: 'digest'; title: string; message: string; priority: number; at: string };

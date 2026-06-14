@@ -120,6 +120,16 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
+  if (event.type === 'digest') {
+    return {
+      title: event.title,
+      message: event.message,
+      priority: event.priority,
+      tags: ['bar_chart'],
+      click: publicUrl ? `${publicUrl}/` : undefined,
+    };
+  }
+
   return null;
 }
 

@@ -74,6 +74,8 @@ export const config = {
   // Notifications (ntfy). Leave the topic empty to disable push notifications.
   ntfyUrl: env('LUMPY_NTFY_URL', 'https://ntfy.sh'),
   ntfyTopic: env('LUMPY_NTFY_TOPIC', ''),
+  // Hour (UTC, 0–23) to push the daily platform digest. Empty/'off' disables.
+  digestHour: env('LUMPY_DIGEST_HOUR', '13'),
   // Base URL the phone can reach (a Tailscale address) for notification links
   // and approve/deny action buttons. Optional.
   publicUrl: env('LUMPY_PUBLIC_URL', ''),

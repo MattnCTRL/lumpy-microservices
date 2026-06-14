@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { EventBus } from './events/bus.js';
 import { alertsModule } from './alerts/module.js';
 import { authModule } from './auth/module.js';
+import { digestModule } from './digest/module.js';
 import { fleetModule } from './fleet/module.js';
 import { logger } from './logger.js';
 import { ModuleRegistry } from './modules/registry.js';
@@ -58,6 +59,7 @@ async function main(): Promise<void> {
     .add(fleetModule)
     .add(alertsModule)
     .add(remediationModule)
+    .add(digestModule)
     .add(notifyModule);
   const app = await createApp({ sessions, registry, bus, settings: settingsStore, store });
 
