@@ -59,6 +59,21 @@ export async function sessionExists(name: string): Promise<boolean> {
   }
 }
 
+/**
+ * Enable mouse mode on the tmux server (idempotent, global). Without it, the web
+ * terminal's scroll wheel is translated to arrow keys inside Claude's full-screen
+ * TUI — which recalls previous input instead of scrolling. With mouse on, tmux
+ * forwards the wheel to the app (or scrolls its own buffer), so scrolling works
+ * like a normal Claude Code session.
+ */
+export async function ensureMouse(): Promise<void> {
+  try {
+    await exec('tmux', ['set-option', '-g', 'mouse', 'on'], options());
+  } catch {
+    // No server yet, or already set; the next session create will retry.
+  }
+}
+
 export async function newSession(opts: NewSessionOptions): Promise<void> {
   // Pass connector env via -e so secrets stay out of the command line (ps).
   const envArgs = Object.entries(opts.env ?? {}).flatMap(([key, value]) => [
@@ -83,6 +98,7 @@ export async function newSession(opts: NewSessionOptions): Promise<void> {
     ],
     options(),
   );
+  await ensureMouse();
 }
 
 export async function killSession(name: string): Promise<void> {

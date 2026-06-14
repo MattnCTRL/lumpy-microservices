@@ -64,7 +64,11 @@ export default function SessionsPage() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="w-full shrink-0 overflow-y-auto border-b border-neutral-800 p-3 md:w-80 md:border-b-0 md:border-r">
+        <aside
+          className={`w-full shrink-0 overflow-y-auto border-neutral-800 p-3 md:block md:w-80 md:border-r ${
+            selected ? 'hidden' : 'block'
+          }`}
+        >
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium text-neutral-300">Sessions</h2>
             <button
@@ -90,10 +94,11 @@ export default function SessionsPage() {
           />
         </aside>
 
-        <main className="min-h-0 flex-1 p-3">
+        <main className={`min-h-0 flex-1 p-3 ${selected ? 'block' : 'hidden md:block'}`}>
           {selected ? (
             <SessionPanel
               session={selected}
+              onBack={() => setSelectedId(null)}
               onChanged={() => void refresh()}
               onDeleted={() => {
                 setSelectedId(null);
@@ -235,10 +240,12 @@ function isClaudeCommand(command: string): boolean {
 
 function SessionPanel({
   session,
+  onBack,
   onChanged,
   onDeleted,
 }: {
   session: Session;
+  onBack: () => void;
   onChanged: () => void;
   onDeleted: () => void;
 }) {
@@ -246,9 +253,18 @@ function SessionPanel({
   return (
     <div className="flex h-full flex-col rounded-lg border border-neutral-800 bg-neutral-950">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
-        <div className="min-w-0">
-          <h2 className="truncate text-sm font-medium text-neutral-100">{session.name}</h2>
-          <p className="truncate text-xs text-neutral-500">{session.workspace}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            onClick={onBack}
+            className="shrink-0 rounded px-1.5 py-0.5 text-sm text-neutral-400 hover:bg-neutral-800 md:hidden"
+            aria-label="Back to sessions"
+          >
+            ←
+          </button>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-medium text-neutral-100">{session.name}</h2>
+            <p className="truncate text-xs text-neutral-500">{session.workspace}</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button

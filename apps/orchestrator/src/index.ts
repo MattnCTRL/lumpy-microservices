@@ -10,7 +10,7 @@ import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
 import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
-import { ensureConductor } from './sessions/conductor.js';
+import { conductorTick, ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
@@ -66,6 +66,9 @@ async function main(): Promise<void> {
   await ensureConductor(sessions, store);
   const conductorKeeper = setInterval(() => void ensureConductor(sessions, store), 60_000);
   conductorKeeper.unref();
+  // Proactively nudge the Conductor to find and act on improvements when idle.
+  const conductorNudge = setInterval(() => void conductorTick(sessions), 15 * 60_000);
+  conductorNudge.unref();
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {

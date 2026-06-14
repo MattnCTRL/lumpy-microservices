@@ -115,3 +115,23 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
     logger.error({ error }, 'could not create the Conductor');
   }
 }
+
+const NUDGE =
+  'Proactively orchestrate now: review platform health, sessions, projects, fleet, and alerts ' +
+  'via the API. Pick ONE concrete thing to improve, fix, or tidy — and do it. If it is a code ' +
+  'fix, ship it only via `sudo /opt/lumpy/scripts/safe-deploy.sh`. Then append a brief dated ' +
+  'entry to .lumpy/PROGRESS.md describing what you did and what you will look at next.';
+
+/**
+ * Nudge the Conductor to do proactive work, but only when it is idle so we never
+ * interrupt work in progress. Sent as input to its session.
+ */
+export async function conductorTick(sessions: SessionManager): Promise<void> {
+  if (!config.conductorEnabled) return;
+  const conductor = (await sessions.list()).find((s) => s.locked);
+  if (!conductor || conductor.status !== 'running' || conductor.activity !== 'idle') return;
+  const broker = sessions.getBroker(conductor.id);
+  if (!broker) return;
+  broker.write(`${NUDGE}\r`);
+  logger.info({ id: conductor.id }, 'nudged the Conductor to orchestrate');
+}

@@ -100,7 +100,11 @@ export default function FleetPage() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="w-full shrink-0 space-y-5 overflow-y-auto border-b border-neutral-800 p-3 md:w-80 md:border-b-0 md:border-r">
+        <aside
+          className={`w-full shrink-0 space-y-5 overflow-y-auto border-neutral-800 p-3 md:block md:w-80 md:border-r ${
+            selected ? 'hidden' : 'block'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-neutral-300">Fleet</h2>
             <button
@@ -136,12 +140,13 @@ export default function FleetPage() {
           />
         </aside>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-3">
+        <main className={`min-h-0 flex-1 overflow-y-auto p-3 ${selected ? 'block' : 'hidden md:block'}`}>
           {selected ? (
             <ServerDetailPanel
               server={selected}
               mount={mounts[selected.id]}
               history={histories[selected.id] ?? []}
+              onBack={() => setSelectedId(null)}
               onChanged={() => void refresh()}
               onDelete={async () => {
                 await api.deleteServer(selected.id);
@@ -287,12 +292,14 @@ function ServerDetailPanel({
   server,
   mount,
   history,
+  onBack,
   onChanged,
   onDelete,
 }: {
   server: Server;
   mount: MountState | undefined;
   history: ServerMetrics[];
+  onBack: () => void;
   onChanged: () => void;
   onDelete: () => void;
 }) {
@@ -313,8 +320,16 @@ function ServerDetailPanel({
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-950">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            onClick={onBack}
+            className="shrink-0 rounded px-1.5 py-0.5 text-sm text-neutral-400 hover:bg-neutral-800 md:hidden"
+            aria-label="Back to fleet"
+          >
+            ←
+          </button>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
           <p className="truncate text-xs text-neutral-500">
             {server.kind} · {server.address} · {server.monitoring === 'ssh' ? 'SSH' : 'agent'} ·{' '}
             {server.env} · {server.criticality} ·{' '}
@@ -322,6 +337,7 @@ function ServerDetailPanel({
               ? `seen ${new Date(server.lastSeenAt).toLocaleTimeString()}`
               : 'never seen'}
           </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <MountBadge mount={mount} />

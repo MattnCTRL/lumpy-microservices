@@ -36,7 +36,11 @@ export default function ProjectsPage() {
         </div>
       )}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="w-full shrink-0 overflow-y-auto border-b border-neutral-800 p-3 md:w-72 md:border-b-0 md:border-r">
+        <aside
+          className={`w-full shrink-0 overflow-y-auto border-neutral-800 p-3 md:block md:w-72 md:border-r ${
+            selected ? 'hidden' : 'block'
+          }`}
+        >
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium text-neutral-300">Projects</h2>
             <button
@@ -69,11 +73,12 @@ export default function ProjectsPage() {
           )}
         </aside>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-4">
+        <main className={`min-h-0 flex-1 overflow-y-auto p-4 ${selected ? 'block' : 'hidden md:block'}`}>
           {selected ? (
             <ProjectDetail
               key={selected.id}
               project={selected}
+              onBack={() => setSelectedId(null)}
               onChanged={() => void refresh()}
               onDeleted={() => {
                 setSelectedId(null);
@@ -104,15 +109,23 @@ export default function ProjectsPage() {
 
 function ProjectDetail({
   project,
+  onBack,
   onChanged,
   onDeleted,
 }: {
   project: Project;
+  onBack: () => void;
   onChanged: () => void;
   onDeleted: () => void;
 }) {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
+      <button
+        onClick={onBack}
+        className="text-sm text-neutral-400 hover:text-neutral-200 md:hidden"
+      >
+        ← Projects
+      </button>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-neutral-100">{project.name}</h1>
