@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import type {
   McpServerDef,
   Project,
+  ProjectDatabase,
   ProjectSources,
   Service,
   ServiceImprovement,
@@ -68,6 +69,7 @@ interface ProjectRow {
   source_paths: string;
   use_connectors: number;
   supabase_url: string | null;
+  databases: string | null;
   supabase_token: string | null;
   created_at: string;
 }
@@ -76,6 +78,9 @@ function toProject(row: ProjectRow): Project {
   const repos = row.repos ? (JSON.parse(row.repos) as string[]) : [];
   // Back-fill from the old single-repo column for rows created before multi-repo.
   if (repos.length === 0 && row.repo) repos.push(row.repo);
+  const databases = row.databases ? (JSON.parse(row.databases) as ProjectDatabase[]) : [];
+  // Back-fill from the old single-URL column for rows created before multi-db.
+  if (databases.length === 0 && row.supabase_url) databases.push({ label: 'main', url: row.supabase_url });
   return {
     id: row.id,
     name: row.name,
@@ -88,7 +93,7 @@ function toProject(row: ProjectRow): Project {
       machineId: row.machine_id,
       sourcePaths: JSON.parse(row.source_paths) as string[],
       useConnectors: row.use_connectors === 1,
-      supabaseUrl: row.supabase_url ?? null,
+      databases,
     },
     supabaseConfigured: Boolean(row.supabase_token),
     createdAt: row.created_at,
@@ -203,6 +208,7 @@ export class Store {
       'supabase_url TEXT',
       'supabase_token TEXT',
       "repos TEXT NOT NULL DEFAULT '[]'",
+      "databases TEXT NOT NULL DEFAULT '[]'",
     ]) {
       try {
         this.db.exec(`ALTER TABLE projects ADD COLUMN ${column}`);
@@ -308,9 +314,9 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO projects
-           (id, name, slug, workspace, description, origin, repo, repos, machine_id, source_paths, use_connectors, supabase_url, created_at)
+           (id, name, slug, workspace, description, origin, repo, repos, machine_id, source_paths, use_connectors, supabase_url, databases, created_at)
          VALUES
-           (@id, @name, @slug, @workspace, @description, @origin, @repo, @repos, @machine_id, @source_paths, @use_connectors, @supabase_url, @created_at)`,
+           (@id, @name, @slug, @workspace, @description, @origin, @repo, @repos, @machine_id, @source_paths, @use_connectors, @supabase_url, @databases, @created_at)`,
       )
       .run({
         id: project.id,
@@ -324,7 +330,8 @@ export class Store {
         machine_id: project.sources.machineId,
         source_paths: JSON.stringify(project.sources.sourcePaths),
         use_connectors: project.sources.useConnectors ? 1 : 0,
-        supabase_url: project.sources.supabaseUrl,
+        supabase_url: project.sources.databases[0]?.url ?? null,
+        databases: JSON.stringify(project.sources.databases),
         created_at: project.createdAt,
       });
   }
@@ -390,7 +397,7 @@ export class Store {
       .prepare(
         `UPDATE projects SET name=@name, description=@description, repo=@repo, repos=@repos,
            machine_id=@machine_id, source_paths=@source_paths, use_connectors=@use_connectors,
-           supabase_url=@supabase_url
+           supabase_url=@supabase_url, databases=@databases
          WHERE id=@id`,
       )
       .run({
@@ -402,7 +409,8 @@ export class Store {
         machine_id: sources.machineId,
         source_paths: JSON.stringify(sources.sourcePaths),
         use_connectors: sources.useConnectors ? 1 : 0,
-        supabase_url: sources.supabaseUrl,
+        supabase_url: sources.databases[0]?.url ?? null,
+        databases: JSON.stringify(sources.databases),
       });
     return this.getProject(id);
   }

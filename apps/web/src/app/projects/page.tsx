@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { KnowledgeBase, Project, Server, Session } from '@lumpy/shared';
+import type { KnowledgeBase, Project, ProjectDatabase, Server, Session } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
 
@@ -170,8 +170,13 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
   const [machineId, setMachineId] = useState(project.sources.machineId ?? '');
   const [paths, setPaths] = useState(project.sources.sourcePaths.join('\n'));
   const [useConnectors, setUseConnectors] = useState(project.sources.useConnectors);
-  const [supabaseUrl, setSupabaseUrl] = useState(project.sources.supabaseUrl ?? '');
+  const [databases, setDatabases] = useState<ProjectDatabase[]>(project.sources.databases);
   const [saved, setSaved] = useState(false);
+
+  const setDb = (i: number, patch: Partial<ProjectDatabase>) =>
+    setDatabases((dbs) => dbs.map((d, j) => (j === i ? { ...d, ...patch } : d)));
+  const addDb = () => setDatabases((dbs) => [...dbs, { label: '', url: '' }]);
+  const removeDb = (i: number) => setDatabases((dbs) => dbs.filter((_, j) => j !== i));
 
   useEffect(() => {
     api
@@ -193,7 +198,9 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
           .map((p) => p.trim())
           .filter(Boolean),
         useConnectors,
-        supabaseUrl: supabaseUrl.trim() || null,
+        databases: databases
+          .map((d) => ({ label: d.label.trim() || 'main', url: d.url.trim() }))
+          .filter((d) => d.url),
       },
     });
     setSaved(true);
@@ -234,18 +241,46 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
           </Field>
         )}
         <Field
-          label="Supabase URL"
-          hint="this project's own database — https://<ref>.supabase.co. Uses the account Supabase token (Settings), scoped to THIS project only."
+          label="Databases"
+          hint="a project can use several. Supabase URLs (https://<ref>.supabase.co) are scoped to THIS project via the account token (Settings); other databases are recorded for the manual."
         >
-          <input
-            value={supabaseUrl}
-            onChange={(e) => setSupabaseUrl(e.target.value)}
-            className="input"
-            placeholder="https://abcdefgh.supabase.co"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
+          <div className="space-y-2">
+            {databases.map((db, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  value={db.label}
+                  onChange={(e) => setDb(i, { label: e.target.value })}
+                  className="input w-28 shrink-0"
+                  placeholder="purpose"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <input
+                  value={db.url}
+                  onChange={(e) => setDb(i, { url: e.target.value })}
+                  className="input flex-1"
+                  placeholder="https://abcdefgh.supabase.co"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <button
+                  onClick={() => removeDb(i)}
+                  className="shrink-0 rounded-md border border-neutral-700 px-2 text-sm text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                  aria-label="remove database"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addDb}
+              className="rounded-md border border-dashed border-neutral-700 px-3 py-1.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+            >
+              + Add database
+            </button>
+          </div>
         </Field>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
           <input type="checkbox" checked={useConnectors} onChange={(e) => setUseConnectors(e.target.checked)} />

@@ -61,6 +61,14 @@ export interface CreateSessionInput {
 // --- Projects (governed workspaces with a knowledge base) ----------------
 
 /** Where a project's knowledge base is derived from — the full picture. */
+/** A database this project uses. A project may have several, each with a purpose. */
+export interface ProjectDatabase {
+  /** What this database is for, e.g. "main", "analytics", "game state". */
+  label: string;
+  /** Supabase project URL (https://<ref>.supabase.co), a postgres URL, or other. */
+  url: string;
+}
+
 export interface ProjectSources {
   /** Git repos (urls or paths) to ingest — a project may span several. */
   repos: string[];
@@ -70,8 +78,8 @@ export interface ProjectSources {
   sourcePaths: string[];
   /** Also review connected data sources (Supabase, TensorGarden, …). */
   useConnectors: boolean;
-  /** This project's own Supabase project URL (https://<ref>.supabase.co). */
-  supabaseUrl: string | null;
+  /** This project's databases (Supabase scoped per-ref; others recorded). */
+  databases: ProjectDatabase[];
 }
 
 /**

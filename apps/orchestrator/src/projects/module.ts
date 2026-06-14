@@ -22,8 +22,13 @@ function buildLibrarianTask(project: Project, mountPath: string | null): string 
     sources.push(`Local files on the linked machine, mounted at: ${paths}`);
   }
   if (project.sources.useConnectors) {
+    const dbList = project.sources.databases.length
+      ? ` This project's databases, by purpose: ${project.sources.databases
+          .map((d) => `${d.label} — ${d.url}`)
+          .join('; ')}.`
+      : '';
     sources.push(
-      "The project's connected data sources via the MCP servers in .mcp.json (e.g. the Supabase schema, the TensorGarden portal). Review their structure and key contents.",
+      `The project's connected data sources via the scoped MCP servers in .mcp.json (e.g. the Supabase schema). Review their structure and key contents.${dbList}`,
     );
   }
   const sourceList = sources.map((s, i) => `${i + 1}. ${s}`).join('\n');
@@ -50,12 +55,17 @@ function slug(name: string): string {
   );
 }
 
+const databaseSchema = z.object({
+  label: z.string().default('main'),
+  url: z.string(),
+});
+
 const sourcesSchema = z.object({
   repos: z.array(z.string()).optional(),
   machineId: z.string().nullable().optional(),
   sourcePaths: z.array(z.string()).optional(),
   useConnectors: z.boolean().optional(),
-  supabaseUrl: z.string().nullable().optional(),
+  databases: z.array(databaseSchema).optional(),
 });
 
 const createSchema = z.object({
@@ -80,7 +90,7 @@ function mergeSources(base: ProjectSources, patch?: z.infer<typeof sourcesSchema
     machineId: patch?.machineId !== undefined ? patch.machineId : base.machineId,
     sourcePaths: patch?.sourcePaths ?? base.sourcePaths,
     useConnectors: patch?.useConnectors ?? base.useConnectors,
-    supabaseUrl: patch?.supabaseUrl !== undefined ? patch.supabaseUrl : base.supabaseUrl,
+    databases: patch?.databases ?? base.databases,
   };
 }
 
@@ -89,12 +99,11 @@ const EMPTY_SOURCES: ProjectSources = {
   machineId: null,
   sourcePaths: [],
   useConnectors: false,
-  supabaseUrl: null,
+  databases: [],
 };
 
-/** A project has Supabase access if it has a URL and a token (account-level or per-project). */
-function projectHasSupabase(store: ModuleContext['store'], id: string, url: string | null): boolean {
-  if (!url) return false;
+/** Whether a Supabase token is available (per-project or account-level). */
+function hasSupabaseToken(store: ModuleContext['store'], id: string): boolean {
   return store.getProjectSupabaseToken(id) !== null || store.hasSecret('supabase_pat');
 }
 
@@ -107,20 +116,30 @@ function supabaseRef(url: string): string | null {
 }
 
 /**
- * Write the project's own `.mcp.json` — a Supabase MCP scoped to THIS project's
- * ref (so it can never touch another project's database). The token is not
+ * Write the project's own `.mcp.json` — one Supabase MCP per database, each
+ * scoped to THAT database's ref (so a session can never touch another project's
+ * — or another of this project's — databases unintentionally). The token is not
  * written to the file; it is referenced via ${SUPABASE_ACCESS_TOKEN} and
- * injected at launch from the encrypted store.
+ * injected at launch from the encrypted store. Non-Supabase databases are
+ * recorded on the project for the librarian but get no MCP server.
  */
 function writeProjectMcp(project: Project, hasToken: boolean, runAs: RunAs | null): void {
-  const ref = project.sources.supabaseUrl ? supabaseRef(project.sources.supabaseUrl) : null;
   const mcpServers: Record<string, unknown> = {};
-  if (ref && hasToken) {
-    mcpServers.supabase = {
-      command: 'npx',
-      args: ['-y', '@supabase/mcp-server-supabase@latest', '--read-only', `--project-ref=${ref}`],
-      env: { SUPABASE_ACCESS_TOKEN: '${SUPABASE_ACCESS_TOKEN}' },
-    };
+  const used = new Set<string>();
+  if (hasToken) {
+    for (const db of project.sources.databases) {
+      const ref = supabaseRef(db.url);
+      if (!ref) continue;
+      const base = `supabase-${slug(db.label || 'main')}`;
+      let key = base;
+      for (let n = 2; used.has(key); n++) key = `${base}-${n}`;
+      used.add(key);
+      mcpServers[key] = {
+        command: 'npx',
+        args: ['-y', '@supabase/mcp-server-supabase@latest', '--read-only', `--project-ref=${ref}`],
+        env: { SUPABASE_ACCESS_TOKEN: '${SUPABASE_ACCESS_TOKEN}' },
+      };
+    }
   }
   try {
     mkdirSync(project.workspace, { recursive: true });
@@ -193,7 +212,7 @@ export const projectsModule: LumpyModule = {
       };
       store.createProject(project);
       if (input.supabaseToken) store.setProjectSupabaseToken(id, input.supabaseToken.trim());
-      writeProjectMcp(project, projectHasSupabase(store, id, project.sources.supabaseUrl), runAs);
+      writeProjectMcp(project, hasSupabaseToken(store, id), runAs);
       logger.info({ id, workspace }, 'project created');
       return reply.status(201).send(store.getProject(id));
     });
@@ -218,7 +237,7 @@ export const projectsModule: LumpyModule = {
       }
       // Refresh the project's isolated .mcp.json from its (possibly new) Supabase config.
       const fresh = store.getProject(id);
-      if (fresh) writeProjectMcp(fresh, projectHasSupabase(store, id, fresh.sources.supabaseUrl), runAs);
+      if (fresh) writeProjectMcp(fresh, hasSupabaseToken(store, id), runAs);
       return fresh ?? updated;
     });
 
@@ -264,7 +283,7 @@ export const projectsModule: LumpyModule = {
       }
 
       // Ensure the project's isolated .mcp.json (its own DB, nothing else) is current.
-      writeProjectMcp(project, projectHasSupabase(store, id, project.sources.supabaseUrl), runAs);
+      writeProjectMcp(project, hasSupabaseToken(store, id), runAs);
 
       const session = await ctx.sessions.create({
         name: `Librarian: ${project.name}`,

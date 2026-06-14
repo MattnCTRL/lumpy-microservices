@@ -185,7 +185,8 @@ export class SessionManager {
   private projectEnv(projectId: string | null | undefined): Record<string, string> {
     if (!projectId) return {};
     const project = this.store.getProject(projectId);
-    if (!project?.sources.supabaseUrl) return {};
+    const hasSupabaseDb = project?.sources.databases.some((d) => /supabase/i.test(d.url));
+    if (!hasSupabaseDb) return {};
     const token = this.store.getProjectSupabaseToken(projectId) ?? this.store.getSecret('supabase_pat');
     return token ? { SUPABASE_ACCESS_TOKEN: token } : {};
   }
