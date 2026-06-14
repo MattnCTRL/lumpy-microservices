@@ -20,6 +20,13 @@ function buildLibrarianTask(project: Project, mountPath: string | null, servers:
       `Cloud infrastructure this project runs on: ${servers.join('; ')}. Note its role (hosting, deploys, runtime) in the manual.`,
     );
   }
+  if (project.sources.hostedServices.length) {
+    sources.push(
+      `Live services this project hosts: ${project.sources.hostedServices
+        .map((s) => `${s.name} (${s.url})`)
+        .join('; ')}. Document what each does.`,
+    );
+  }
   if (mountPath) {
     const paths = project.sources.sourcePaths.length
       ? project.sources.sourcePaths.map((p) => `${mountPath}/${p.replace(/^\/+/, '')}`).join(', ')
@@ -65,11 +72,18 @@ const databaseSchema = z.object({
   url: z.string(),
 });
 
+const hostedServiceSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  serverId: z.string().nullable().default(null),
+});
+
 const sourcesSchema = z.object({
   repos: z.array(z.string()).optional(),
   machineId: z.string().nullable().optional(),
   sourcePaths: z.array(z.string()).optional(),
   serverIds: z.array(z.string()).optional(),
+  hostedServices: z.array(hostedServiceSchema).optional(),
   useConnectors: z.boolean().optional(),
   databases: z.array(databaseSchema).optional(),
 });
@@ -96,6 +110,7 @@ function mergeSources(base: ProjectSources, patch?: z.infer<typeof sourcesSchema
     machineId: patch?.machineId !== undefined ? patch.machineId : base.machineId,
     sourcePaths: patch?.sourcePaths ?? base.sourcePaths,
     serverIds: patch?.serverIds ?? base.serverIds,
+    hostedServices: patch?.hostedServices ?? base.hostedServices,
     useConnectors: patch?.useConnectors ?? base.useConnectors,
     databases: patch?.databases ?? base.databases,
   };
@@ -106,6 +121,7 @@ const EMPTY_SOURCES: ProjectSources = {
   machineId: null,
   sourcePaths: [],
   serverIds: [],
+  hostedServices: [],
   useConnectors: false,
   databases: [],
 };

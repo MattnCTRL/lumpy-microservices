@@ -8,6 +8,7 @@ import { mountStates } from './mounts.js';
 import { FleetStore } from '../store/fleet.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { FleetManager } from './manager.js';
+import { HostedServicesMonitor } from './hosted.js';
 import { SshMonitor } from './monitor.js';
 
 const sshSchema = z.object({
@@ -46,10 +47,14 @@ const metricsSchema = z.object({
   uptimeSeconds: z.number().min(0),
 });
 
-function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
+function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedServicesMonitor): void {
   const { app } = ctx;
 
-  app.get('/api/fleet/servers', async () => fleet.list());
+  // Attach the services each machine hosts (resolved from projects, with status).
+  const withHosted = <T extends { id: string }>(server: T): T =>
+    ({ ...server, hostedServices: hosted.forServer(server.id) }) as T;
+
+  app.get('/api/fleet/servers', async () => fleet.list().map(withHosted));
 
   // SSHFS mount state per machine (mounted on the orchestrator + responsive).
   app.get('/api/fleet/mounts', async (): Promise<FleetMounts> => {
@@ -78,7 +83,7 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     // instead of creating a duplicate. SSH adds always create their own record.
     if (!input.ssh) {
       const existing = fleet.list().find((s) => s.address === input.address);
-      if (existing) return reply.status(200).send(fleet.get(existing.id) ?? existing);
+      if (existing) return reply.status(200).send(withHosted(fleet.get(existing.id) ?? existing));
     }
 
     // When SSH details are supplied, verify they work before registering so the
@@ -114,14 +119,14 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
       ssh,
     });
     if (firstSample) fleet.ingest(server.id, firstSample);
-    return reply.status(201).send(fleet.get(server.id) ?? server);
+    return reply.status(201).send(withHosted(fleet.get(server.id) ?? server));
   });
 
   app.get('/api/fleet/servers/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = fleet.get(id);
     if (!server) return reply.status(404).send({ error: 'server not found' });
-    return server;
+    return withHosted(server);
   });
 
   app.patch('/api/fleet/servers/:id', async (request, reply) => {
@@ -138,7 +143,8 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager): void {
     if (!fleet.get(id)) return reply.status(404).send({ error: 'server not found' });
     if (body.data.name !== undefined) fleet.rename(id, body.data.name);
     if (body.data.kind !== undefined) fleet.setKind(id, body.data.kind);
-    return fleet.get(id);
+    const updated = fleet.get(id);
+    return updated ? withHosted(updated) : updated;
   });
 
   app.delete('/api/fleet/servers/:id', async (request, reply) => {
@@ -178,7 +184,9 @@ export const fleetModule: LumpyModule = {
   register(ctx) {
     const fleet = new FleetManager(new FleetStore(ctx.config.dataDir), ctx.bus);
     new SshMonitor(fleet);
-    registerRest(ctx, fleet);
+    const hosted = new HostedServicesMonitor(ctx.store);
+    hosted.start();
+    registerRest(ctx, fleet, hosted);
     registerEventsWebSocket(ctx);
 
     // Remotes (phones/tablets) can't run an agent, so derive their online

@@ -1,7 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { KnowledgeBase, Project, ProjectDatabase, Server, Session } from '@lumpy/shared';
+import type {
+  HostedService,
+  KnowledgeBase,
+  Project,
+  ProjectDatabase,
+  Server,
+  Session,
+} from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
 
@@ -171,6 +178,9 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
   const [machineId, setMachineId] = useState(project.sources.machineId ?? '');
   const [paths, setPaths] = useState(project.sources.sourcePaths.join('\n'));
   const [serverIds, setServerIds] = useState<string[]>(project.sources.serverIds);
+  const [hostedServices, setHostedServices] = useState<HostedService[]>(
+    project.sources.hostedServices,
+  );
   const [useConnectors, setUseConnectors] = useState(project.sources.useConnectors);
   const [databases, setDatabases] = useState<ProjectDatabase[]>(project.sources.databases);
   const [saved, setSaved] = useState(false);
@@ -181,6 +191,10 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
   const removeDb = (i: number) => setDatabases((dbs) => dbs.filter((_, j) => j !== i));
   const toggleServer = (id: string) =>
     setServerIds((ids) => (ids.includes(id) ? ids.filter((s) => s !== id) : [...ids, id]));
+  const setHs = (i: number, patch: Partial<HostedService>) =>
+    setHostedServices((hs) => hs.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const addHs = () => setHostedServices((hs) => [...hs, { name: '', url: '', serverId: null }]);
+  const removeHs = (i: number) => setHostedServices((hs) => hs.filter((_, j) => j !== i));
 
   useEffect(() => {
     api
@@ -205,6 +219,9 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
           .map((p) => p.trim())
           .filter(Boolean),
         serverIds,
+        hostedServices: hostedServices
+          .map((s) => ({ name: s.name.trim(), url: s.url.trim(), serverId: s.serverId }))
+          .filter((s) => s.name && s.url),
         useConnectors,
         databases: databases
           .map((d) => ({ label: d.label.trim() || 'main', url: d.url.trim() }))
@@ -271,6 +288,60 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
               ))}
             </div>
           )}
+        </Field>
+        <Field
+          label="Hosted services"
+          hint="live apps/products this project runs (e.g. NubSec). Pick the server each runs on — the Fleet shows them with live status under that machine."
+        >
+          <div className="space-y-2">
+            {hostedServices.map((svc, i) => (
+              <div key={i} className="flex flex-wrap gap-2">
+                <input
+                  value={svc.name}
+                  onChange={(e) => setHs(i, { name: e.target.value })}
+                  className="input w-28 shrink-0"
+                  placeholder="name"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <input
+                  value={svc.url}
+                  onChange={(e) => setHs(i, { url: e.target.value })}
+                  className="input min-w-[12rem] flex-1"
+                  placeholder="https://service.example.com"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <select
+                  value={svc.serverId ?? ''}
+                  onChange={(e) => setHs(i, { serverId: e.target.value || null })}
+                  className="input w-36 shrink-0"
+                >
+                  <option value="">no server</option>
+                  {servers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => removeHs(i)}
+                  className="shrink-0 rounded-md border border-neutral-700 px-2 text-sm text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                  aria-label="remove hosted service"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addHs}
+              className="rounded-md border border-dashed border-neutral-700 px-3 py-1.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+            >
+              + Add hosted service
+            </button>
+          </div>
         </Field>
         <Field
           label="Databases"

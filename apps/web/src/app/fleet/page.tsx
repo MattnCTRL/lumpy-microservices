@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type {
   FleetMounts,
   FleetNodeKind,
+  HostedServiceStatus,
   LumpyEvent,
   MountState,
   Server,
   ServerCriticality,
   ServerEnv,
+  ServerHostedService,
   ServerMetrics,
   ServerStatus,
   TailnetDevice,
@@ -196,6 +198,59 @@ function StatusBadge({ status }: { status: ServerStatus }) {
   );
 }
 
+const HOSTED_DOT: Record<HostedServiceStatus, string> = {
+  up: 'bg-emerald-500',
+  down: 'bg-red-500',
+  unknown: 'bg-neutral-600',
+};
+
+/** Worst status across a server's services, for the at-a-glance list badge. */
+function worstHostedStatus(services: ServerHostedService[]): HostedServiceStatus {
+  if (services.some((s) => s.status === 'down')) return 'down';
+  if (services.some((s) => s.status === 'unknown')) return 'unknown';
+  return 'up';
+}
+
+function HostedServicesSection({ services }: { services: ServerHostedService[] }) {
+  return (
+    <div className="border-t border-neutral-800 p-4">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        Hosted services <span className="text-neutral-600">{services.length}</span>
+      </p>
+      <ul className="space-y-1.5">
+        {services.map((svc) => (
+          <li
+            key={`${svc.projectId}:${svc.name}:${svc.url}`}
+            className="flex items-center justify-between gap-3 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${HOSTED_DOT[svc.status]}`}
+                title={svc.status}
+              />
+              <div className="min-w-0">
+                <span className="text-sm text-neutral-100">{svc.name}</span>
+                <a
+                  href={svc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block truncate text-xs text-sky-400 hover:underline"
+                >
+                  {svc.url}
+                </a>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-neutral-500">
+              {svc.statusCode != null && <span className="font-mono">{svc.statusCode}</span>}
+              <span className="truncate">{svc.projectName}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FleetGroup({
   title,
   empty,
@@ -266,6 +321,15 @@ function ServerList({
               <span className="truncate text-xs text-neutral-500">{server.address}</span>
               <MountBadge mount={mounts[server.id]} />
             </div>
+            {server.hostedServices.length > 0 && (
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-500">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${HOSTED_DOT[worstHostedStatus(server.hostedServices)]}`}
+                />
+                {server.hostedServices.length} hosted service
+                {server.hostedServices.length > 1 ? 's' : ''}
+              </div>
+            )}
           </button>
         </li>
       ))}
@@ -397,6 +461,10 @@ function ServerDetailPanel({
           No metrics reported yet. Point an agent at{' '}
           <code className="text-neutral-400">POST /api/fleet/servers/{server.id}/metrics</code>.
         </div>
+      )}
+
+      {server.hostedServices.length > 0 && (
+        <HostedServicesSection services={server.hostedServices} />
       )}
     </div>
   );

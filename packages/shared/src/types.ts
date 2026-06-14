@@ -69,6 +69,16 @@ export interface ProjectDatabase {
   url: string;
 }
 
+/** A live app/product this project runs (e.g. NubSec), optionally on a server. */
+export interface HostedService {
+  /** Display name, e.g. "NubSec". */
+  name: string;
+  /** Public URL, e.g. https://www.nublear.com. */
+  url: string;
+  /** Fleet server id it runs on, so the Fleet can list it under that machine. */
+  serverId: string | null;
+}
+
 export interface ProjectSources {
   /** Git repos (urls or paths) to ingest — a project may span several. */
   repos: string[];
@@ -78,6 +88,8 @@ export interface ProjectSources {
   sourcePaths: string[];
   /** Fleet server ids this project runs on (cloud infra attribution + context). */
   serverIds: string[];
+  /** Live apps/products this project hosts (surfaced on the Fleet by server). */
+  hostedServices: HostedService[];
   /** Also review connected data sources (Supabase, TensorGarden, …). */
   useConnectors: boolean;
   /** This project's databases (Supabase scoped per-ref; others recorded). */
@@ -300,6 +312,19 @@ export type FleetNodeKind = 'server' | 'machine' | 'remote';
 /** `unknown` = registered but never reported; `offline` = heartbeat went stale. */
 export type ServerStatus = 'online' | 'offline' | 'unknown';
 
+export type HostedServiceStatus = 'up' | 'down' | 'unknown';
+
+/** A hosted service resolved onto the server that runs it (with live status). */
+export interface ServerHostedService {
+  name: string;
+  url: string;
+  projectId: string;
+  projectName: string;
+  status: HostedServiceStatus;
+  statusCode: number | null;
+  checkedAt: string | null;
+}
+
 export interface ServerMetrics {
   at: string;
   cpuPercent: number;
@@ -325,6 +350,8 @@ export interface Server {
   lastSeenAt: string | null;
   createdAt: string;
   metrics: ServerMetrics | null;
+  /** Services hosted on this machine, resolved from projects (with live status). */
+  hostedServices: ServerHostedService[];
 }
 
 /** SSH connection details for agentless monitoring. Never returned to clients. */

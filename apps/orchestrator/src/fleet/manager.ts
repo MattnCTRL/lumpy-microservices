@@ -183,6 +183,7 @@ export class FleetManager {
       lastSeenAt: record.lastSeenAt,
       createdAt: record.createdAt,
       metrics: this.latest.get(record.id) ?? null,
+      hostedServices: [],
     };
   }
 }
