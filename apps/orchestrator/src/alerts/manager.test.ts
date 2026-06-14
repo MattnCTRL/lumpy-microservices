@@ -140,9 +140,16 @@ test('removing a server clears its active alerts', () => {
 
 test('an offline server fires a critical alert and resolves on return', () => {
   const { bus, events } = harness();
-  bus.publish({ type: 'fleet.server.status', id: 's1', name: 'web', status: 'offline', at: 't' });
+  bus.publish({ type: 'fleet.server.status', id: 's1', name: 'web', kind: 'server', status: 'offline', at: 't' });
   const fired = events.find((e) => e.type === 'alert.fired');
   assert.ok(fired && fired.type === 'alert.fired' && fired.alert.ruleId === 'offline');
-  bus.publish({ type: 'fleet.server.status', id: 's1', name: 'web', status: 'online', at: 't' });
+  bus.publish({ type: 'fleet.server.status', id: 's1', name: 'web', kind: 'server', status: 'online', at: 't' });
   assert.ok(events.some((e) => e.type === 'alert.resolved'));
+});
+
+test('a remote going offline does NOT fire an alert (sleeping is normal)', () => {
+  const { bus, manager, events } = harness();
+  bus.publish({ type: 'fleet.server.status', id: 'p1', name: 'mattPhone', kind: 'remote', status: 'offline', at: 't' });
+  assert.equal(manager.activeAlerts().length, 0);
+  assert.ok(!events.some((e) => e.type === 'alert.fired'));
 });

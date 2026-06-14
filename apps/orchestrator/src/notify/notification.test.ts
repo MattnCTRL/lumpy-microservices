@@ -91,6 +91,7 @@ test('a raw offline status no longer notifies directly (alerts handles it)', () 
     type: 'fleet.server.status',
     id: 'srv1',
     name: 'web-1',
+    kind: 'server',
     status: 'offline',
     at: '2026-06-13T00:00:00.000Z',
   };

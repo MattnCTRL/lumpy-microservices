@@ -35,6 +35,9 @@ export class AlertsManager {
       if (event.type === 'fleet.metrics') {
         this.evaluate(event.id, event.name, event.metrics);
       } else if (event.type === 'fleet.server.status') {
+        // Remotes (phones/tablets) sleep constantly — offline is normal for them,
+        // not an incident. Only servers/machines are expected to stay up.
+        if (event.kind === 'remote') return;
         if (event.status === 'offline') this.fireOffline(event.id, event.name);
         else if (event.status === 'online') this.clear(`${event.id}:${OFFLINE_RULE}`);
       } else if (event.type === 'fleet.server.removed') {
