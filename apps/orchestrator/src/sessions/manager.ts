@@ -316,6 +316,18 @@ export class SessionManager {
     return this.relaunch(id, resumeCommand(record.command), null);
   }
 
+  /**
+   * Relaunch a stopped session from a clean slate — the plain command, no
+   * --continue and no task. Used for the Conductor so a crash/restart never
+   * resurrects a prior (e.g. self-looping) conversation; it just comes back
+   * idle and interactive.
+   */
+  async startFresh(id: string): Promise<Session | null> {
+    const record = this.store.getSession(id);
+    if (!record) return null;
+    return this.relaunch(id, record.command, null);
+  }
+
   /** Permanently remove a session: kill it if alive, then drop its metadata. */
   async remove(id: string): Promise<boolean> {
     const record = this.store.getSession(id);

@@ -117,8 +117,10 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
   if (existing) {
     const live = await sessions.get(existing.id);
     if (live && live.status !== 'running') {
-      await sessions.resume(existing.id).catch((error) => {
-        logger.warn({ error }, 'could not resume the Conductor');
+      // Relaunch FRESH (no --continue): never resurrect a prior conversation,
+      // which is what kept reviving the self-looping sweeps.
+      await sessions.startFresh(existing.id).catch((error) => {
+        logger.warn({ error }, 'could not restart the Conductor');
       });
     }
     return;
