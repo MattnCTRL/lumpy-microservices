@@ -399,31 +399,44 @@ function PromptBanner({
   );
 }
 
-const QUICK_KEYS: { label: string; data: string }[] = [
-  { label: '1', data: '1' },
-  { label: '2', data: '2' },
-  { label: '3', data: '3' },
-  { label: 'y', data: 'y' },
-  { label: 'n', data: 'n' },
-  { label: '↑', data: '\x1b[A' },
-  { label: '↓', data: '\x1b[B' },
-  { label: 'esc', data: '\x1b' },
-  { label: '⌃C', data: '\x03' },
+// Terminal control keys, clearly labelled — for navigating menus and
+// interrupting, the things a typed message can't express. Menu *answers*
+// (1/2/3, yes/no) are surfaced contextually by the PromptBanner instead.
+const TERMINAL_KEYS: { label: string; data: string; title: string }[] = [
+  { label: '↵ Enter', data: '\r', title: 'Submit / confirm the current line' },
+  { label: '↑', data: '\x1b[A', title: 'Up — move through a menu or history' },
+  { label: '↓', data: '\x1b[B', title: 'Down — move through a menu' },
+  { label: 'Esc', data: '\x1b', title: 'Cancel / dismiss' },
+  { label: '⌃C Stop', data: '\x03', title: 'Interrupt the running task' },
 ];
 
-// A text field plus the special keys. Typing here (Enter to send) works on
-// desktop and mobile without needing to focus the terminal — the reliable way
-// to answer a free-text prompt or paste a value into a session.
+/**
+ * The session composer. Typing a message and pressing Send clears whatever is
+ * on the session's input line, types your message, and submits it — so it
+ * behaves like a chat box wired to the live session, regardless of any text
+ * Claude has pre-filled. The labelled key row handles menu navigation; the
+ * PromptBanner handles menu answers.
+ */
 function InputBar({ sessionId }: { sessionId: string }) {
   const [text, setText] = useState('');
   const [compose, setCompose] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const send = () => {
-    if (text.length === 0) return;
-    // Send the text followed by a carriage return so the session submits it.
-    void api.sendInput(sessionId, `${text}\r`);
+  const send = async () => {
+    const value = text;
+    if (!value.trim()) return;
     setText('');
+    // Clear any pre-filled input, type the message, then submit it.
+    await api.sendInput(sessionId, '\x15');
+    await api.sendInput(sessionId, value);
+    await new Promise((r) => setTimeout(r, 80));
+    await api.sendInput(sessionId, '\r');
+    setSent(true);
+    setTimeout(() => setSent(false), 1200);
   };
+
+  const inputClass =
+    'min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none';
 
   return (
     <div className="space-y-1.5 border-t border-neutral-800 px-2 py-2">
@@ -433,15 +446,14 @@ function InputBar({ sessionId }: { sessionId: string }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              // Enter inserts a newline; ⌘/Ctrl+Enter sends the whole block.
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                send();
+                void send();
               }
             }}
             rows={4}
             placeholder="Compose a multi-line message or paste a block… (⌘/Ctrl+Enter to send)"
-            className="min-w-0 flex-1 resize-y rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+            className={`${inputClass} resize-y`}
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
@@ -453,19 +465,20 @@ function InputBar({ sessionId }: { sessionId: string }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                send();
+                void send();
               }
             }}
-            placeholder="Type a reply or paste a value, then Enter…"
-            className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+            placeholder="Message this session, then Enter…"
+            className={inputClass}
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
           />
         )}
         <button
-          onClick={send}
-          className="shrink-0 rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
+          onClick={() => void send()}
+          disabled={!text.trim()}
+          className="shrink-0 rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-40"
         >
           Send
         </button>
@@ -480,26 +493,26 @@ function InputBar({ sessionId }: { sessionId: string }) {
           }`}
           title="Toggle multi-line compose"
         >
-          ⊞ compose
+          ⊞ Compose
         </button>
         <span className="mx-0.5 h-4 w-px bg-neutral-800" />
-        <button
-          onClick={() => void api.sendInput(sessionId, '\r')}
-          className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
-          title="Enter / submit"
-        >
-          ⏎
-        </button>
-        {QUICK_KEYS.map((key) => (
+        <span className="text-[11px] uppercase tracking-wide text-neutral-600">keys</span>
+        {TERMINAL_KEYS.map((key) => (
           <button
             key={key.label}
             onClick={() => void api.sendInput(sessionId, key.data)}
+            title={key.title}
             className="rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
           >
             {key.label}
           </button>
         ))}
+        {sent && <span className="text-xs text-emerald-400">sent ✓</span>}
       </div>
+      <p className="px-1 text-[11px] text-neutral-600">
+        Type to talk to this session. When it asks a question, answer with the buttons up top or
+        these keys.
+      </p>
     </div>
   );
 }
