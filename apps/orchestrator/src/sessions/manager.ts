@@ -1,4 +1,4 @@
-import { chownSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chownSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { customAlphabet } from 'nanoid';
 import type {
@@ -105,6 +105,7 @@ export class SessionManager {
       this.store.setConnectors(id, { env: args.env, mcpServers: {}, repo: null });
     }
 
+    const env = { ...this.applyConnectors(id, workspace), ...this.projectEnv(args.projectId) };
     await tmux.newSession({
       name,
       cwd: workspace,
@@ -112,10 +113,11 @@ export class SessionManager {
         autonomous: args.autonomous,
         task: args.task,
         sandbox: this.sandbox,
+        mcpConfig: join(workspace, '.mcp.json'),
       }),
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
-      env: this.applyConnectors(id, workspace),
+      env,
     });
 
     const record: SessionRecord = {
@@ -155,21 +157,36 @@ export class SessionManager {
     const path = join(workspace, '.mcp.json');
     try {
       if (Object.keys(connectors.mcpServers).length > 0) {
-        writeFileSync(path, `${JSON.stringify({ mcpServers: connectors.mcpServers }, null, 2)}\n`);
-        if (this.runAs) {
-          try {
-            chownSync(path, this.runAs.uid, this.runAs.gid);
-          } catch {
-            // best-effort
-          }
-        }
-      } else if (existsSync(path)) {
-        rmSync(path); // no MCP servers — don't leave a stale config
+        // The session has its own MCP servers — write them.
+        this.writeMcp(path, connectors.mcpServers);
+      } else if (!existsSync(path)) {
+        // Ensure a config file always exists so --strict-mcp-config has an
+        // explicit, empty source (no servers) — never falls back to user/global
+        // config. An existing file (e.g. a project's own .mcp.json) is left alone.
+        this.writeMcp(path, {});
       }
     } catch (error) {
       logger.warn({ id, error }, 'could not write .mcp.json');
     }
     return connectors.env;
+  }
+
+  /** A project's Supabase token, injected as env so the project's MCP can reach its own DB. */
+  private projectEnv(projectId: string | null | undefined): Record<string, string> {
+    if (!projectId) return {};
+    const token = this.store.getProjectSupabaseToken(projectId);
+    return token ? { SUPABASE_ACCESS_TOKEN: token } : {};
+  }
+
+  private writeMcp(path: string, mcpServers: Record<string, unknown>): void {
+    writeFileSync(path, `${JSON.stringify({ mcpServers }, null, 2)}\n`);
+    if (this.runAs) {
+      try {
+        chownSync(path, this.runAs.uid, this.runAs.gid);
+      } catch {
+        // best-effort
+      }
+    }
   }
 
   /** A session's connectors with env values masked (keys only) for the client. */
@@ -280,10 +297,15 @@ export class SessionManager {
       throw new Error('cannot relaunch a session with no recorded workspace');
     }
 
+    const env = {
+      ...this.applyConnectors(id, record.workspace),
+      ...this.projectEnv(record.projectId),
+    };
     const command = buildLaunchCommand(base, {
       autonomous: record.autonomous,
       task,
       sandbox: this.sandbox,
+      mcpConfig: join(record.workspace, '.mcp.json'),
     });
     await tmux.newSession({
       name: this.tmuxName(id),
@@ -291,7 +313,7 @@ export class SessionManager {
       command,
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
-      env: this.applyConnectors(id, record.workspace),
+      env,
     });
     try {
       this.attachBroker(id);

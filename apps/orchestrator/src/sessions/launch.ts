@@ -5,6 +5,12 @@ export interface LaunchOptions {
   task?: string | null;
   /** Set IS_SANDBOX so skip-permissions is allowed when running as root. */
   sandbox?: boolean;
+  /**
+   * Path to the workspace's .mcp.json. When set, the session uses ONLY this
+   * config (--strict-mcp-config) so it can never inherit another project's or
+   * the user's MCP servers — critical for keeping each project's data isolated.
+   */
+  mcpConfig?: string;
 }
 
 function shquote(value: string): string {
@@ -38,6 +44,11 @@ export function buildLaunchCommand(base: string, options: LaunchOptions): string
     parts.push(base, '--dangerously-skip-permissions');
   } else {
     parts.push(base);
+  }
+
+  // Isolate MCP: use ONLY this workspace's config, never user/global servers.
+  if (options.mcpConfig) {
+    parts.push('--strict-mcp-config', '--mcp-config', shquote(options.mcpConfig));
   }
 
   const task = options.task?.trim();

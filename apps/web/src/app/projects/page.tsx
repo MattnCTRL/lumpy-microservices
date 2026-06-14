@@ -170,6 +170,8 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
   const [machineId, setMachineId] = useState(project.sources.machineId ?? '');
   const [paths, setPaths] = useState(project.sources.sourcePaths.join('\n'));
   const [useConnectors, setUseConnectors] = useState(project.sources.useConnectors);
+  const [supabaseUrl, setSupabaseUrl] = useState(project.sources.supabaseUrl ?? '');
+  const [supabaseToken, setSupabaseToken] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -189,8 +191,11 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
           .map((p) => p.trim())
           .filter(Boolean),
         useConnectors,
+        supabaseUrl: supabaseUrl.trim() || null,
       },
+      ...(supabaseToken.trim() ? { supabaseToken: supabaseToken.trim() } : {}),
     });
+    setSupabaseToken('');
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
     onChanged();
@@ -220,9 +225,39 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
             <textarea value={paths} onChange={(e) => setPaths(e.target.value)} className="input h-20" placeholder={'Developer/myproject\nDocuments/specs'} />
           </Field>
         )}
+        <Field
+          label="Supabase URL"
+          hint="this project's own database — https://<ref>.supabase.co. Scopes the connection to THIS project only."
+        >
+          <input
+            value={supabaseUrl}
+            onChange={(e) => setSupabaseUrl(e.target.value)}
+            className="input"
+            placeholder="https://abcdefgh.supabase.co"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </Field>
+        <Field
+          label="Supabase access token"
+          hint={
+            project.supabaseConfigured
+              ? 'a token is stored (encrypted) — leave blank to keep it'
+              : 'sbp_… personal access token, stored encrypted'
+          }
+        >
+          <input
+            type="password"
+            value={supabaseToken}
+            onChange={(e) => setSupabaseToken(e.target.value)}
+            className="input"
+            placeholder={project.supabaseConfigured ? '•••••••• (stored)' : 'sbp_…'}
+          />
+        </Field>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
           <input type="checkbox" checked={useConnectors} onChange={(e) => setUseConnectors(e.target.checked)} />
-          Also review connected data (Supabase, TensorGarden, …)
+          Also review connected data when building the manual
         </label>
         <button
           onClick={save}

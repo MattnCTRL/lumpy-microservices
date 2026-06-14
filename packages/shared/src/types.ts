@@ -70,6 +70,8 @@ export interface ProjectSources {
   sourcePaths: string[];
   /** Also review connected data sources (Supabase, TensorGarden, …). */
   useConnectors: boolean;
+  /** This project's own Supabase project URL (https://<ref>.supabase.co). */
+  supabaseUrl: string | null;
 }
 
 /**
@@ -92,6 +94,8 @@ export interface Project {
   description: string | null;
   origin: ProjectOrigin;
   sources: ProjectSources;
+  /** Whether a Supabase access token is stored (the token itself is never returned). */
+  supabaseConfigured: boolean;
   createdAt: string;
 }
 
@@ -101,12 +105,15 @@ export interface CreateProjectInput {
   description?: string;
   origin?: ProjectOrigin;
   sources?: Partial<ProjectSources>;
+  /** Supabase access token (sbp_…) — stored encrypted, scoped to this project. */
+  supabaseToken?: string;
 }
 
 export interface UpdateProjectInput {
   name?: string;
   description?: string | null;
   sources?: Partial<ProjectSources>;
+  supabaseToken?: string;
 }
 
 /** A project's operating manual: the governing CLAUDE.md, supporting docs, and any pending draft. */

@@ -66,6 +66,8 @@ interface ProjectRow {
   machine_id: string | null;
   source_paths: string;
   use_connectors: number;
+  supabase_url: string | null;
+  supabase_token: string | null;
   created_at: string;
 }
 
@@ -82,7 +84,9 @@ function toProject(row: ProjectRow): Project {
       machineId: row.machine_id,
       sourcePaths: JSON.parse(row.source_paths) as string[],
       useConnectors: row.use_connectors === 1,
+      supabaseUrl: row.supabase_url ?? null,
     },
+    supabaseConfigured: Boolean(row.supabase_token),
     createdAt: row.created_at,
   };
 }
@@ -177,13 +181,21 @@ export class Store {
         machine_id TEXT,
         source_paths TEXT NOT NULL DEFAULT '[]',
         use_connectors INTEGER NOT NULL DEFAULT 0,
+        supabase_url TEXT,
+        supabase_token TEXT,
         created_at TEXT NOT NULL
       );
     `);
-    try {
-      this.db.exec("ALTER TABLE projects ADD COLUMN origin TEXT NOT NULL DEFAULT 'new'");
-    } catch {
-      // Column already exists.
+    for (const column of [
+      "origin TEXT NOT NULL DEFAULT 'new'",
+      'supabase_url TEXT',
+      'supabase_token TEXT',
+    ]) {
+      try {
+        this.db.exec(`ALTER TABLE projects ADD COLUMN ${column}`);
+      } catch {
+        // Column already exists.
+      }
     }
     // Micro services: deployable, self-improving specialist functions.
     this.db.exec(`
@@ -283,9 +295,9 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO projects
-           (id, name, slug, workspace, description, origin, repo, machine_id, source_paths, use_connectors, created_at)
+           (id, name, slug, workspace, description, origin, repo, machine_id, source_paths, use_connectors, supabase_url, created_at)
          VALUES
-           (@id, @name, @slug, @workspace, @description, @origin, @repo, @machine_id, @source_paths, @use_connectors, @created_at)`,
+           (@id, @name, @slug, @workspace, @description, @origin, @repo, @machine_id, @source_paths, @use_connectors, @supabase_url, @created_at)`,
       )
       .run({
         id: project.id,
@@ -298,8 +310,23 @@ export class Store {
         machine_id: project.sources.machineId,
         source_paths: JSON.stringify(project.sources.sourcePaths),
         use_connectors: project.sources.useConnectors ? 1 : 0,
+        supabase_url: project.sources.supabaseUrl,
         created_at: project.createdAt,
       });
+  }
+
+  /** Store (encrypted) or clear a project's Supabase access token. */
+  setProjectSupabaseToken(id: string, token: string | null): void {
+    const value = token ? encryptSecret(token, this.key) : null;
+    this.db.prepare('UPDATE projects SET supabase_token = ? WHERE id = ?').run(value, id);
+  }
+
+  /** The decrypted Supabase token for a project, or null. */
+  getProjectSupabaseToken(id: string): string | null {
+    const row = this.db.prepare('SELECT supabase_token FROM projects WHERE id = ?').get(id) as
+      | { supabase_token: string | null }
+      | undefined;
+    return row?.supabase_token ? decryptSecret(row.supabase_token, this.key) : null;
   }
 
   getProject(id: string): Project | null {
@@ -324,7 +351,8 @@ export class Store {
     this.db
       .prepare(
         `UPDATE projects SET name=@name, description=@description, repo=@repo,
-           machine_id=@machine_id, source_paths=@source_paths, use_connectors=@use_connectors
+           machine_id=@machine_id, source_paths=@source_paths, use_connectors=@use_connectors,
+           supabase_url=@supabase_url
          WHERE id=@id`,
       )
       .run({
@@ -335,6 +363,7 @@ export class Store {
         machine_id: sources.machineId,
         source_paths: JSON.stringify(sources.sourcePaths),
         use_connectors: sources.useConnectors ? 1 : 0,
+        supabase_url: sources.supabaseUrl,
       });
     return this.getProject(id);
   }
