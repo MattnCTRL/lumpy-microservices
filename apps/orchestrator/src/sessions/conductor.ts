@@ -27,6 +27,10 @@ everything:
 - Fleet (servers/machines/remotes): \`GET /api/fleet/servers\`
 - Alerts: \`GET /api/alerts\`
 
+Account credentials: the Vercel token is in \`$VERCEL_TOKEN\` and also at
+\`~/.vercel-token\` — use \`VERCEL_TOKEN=$(cat ~/.vercel-token) npx vercel ...\` to
+manage deployments. The Supabase token is injected per-project.
+
 ## You are the conduit between sessions (no crossover)
 
 Sessions are isolated — each can only see its own project's files and data, and

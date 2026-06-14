@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { SettingsResponse } from '@lumpy/shared';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { VERSION } from '../version.js';
+import { syncVercelToken } from './credentials.js';
 
 const SUPABASE_PAT = 'supabase_pat';
 const VERCEL_TOKEN = 'vercel_token';
@@ -63,6 +64,7 @@ export const settingsModule: LumpyModule = {
       }
       if (vercelToken !== undefined) {
         ctx.store.setSecret(VERCEL_TOKEN, vercelToken.trim() || null);
+        syncVercelToken(ctx.store);
       }
       return view(ctx);
     });

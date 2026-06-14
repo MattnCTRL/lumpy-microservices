@@ -15,6 +15,7 @@ import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
 import { ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
+import { syncVercelToken } from './settings/credentials.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
 import { createApp } from './server/http.js';
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
   }
 
   const store = new Store(config.dataDir);
+  syncVercelToken(store);
   const bus = new EventBus();
   const settingsStore = new SettingsStore(config.dataDir, {
     remediationMode: config.remediationMode,
