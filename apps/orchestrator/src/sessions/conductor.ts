@@ -140,8 +140,13 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
       tags: ['conductor'],
       autonomous: true,
       locked: true,
-      task:
-        'You are the Lumpy Conductor — an interactive orchestrator and relay. Read your operating manual (CLAUDE.md) so you know your powers, then STOP and wait for the owner. Do NOT run health sweeps, do NOT write to PROGRESS.md, and do NOT take any proactive action — the platform records health on its own. Only act when the owner messages you here, or to coordinate a response to a genuine alert. Do not loop. After reading the manual, send one short line confirming you are ready, then wait.',
+      // No initial task on purpose: a task would (a) auto-append PROGRESS_NOTE
+      // ("keep a running log… update before you stop") and (b) make claude run
+      // the prompt and exit — which the keeper would then relaunch with
+      // --continue, resurrecting the conversation in an endless sweep loop. With
+      // no task, claude stays a persistent interactive session that loads its
+      // manual (CLAUDE.md) and simply waits for the owner.
+      task: null,
       env: { LUMPY_URL: base, LUMPY_ADMIN_TOKEN: config.adminToken },
     });
     logger.info({ id: session.id }, 'Conductor session created (locked master orchestrator)');
