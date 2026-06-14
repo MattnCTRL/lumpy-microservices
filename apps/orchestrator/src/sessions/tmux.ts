@@ -122,3 +122,17 @@ export async function capturePane(name: string, lines = 2000): Promise<string> {
     return '';
   }
 }
+
+/** Capture recent pane content as plain text (no escape sequences) for reading. */
+export async function capturePlain(name: string, lines = 200): Promise<string> {
+  try {
+    const { stdout } = await exec(
+      'tmux',
+      ['capture-pane', '-p', '-t', name, '-S', `-${lines}`],
+      options(),
+    );
+    return stdout;
+  } catch {
+    return '';
+  }
+}

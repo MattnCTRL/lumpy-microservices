@@ -91,6 +91,12 @@ export class SessionManager {
     return this.brokers.get(id);
   }
 
+  /** Recent terminal output of a running session as plain text (for the Conductor to read). */
+  async output(id: string, lines = 200): Promise<string | null> {
+    if (!(await tmux.sessionExists(this.tmuxName(id)))) return null;
+    return tmux.capturePlain(this.tmuxName(id), lines);
+  }
+
   async create(args: CreateSessionArgs): Promise<Session> {
     const id = generateId();
     const name = this.tmuxName(id);

@@ -80,6 +80,17 @@ function registerRest(ctx: ModuleContext): void {
     return session;
   });
 
+  // Read a session's recent output — used by the Conductor to relay distilled
+  // knowledge between isolated sessions (it queries one, reads the answer here,
+  // then instructs another). Sessions never read each other directly.
+  app.get('/api/sessions/:id/output', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { lines } = request.query as { lines?: string };
+    const output = await sessions.output(id, Math.min(Number(lines) || 200, 1000));
+    if (output === null) return reply.status(404).send({ error: 'session not running' });
+    return { output };
+  });
+
   app.post('/api/sessions/:id/input', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({ data: z.string() }).safeParse(request.body);
