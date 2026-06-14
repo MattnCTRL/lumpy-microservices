@@ -36,6 +36,20 @@ export async function isAvailable(): Promise<boolean> {
   }
 }
 
+/**
+ * Exit copy-mode (scrollback) on a session's active pane if it's in one. A mouse
+ * scroll puts the pane into copy-mode, where keystrokes navigate history instead
+ * of reaching the program — so typed input silently vanishes. Cancelling first
+ * makes input land. No-op (and ignored) when the pane isn't in a mode.
+ */
+export async function cancelCopyMode(name: string): Promise<void> {
+  try {
+    await exec('tmux', ['send-keys', '-t', name, '-X', 'cancel'], options());
+  } catch {
+    // Not in copy-mode (or no such pane) — nothing to cancel.
+  }
+}
+
 /** List the names of all live tmux sessions matching the given prefix. */
 export async function listSessions(prefix: string): Promise<string[]> {
   try {

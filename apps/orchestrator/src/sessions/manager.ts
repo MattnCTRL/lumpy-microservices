@@ -91,6 +91,18 @@ export class SessionManager {
     return this.brokers.get(id);
   }
 
+  /**
+   * Send input to a session. Exits copy-mode first so a pane left in scrollback
+   * (from a mouse scroll) doesn't silently swallow the keystrokes.
+   */
+  async input(id: string, data: string): Promise<boolean> {
+    const broker = this.getBroker(id);
+    if (!broker) return false;
+    await tmux.cancelCopyMode(this.tmuxName(id));
+    broker.write(data);
+    return true;
+  }
+
   /** Recent terminal output of a running session as plain text (for the Conductor to read). */
   async output(id: string, lines = 200): Promise<string | null> {
     if (!(await tmux.sessionExists(this.tmuxName(id)))) return null;

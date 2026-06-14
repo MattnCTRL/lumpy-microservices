@@ -96,9 +96,9 @@ function registerRest(ctx: ModuleContext): void {
     const body = z.object({ data: z.string() }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'data is required' });
 
-    const broker = sessions.getBroker(id);
-    if (!broker) return reply.status(404).send({ error: 'session not running' });
-    broker.write(body.data.data);
+    if (!(await sessions.input(id, body.data.data))) {
+      return reply.status(404).send({ error: 'session not running' });
+    }
     return reply.status(204).send();
   });
 
