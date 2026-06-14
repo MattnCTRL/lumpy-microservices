@@ -1,4 +1,5 @@
 import type {
+  ActivityEntry,
   Alert,
   AuthState,
   CreateProjectInput,
@@ -108,6 +109,7 @@ export const api = {
   deleteServer: (id: string) => send(`/api/fleet/servers/${id}`, 'DELETE'),
 
   listAlerts: () => req('/api/alerts').then(parse<Alert[]>),
+  listActivity: () => req('/api/activity').then(parse<ActivityEntry[]>),
   dismissAlert: (id: string) =>
     send(`/api/alerts/${encodeURIComponent(id)}`, 'DELETE'),
 

@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import type {
+  ActivityEntry,
   HostedIncident,
   HostedService,
   McpServerDef,
@@ -302,6 +303,16 @@ export class Store {
         next_run_at TEXT,
         created_at TEXT NOT NULL
       );
+    `);
+    // Activity feed: an append-only audit trail of noteworthy platform events.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS activity (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_activity_at ON activity(at);
     `);
   }
 
@@ -643,6 +654,24 @@ export class Store {
       )
       .get({ url }) as { last: string | null } | undefined;
     return row?.last ?? null;
+  }
+
+  // --- Activity feed ---
+
+  appendActivity(kind: string, title: string, at: string): void {
+    this.db
+      .prepare('INSERT INTO activity (id, kind, title, at) VALUES (?, ?, ?, ?)')
+      .run(randomUUID(), kind, title, at);
+    // Keep the feed bounded.
+    this.db.exec(
+      'DELETE FROM activity WHERE at < (SELECT at FROM activity ORDER BY at DESC LIMIT 1 OFFSET 1000)',
+    );
+  }
+
+  listActivity(limit = 100): ActivityEntry[] {
+    return this.db
+      .prepare('SELECT id, kind, title, at FROM activity ORDER BY at DESC LIMIT ?')
+      .all(limit) as ActivityEntry[];
   }
 
   // --- Scheduled tasks ---

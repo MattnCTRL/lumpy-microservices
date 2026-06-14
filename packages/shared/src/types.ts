@@ -230,6 +230,16 @@ export interface UpdateScheduleInput {
   enabled?: boolean;
 }
 
+// --- Activity feed (audit trail) ----------------------------------------
+
+export interface ActivityEntry {
+  id: string;
+  /** Coarse category: session | alert | hosted | remediation | cert | digest. */
+  kind: string;
+  title: string;
+  at: string;
+}
+
 // --- Session connectors (per-project data sources) ----------------------
 
 /**

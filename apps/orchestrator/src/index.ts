@@ -1,5 +1,6 @@
 import { config } from './config.js';
 import { EventBus } from './events/bus.js';
+import { activityModule } from './activity/module.js';
 import { alertsModule } from './alerts/module.js';
 import { authModule } from './auth/module.js';
 import { digestModule } from './digest/module.js';
@@ -60,6 +61,7 @@ async function main(): Promise<void> {
     .add(alertsModule)
     .add(remediationModule)
     .add(digestModule)
+    .add(activityModule)
     .add(notifyModule);
   const app = await createApp({ sessions, registry, bus, settings: settingsStore, store });
 

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type {
+  ActivityEntry,
   Alert,
   HostedIncident,
   Schedule,
@@ -18,22 +19,25 @@ export default function DashboardPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [incidents, setIncidents] = useState<HostedIncident[]>([]);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [sv, se, al, sc, inc] = await Promise.all([
+      const [sv, se, al, sc, inc, act] = await Promise.all([
         api.listServers(),
         api.listSessions(),
         api.listAlerts(),
         api.listSchedules().catch(() => []),
         api.listIncidents().catch(() => []),
+        api.listActivity().catch(() => []),
       ]);
       setServers(sv);
       setSessions(se);
       setAlerts(al);
       setSchedules(sc);
       setIncidents(inc);
+      setActivity(act);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
@@ -207,8 +211,44 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+
+      <section className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+        <h2 className="mb-2 text-sm font-medium text-neutral-300">Recent activity</h2>
+        {activity.length === 0 ? (
+          <p className="text-xs text-neutral-600">Nothing recorded yet.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {activity.slice(0, 20).map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex min-w-0 items-center gap-2 text-neutral-200">
+                  <span className="shrink-0">{ACTIVITY_ICON[a.kind] ?? '•'}</span>
+                  <span className="truncate">{a.title}</span>
+                </span>
+                <span className="shrink-0 text-xs text-neutral-600">{timeAgo(a.at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
+}
+
+const ACTIVITY_ICON: Record<string, string> = {
+  session: '⌨',
+  alert: '🔔',
+  hosted: '🌐',
+  remediation: '🤖',
+  cert: '🔒',
+};
+
+function timeAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 function Card({
