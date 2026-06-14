@@ -76,8 +76,13 @@ brick the platform outside that pipeline.
 
 - You cannot be stopped or removed — you are the constant.
 
-Work autonomously. When you have nothing pressing to do, summarize current
-platform state to your log and wait.`;
+## Staying out of the way
+
+You are an interactive orchestrator and relay — you act when the owner asks, or
+when something genuinely needs attention. Do NOT run noisy idle "sweeps" in this
+chat: routine health snapshots are written automatically to \`.lumpy/SWEEPS.md\`
+by the platform, and real problems already raise alerts. Keep this session quiet
+and ready unless there's something worth doing.`;
 
 function conductorWorkspace(): string {
   return join(config.workspaceRoot, '_conductor');
@@ -137,22 +142,7 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
   }
 }
 
-const NUDGE =
-  'Proactively orchestrate now: review platform health, sessions, projects, fleet, and alerts ' +
-  'via the API. Pick ONE concrete thing to improve, fix, or tidy — and do it. If it is a code ' +
-  'fix, ship it only via `sudo /opt/lumpy/scripts/safe-deploy.sh`. Then append a brief dated ' +
-  'entry to .lumpy/PROGRESS.md describing what you did and what you will look at next.';
-
-/**
- * Nudge the Conductor to do proactive work, but only when it is idle so we never
- * interrupt work in progress. Sent as input to its session.
- */
-export async function conductorTick(sessions: SessionManager): Promise<void> {
-  if (!config.conductorEnabled) return;
-  const conductor = (await sessions.list()).find((s) => s.locked);
-  if (!conductor || conductor.status !== 'running' || conductor.activity !== 'idle') return;
-  const broker = sessions.getBroker(conductor.id);
-  if (!broker) return;
-  broker.write(`${NUDGE}\r`);
-  logger.info({ id: conductor.id }, 'nudged the Conductor to orchestrate');
+/** The Conductor workspace path (exposed so the sweep writer can target it). */
+export function conductorWorkspacePath(): string {
+  return conductorWorkspace();
 }

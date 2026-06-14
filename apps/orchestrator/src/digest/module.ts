@@ -1,10 +1,16 @@
+import { chownSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Alert, Server } from '@lumpy/shared';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { conductorWorkspacePath } from '../sessions/conductor.js';
+import { resolveRunAs } from '../sessions/runas.js';
 
 const TICK_MS = 60_000;
 const DAY_MS = 86_400_000;
+const SWEEP_INTERVAL_MS = 30 * 60_000;
+const SWEEP_MAX_CHARS = 40_000;
 
 interface Digest {
   title: string;
@@ -100,6 +106,53 @@ export const digestModule: LumpyModule = {
       bus.publish({ type: 'digest', ...digest, at: new Date().toISOString() });
       return digest;
     };
+
+    // Silent periodic sweep: write a health snapshot to a report file and stay
+    // out of the way. Real problems already raise their own alerts; this is the
+    // quiet audit trail, not chat noise.
+    let runAs: ReturnType<typeof resolveRunAs> | null = null;
+    try {
+      if (config.sessionUser) runAs = resolveRunAs(config.sessionUser);
+    } catch {
+      runAs = null;
+    }
+    const reportDir = join(conductorWorkspacePath(), '.lumpy');
+    const reportPath = join(reportDir, 'SWEEPS.md');
+
+    const sweep = async (): Promise<void> => {
+      const digest = await compose();
+      const stamp = `${new Date().toISOString().slice(0, 16)}Z`;
+      const entry = `\n## ${stamp} — ${digest.title}\n${digest.message}\n`;
+      try {
+        mkdirSync(reportDir, { recursive: true });
+        let content = existsSync(reportPath)
+          ? readFileSync(reportPath, 'utf8')
+          : '# Lumpy platform sweeps\n';
+        content += entry;
+        if (content.length > SWEEP_MAX_CHARS) {
+          const cut = content.indexOf('\n## ', content.length - SWEEP_MAX_CHARS);
+          content = `# Lumpy platform sweeps\n${cut >= 0 ? content.slice(cut) : content.slice(-SWEEP_MAX_CHARS)}`;
+        }
+        writeFileSync(reportPath, content);
+        if (runAs) {
+          try {
+            chownSync(reportDir, runAs.uid, runAs.gid);
+            chownSync(reportPath, runAs.uid, runAs.gid);
+          } catch {
+            // best-effort
+          }
+        }
+      } catch (error) {
+        logger.warn({ error }, 'could not write sweep report');
+      }
+    };
+    void sweep();
+    const sweepTimer = setInterval(() => void sweep(), SWEEP_INTERVAL_MS);
+    sweepTimer.unref();
+
+    app.get('/api/sweeps', async () => ({
+      report: existsSync(reportPath) ? readFileSync(reportPath, 'utf8').slice(-SWEEP_MAX_CHARS) : '',
+    }));
 
     // Fire once a day at the configured UTC hour.
     const hour = Number.parseInt(config.digestHour, 10);
