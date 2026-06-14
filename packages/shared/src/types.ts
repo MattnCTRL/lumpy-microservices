@@ -76,6 +76,8 @@ export interface ProjectSources {
   machineId: string | null;
   /** Paths on that machine to ingest. */
   sourcePaths: string[];
+  /** Fleet server ids this project runs on (cloud infra attribution + context). */
+  serverIds: string[];
   /** Also review connected data sources (Supabase, TensorGarden, …). */
   useConnectors: boolean;
   /** This project's databases (Supabase scoped per-ref; others recorded). */

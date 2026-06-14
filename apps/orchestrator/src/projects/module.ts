@@ -11,10 +11,15 @@ import { resolveRunAs, type RunAs } from '../sessions/runas.js';
 import { DRAFT_PATH, approveDraft, discardDraft, readKnowledge, writeClaudeMd } from './knowledge.js';
 
 /** Build the librarian's prompt: read the project's cumulative sources, draft a manual. */
-function buildLibrarianTask(project: Project, mountPath: string | null): string {
+function buildLibrarianTask(project: Project, mountPath: string | null, servers: string[]): string {
   const sources: string[] = [
     "This project's own repository, code, and docs in the current working directory.",
   ];
+  if (servers.length) {
+    sources.push(
+      `Cloud infrastructure this project runs on: ${servers.join('; ')}. Note its role (hosting, deploys, runtime) in the manual.`,
+    );
+  }
   if (mountPath) {
     const paths = project.sources.sourcePaths.length
       ? project.sources.sourcePaths.map((p) => `${mountPath}/${p.replace(/^\/+/, '')}`).join(', ')
@@ -64,6 +69,7 @@ const sourcesSchema = z.object({
   repos: z.array(z.string()).optional(),
   machineId: z.string().nullable().optional(),
   sourcePaths: z.array(z.string()).optional(),
+  serverIds: z.array(z.string()).optional(),
   useConnectors: z.boolean().optional(),
   databases: z.array(databaseSchema).optional(),
 });
@@ -89,6 +95,7 @@ function mergeSources(base: ProjectSources, patch?: z.infer<typeof sourcesSchema
     repos: patch?.repos ?? base.repos,
     machineId: patch?.machineId !== undefined ? patch.machineId : base.machineId,
     sourcePaths: patch?.sourcePaths ?? base.sourcePaths,
+    serverIds: patch?.serverIds ?? base.serverIds,
     useConnectors: patch?.useConnectors ?? base.useConnectors,
     databases: patch?.databases ?? base.databases,
   };
@@ -98,6 +105,7 @@ const EMPTY_SOURCES: ProjectSources = {
   repos: [],
   machineId: null,
   sourcePaths: [],
+  serverIds: [],
   useConnectors: false,
   databases: [],
 };
@@ -282,6 +290,11 @@ export const projectsModule: LumpyModule = {
         }
       }
 
+      const servers = project.sources.serverIds
+        .map((sid) => fleet.getServer(sid))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s))
+        .map((s) => `${s.name} (${s.address})`);
+
       // Ensure the project's isolated .mcp.json (its own DB, nothing else) is current.
       writeProjectMcp(project, hasSupabaseToken(store, id), runAs);
 
@@ -291,7 +304,7 @@ export const projectsModule: LumpyModule = {
         command: config.defaultCommand,
         tags: ['librarian'],
         autonomous: true,
-        task: buildLibrarianTask(project, mountPath),
+        task: buildLibrarianTask(project, mountPath, servers),
         projectId: project.id,
       });
       logger.info({ project: id, session: session.id }, 'librarian session started');

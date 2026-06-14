@@ -166,9 +166,11 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 
 function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () => void }) {
   const [machines, setMachines] = useState<Server[]>([]);
+  const [servers, setServers] = useState<Server[]>([]);
   const [repos, setRepos] = useState(project.sources.repos.join('\n'));
   const [machineId, setMachineId] = useState(project.sources.machineId ?? '');
   const [paths, setPaths] = useState(project.sources.sourcePaths.join('\n'));
+  const [serverIds, setServerIds] = useState<string[]>(project.sources.serverIds);
   const [useConnectors, setUseConnectors] = useState(project.sources.useConnectors);
   const [databases, setDatabases] = useState<ProjectDatabase[]>(project.sources.databases);
   const [saved, setSaved] = useState(false);
@@ -177,11 +179,16 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
     setDatabases((dbs) => dbs.map((d, j) => (j === i ? { ...d, ...patch } : d)));
   const addDb = () => setDatabases((dbs) => [...dbs, { label: '', url: '' }]);
   const removeDb = (i: number) => setDatabases((dbs) => dbs.filter((_, j) => j !== i));
+  const toggleServer = (id: string) =>
+    setServerIds((ids) => (ids.includes(id) ? ids.filter((s) => s !== id) : [...ids, id]));
 
   useEffect(() => {
     api
       .listServers()
-      .then((s) => setMachines(s.filter((m) => m.kind !== 'server')))
+      .then((s) => {
+        setMachines(s.filter((m) => m.kind !== 'server'));
+        setServers(s.filter((m) => m.kind === 'server'));
+      })
       .catch(() => {});
   }, []);
 
@@ -197,6 +204,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
           .split('\n')
           .map((p) => p.trim())
           .filter(Boolean),
+        serverIds,
         useConnectors,
         databases: databases
           .map((d) => ({ label: d.label.trim() || 'main', url: d.url.trim() }))
@@ -240,6 +248,30 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
             <textarea value={paths} onChange={(e) => setPaths(e.target.value)} className="input h-20" placeholder={'Developer/myproject\nDocuments/specs'} />
           </Field>
         )}
+        <Field
+          label="Servers"
+          hint="cloud servers from the Fleet that this project runs on — attributes the infra to this project."
+        >
+          {servers.length === 0 ? (
+            <p className="text-xs text-neutral-500">No servers in the Fleet yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {servers.map((s) => (
+                <label
+                  key={s.id}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200"
+                >
+                  <input
+                    type="checkbox"
+                    checked={serverIds.includes(s.id)}
+                    onChange={() => toggleServer(s.id)}
+                  />
+                  {s.name} <span className="text-xs text-neutral-500">({s.address})</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </Field>
         <Field
           label="Databases"
           hint="a project can use several. Supabase URLs (https://<ref>.supabase.co) are scoped to THIS project via the account token (Settings); other databases are recorded for the manual."

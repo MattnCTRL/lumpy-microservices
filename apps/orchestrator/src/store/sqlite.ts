@@ -67,6 +67,7 @@ interface ProjectRow {
   repos: string | null;
   machine_id: string | null;
   source_paths: string;
+  server_ids: string | null;
   use_connectors: number;
   supabase_url: string | null;
   databases: string | null;
@@ -92,6 +93,7 @@ function toProject(row: ProjectRow): Project {
       repos,
       machineId: row.machine_id,
       sourcePaths: JSON.parse(row.source_paths) as string[],
+      serverIds: row.server_ids ? (JSON.parse(row.server_ids) as string[]) : [],
       useConnectors: row.use_connectors === 1,
       databases,
     },
@@ -209,6 +211,7 @@ export class Store {
       'supabase_token TEXT',
       "repos TEXT NOT NULL DEFAULT '[]'",
       "databases TEXT NOT NULL DEFAULT '[]'",
+      "server_ids TEXT NOT NULL DEFAULT '[]'",
     ]) {
       try {
         this.db.exec(`ALTER TABLE projects ADD COLUMN ${column}`);
@@ -314,9 +317,9 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO projects
-           (id, name, slug, workspace, description, origin, repo, repos, machine_id, source_paths, use_connectors, supabase_url, databases, created_at)
+           (id, name, slug, workspace, description, origin, repo, repos, machine_id, source_paths, server_ids, use_connectors, supabase_url, databases, created_at)
          VALUES
-           (@id, @name, @slug, @workspace, @description, @origin, @repo, @repos, @machine_id, @source_paths, @use_connectors, @supabase_url, @databases, @created_at)`,
+           (@id, @name, @slug, @workspace, @description, @origin, @repo, @repos, @machine_id, @source_paths, @server_ids, @use_connectors, @supabase_url, @databases, @created_at)`,
       )
       .run({
         id: project.id,
@@ -329,6 +332,7 @@ export class Store {
         repos: JSON.stringify(project.sources.repos),
         machine_id: project.sources.machineId,
         source_paths: JSON.stringify(project.sources.sourcePaths),
+        server_ids: JSON.stringify(project.sources.serverIds),
         use_connectors: project.sources.useConnectors ? 1 : 0,
         supabase_url: project.sources.databases[0]?.url ?? null,
         databases: JSON.stringify(project.sources.databases),
@@ -396,8 +400,8 @@ export class Store {
     this.db
       .prepare(
         `UPDATE projects SET name=@name, description=@description, repo=@repo, repos=@repos,
-           machine_id=@machine_id, source_paths=@source_paths, use_connectors=@use_connectors,
-           supabase_url=@supabase_url, databases=@databases
+           machine_id=@machine_id, source_paths=@source_paths, server_ids=@server_ids,
+           use_connectors=@use_connectors, supabase_url=@supabase_url, databases=@databases
          WHERE id=@id`,
       )
       .run({
@@ -408,6 +412,7 @@ export class Store {
         repos: JSON.stringify(sources.repos),
         machine_id: sources.machineId,
         source_paths: JSON.stringify(sources.sourcePaths),
+        server_ids: JSON.stringify(sources.serverIds),
         use_connectors: sources.useConnectors ? 1 : 0,
         supabase_url: sources.databases[0]?.url ?? null,
         databases: JSON.stringify(sources.databases),
