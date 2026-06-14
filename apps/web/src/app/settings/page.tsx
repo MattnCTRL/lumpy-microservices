@@ -50,6 +50,7 @@ export default function SettingsPage() {
     remediationMode?: string;
     remediationAutoSeverities?: string[];
     supabaseToken?: string;
+    vercelToken?: string;
   }) => {
     try {
       setSettings(await api.updateSettings(p));
@@ -77,10 +78,22 @@ export default function SettingsPage() {
         {!settings ? (
           <Loading />
         ) : (
-          <SupabaseSetting
-            configured={settings.integrations.supabaseConfigured}
-            onSave={(token) => patch({ supabaseToken: token })}
-          />
+          <div className="space-y-5">
+            <TokenSetting
+              label="Supabase Personal Access Token"
+              placeholder="sbp_…"
+              help="Covers all your Supabase projects; each Lumpy project scopes to its own DB via its URL. Create one at supabase.com/dashboard/account/tokens."
+              configured={settings.integrations.supabaseConfigured}
+              onSave={(token) => patch({ supabaseToken: token })}
+            />
+            <TokenSetting
+              label="Vercel Access Token"
+              placeholder="vercel token…"
+              help="Lets Lumpy sessions read and manage your Vercel deployments. Create one at vercel.com/account/tokens."
+              configured={settings.integrations.vercelConfigured}
+              onSave={(token) => patch({ vercelToken: token })}
+            />
+          </div>
         )}
       </Section>
 
@@ -247,10 +260,16 @@ function Loading() {
   return <p className="text-sm text-neutral-500">Loading…</p>;
 }
 
-function SupabaseSetting({
+function TokenSetting({
+  label,
+  placeholder,
+  help,
   configured,
   onSave,
 }: {
+  label: string;
+  placeholder: string;
+  help: string;
   configured: boolean;
   onSave: (token: string) => void;
 }) {
@@ -258,14 +277,17 @@ function SupabaseSetting({
   const [saved, setSaved] = useState(false);
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-neutral-300">Supabase Personal Access Token</p>
+      <p className="text-xs font-medium text-neutral-300">{label}</p>
       <div className="flex gap-2">
         <input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder={configured ? '•••••••• (stored)' : 'sbp_…'}
+          placeholder={configured ? '•••••••• (stored)' : placeholder}
           className="input flex-1"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
         />
         <button
           onClick={() => {
@@ -282,8 +304,7 @@ function SupabaseSetting({
       </div>
       <p className="text-xs text-neutral-500">
         {configured ? 'Stored (encrypted). Enter a new one to replace it. ' : 'Not set. '}
-        Covers all your Supabase projects; each Lumpy project scopes to its own DB via its URL.
-        Create one at supabase.com/dashboard/account/tokens.
+        {help}
       </p>
     </div>
   );

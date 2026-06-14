@@ -111,7 +111,11 @@ export class SessionManager {
       this.store.setConnectors(id, { env: args.env, mcpServers: {}, repo: null });
     }
 
-    const env = { ...this.applyConnectors(id, workspace), ...this.projectEnv(args.projectId) };
+    const env = {
+      ...this.applyConnectors(id, workspace),
+      ...this.projectEnv(args.projectId),
+      ...this.accountEnv(),
+    };
     await tmux.newSession({
       name,
       cwd: workspace,
@@ -189,6 +193,18 @@ export class SessionManager {
     if (!hasSupabaseDb) return {};
     const token = this.store.getProjectSupabaseToken(projectId) ?? this.store.getSecret('supabase_pat');
     return token ? { SUPABASE_ACCESS_TOKEN: token } : {};
+  }
+
+  /**
+   * Account-wide credentials injected into every session. Vercel is inherently
+   * account-scoped (one token spans all your Vercel projects), so it's not
+   * project-gated like the Supabase DB token.
+   */
+  private accountEnv(): Record<string, string> {
+    const env: Record<string, string> = {};
+    const vercel = this.store.getSecret('vercel_token');
+    if (vercel) env.VERCEL_TOKEN = vercel;
+    return env;
   }
 
   private writeMcp(path: string, mcpServers: Record<string, unknown>): void {
@@ -313,6 +329,7 @@ export class SessionManager {
     const env = {
       ...this.applyConnectors(id, record.workspace),
       ...this.projectEnv(record.projectId),
+      ...this.accountEnv(),
     };
     const command = buildLaunchCommand(base, {
       autonomous: record.autonomous,

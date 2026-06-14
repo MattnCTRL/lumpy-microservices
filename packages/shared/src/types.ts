@@ -308,6 +308,8 @@ export interface SettingsResponse {
   integrations: {
     /** A Supabase Personal Access Token is stored (scoped per-project at launch). */
     supabaseConfigured: boolean;
+    /** A Vercel Access Token is stored. */
+    vercelConfigured: boolean;
   };
   system: {
     version: string;

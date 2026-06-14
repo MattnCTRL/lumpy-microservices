@@ -146,7 +146,9 @@ export const digestModule: LumpyModule = {
         logger.warn({ error }, 'could not write sweep report');
       }
     };
-    void sweep();
+    // Delay the first sweep so the HTTP server is listening before we read it.
+    const firstSweep = setTimeout(() => void sweep(), 30_000);
+    firstSweep.unref();
     const sweepTimer = setInterval(() => void sweep(), SWEEP_INTERVAL_MS);
     sweepTimer.unref();
 

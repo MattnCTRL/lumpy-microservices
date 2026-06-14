@@ -120,6 +120,7 @@ export const api = {
     remediationMode?: string;
     remediationAutoSeverities?: string[];
     supabaseToken?: string;
+    vercelToken?: string;
   }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
 

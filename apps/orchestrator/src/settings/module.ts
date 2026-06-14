@@ -4,12 +4,15 @@ import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { VERSION } from '../version.js';
 
 const SUPABASE_PAT = 'supabase_pat';
+const VERCEL_TOKEN = 'vercel_token';
 
 const patchSchema = z.object({
   remediationMode: z.enum(['off', 'investigate', 'auto']).optional(),
   remediationAutoSeverities: z.array(z.enum(['warning', 'critical'])).optional(),
   /** Account-level Supabase Personal Access Token (sbp_…); empty string clears it. */
   supabaseToken: z.string().optional(),
+  /** Account-level Vercel Access Token; empty string clears it. */
+  vercelToken: z.string().optional(),
 });
 
 function view(ctx: ModuleContext): SettingsResponse {
@@ -21,6 +24,7 @@ function view(ctx: ModuleContext): SettingsResponse {
     },
     integrations: {
       supabaseConfigured: ctx.store.hasSecret(SUPABASE_PAT),
+      vercelConfigured: ctx.store.hasSecret(VERCEL_TOKEN),
     },
     system: {
       version: VERSION,
@@ -52,10 +56,13 @@ export const settingsModule: LumpyModule = {
           .status(400)
           .send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
       }
-      const { supabaseToken, ...settings } = parsed.data;
+      const { supabaseToken, vercelToken, ...settings } = parsed.data;
       ctx.settings.update(settings);
       if (supabaseToken !== undefined) {
         ctx.store.setSecret(SUPABASE_PAT, supabaseToken.trim() || null);
+      }
+      if (vercelToken !== undefined) {
+        ctx.store.setSecret(VERCEL_TOKEN, vercelToken.trim() || null);
       }
       return view(ctx);
     });
