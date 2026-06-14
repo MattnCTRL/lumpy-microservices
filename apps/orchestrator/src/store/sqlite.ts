@@ -9,6 +9,8 @@ import type {
   Project,
   ProjectDatabase,
   ProjectSources,
+  Schedule,
+  ScheduleRunStatus,
   Service,
   ServiceImprovement,
   SessionConnectors,
@@ -142,6 +144,36 @@ function toService(row: ServiceRow): Service {
   };
 }
 
+interface ScheduleRow {
+  id: string;
+  name: string;
+  cron: string;
+  task: string;
+  project_id: string | null;
+  enabled: number;
+  last_run_at: string | null;
+  last_session_id: string | null;
+  last_status: string | null;
+  next_run_at: string | null;
+  created_at: string;
+}
+
+function toSchedule(row: ScheduleRow): Schedule {
+  return {
+    id: row.id,
+    name: row.name,
+    cron: row.cron,
+    task: row.task,
+    projectId: row.project_id,
+    enabled: row.enabled === 1,
+    lastRunAt: row.last_run_at,
+    lastSessionId: row.last_session_id,
+    lastStatus: (row.last_status as ScheduleRunStatus) ?? null,
+    nextRunAt: row.next_run_at,
+    createdAt: row.created_at,
+  };
+}
+
 /** Metadata store for sessions. tmux remains the source of truth for liveness. */
 export class Store {
   private readonly db: Database.Database;
@@ -254,6 +286,22 @@ export class Store {
         last_status_code INTEGER
       );
       CREATE INDEX IF NOT EXISTS idx_hosted_incidents_url ON hosted_incidents(url);
+    `);
+    // Scheduled tasks: recurring autonomous Claude jobs driven by a cron expr.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS schedules (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        cron TEXT NOT NULL,
+        task TEXT NOT NULL,
+        project_id TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        last_run_at TEXT,
+        last_session_id TEXT,
+        last_status TEXT,
+        next_run_at TEXT,
+        created_at TEXT NOT NULL
+      );
     `);
   }
 
@@ -595,6 +643,102 @@ export class Store {
       )
       .get({ url }) as { last: string | null } | undefined;
     return row?.last ?? null;
+  }
+
+  // --- Scheduled tasks ---
+
+  createSchedule(s: Schedule): void {
+    this.db
+      .prepare(
+        `INSERT INTO schedules (id, name, cron, task, project_id, enabled, last_run_at, last_session_id, last_status, next_run_at, created_at)
+         VALUES (@id, @name, @cron, @task, @projectId, @enabled, @lastRunAt, @lastSessionId, @lastStatus, @nextRunAt, @createdAt)`,
+      )
+      .run({
+        id: s.id,
+        name: s.name,
+        cron: s.cron,
+        task: s.task,
+        projectId: s.projectId,
+        enabled: s.enabled ? 1 : 0,
+        lastRunAt: s.lastRunAt,
+        lastSessionId: s.lastSessionId,
+        lastStatus: s.lastStatus,
+        nextRunAt: s.nextRunAt,
+        createdAt: s.createdAt,
+      });
+  }
+
+  listSchedules(): Schedule[] {
+    return (
+      this.db.prepare('SELECT * FROM schedules ORDER BY created_at DESC').all() as ScheduleRow[]
+    ).map(toSchedule);
+  }
+
+  getSchedule(id: string): Schedule | null {
+    const row = this.db.prepare('SELECT * FROM schedules WHERE id = ?').get(id) as
+      | ScheduleRow
+      | undefined;
+    return row ? toSchedule(row) : null;
+  }
+
+  updateSchedule(
+    id: string,
+    patch: {
+      name?: string;
+      cron?: string;
+      task?: string;
+      projectId?: string | null;
+      enabled?: boolean;
+      nextRunAt?: string | null;
+    },
+  ): Schedule | null {
+    const current = this.getSchedule(id);
+    if (!current) return null;
+    const next: Schedule = {
+      ...current,
+      name: patch.name ?? current.name,
+      cron: patch.cron ?? current.cron,
+      task: patch.task ?? current.task,
+      projectId: patch.projectId !== undefined ? patch.projectId : current.projectId,
+      enabled: patch.enabled !== undefined ? patch.enabled : current.enabled,
+      nextRunAt: patch.nextRunAt !== undefined ? patch.nextRunAt : current.nextRunAt,
+    };
+    this.db
+      .prepare(
+        `UPDATE schedules SET name=@name, cron=@cron, task=@task, project_id=@projectId,
+           enabled=@enabled, next_run_at=@nextRunAt WHERE id=@id`,
+      )
+      .run({
+        id,
+        name: next.name,
+        cron: next.cron,
+        task: next.task,
+        projectId: next.projectId,
+        enabled: next.enabled ? 1 : 0,
+        nextRunAt: next.nextRunAt,
+      });
+    return next;
+  }
+
+  markScheduleRun(
+    id: string,
+    fields: {
+      lastRunAt: string;
+      lastSessionId: string | null;
+      lastStatus: ScheduleRunStatus;
+      nextRunAt: string | null;
+    },
+  ): void {
+    this.db
+      .prepare(
+        `UPDATE schedules SET last_run_at=@lastRunAt, last_session_id=@lastSessionId,
+           last_status=@lastStatus, next_run_at=@nextRunAt WHERE id=@id`,
+      )
+      .run({ id, ...fields });
+  }
+
+  deleteSchedule(id: string): void {
+    this.db.prepare('DELETE FROM schedules WHERE id = ?').run(id);
   }
 
   /** Recent incidents across all hosted services (newest first). */

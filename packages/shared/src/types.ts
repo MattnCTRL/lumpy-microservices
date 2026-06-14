@@ -192,6 +192,44 @@ export interface ImproveServiceInput {
   instructions?: string;
 }
 
+// --- Scheduled tasks (recurring autonomous Claude jobs) -----------------
+
+export type ScheduleRunStatus = 'ok' | 'error' | null;
+
+export interface Schedule {
+  id: string;
+  name: string;
+  /** 5-field cron expression, evaluated in UTC. */
+  cron: string;
+  /** The autonomous task prompt Claude runs each time. */
+  task: string;
+  /** Scope to a project's workspace + manual + connectors (optional). */
+  projectId: string | null;
+  enabled: boolean;
+  lastRunAt: string | null;
+  lastSessionId: string | null;
+  lastStatus: ScheduleRunStatus;
+  /** Next fire time (UTC ISO), computed from the cron expression. */
+  nextRunAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateScheduleInput {
+  name: string;
+  cron: string;
+  task: string;
+  projectId?: string | null;
+  enabled?: boolean;
+}
+
+export interface UpdateScheduleInput {
+  name?: string;
+  cron?: string;
+  task?: string;
+  projectId?: string | null;
+  enabled?: boolean;
+}
+
 // --- Session connectors (per-project data sources) ----------------------
 
 /**

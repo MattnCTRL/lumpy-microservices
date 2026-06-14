@@ -8,6 +8,7 @@ import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
+import { schedulesModule } from './schedules/module.js';
 import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
 import { conductorTick, ensureConductor } from './sessions/conductor.js';
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
     .add(settingsModule)
     .add(projectsModule)
     .add(servicesModule)
+    .add(schedulesModule)
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)

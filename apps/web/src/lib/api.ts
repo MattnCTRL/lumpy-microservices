@@ -10,6 +10,9 @@ import type {
   KnowledgeBase,
   Playbook,
   Project,
+  Schedule,
+  CreateScheduleInput,
+  UpdateScheduleInput,
   Server,
   ServerDetail,
   Service,
@@ -141,6 +144,15 @@ export const api = {
   deleteService: (id: string) => send(`/api/services/${id}`, 'DELETE'),
   deployService: (id: string) =>
     send(`/api/services/${id}/deploy`, 'POST').then(parse<{ sessionId: string }>),
+
+  listSchedules: () => req('/api/schedules').then(parse<Schedule[]>),
+  createSchedule: (input: CreateScheduleInput) =>
+    send('/api/schedules', 'POST', input).then(parse<Schedule>),
+  updateSchedule: (id: string, patch: UpdateScheduleInput) =>
+    send(`/api/schedules/${id}`, 'PATCH', patch).then(parse<Schedule>),
+  deleteSchedule: (id: string) => send(`/api/schedules/${id}`, 'DELETE'),
+  runSchedule: (id: string) =>
+    send(`/api/schedules/${id}/run`, 'POST').then(parse<{ sessionId: string | null }>),
 
   getConnectors: (id: string) =>
     req(`/api/sessions/${id}/connectors`).then(parse<SessionConnectorsView>),
