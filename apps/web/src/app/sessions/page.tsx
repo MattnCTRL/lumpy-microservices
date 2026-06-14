@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LumpyEvent, Session, SessionActivity } from '@lumpy/shared';
 import { ConnectorsDialog } from '@/components/ConnectorsDialog';
 import { Field } from '@/components/Field';
@@ -13,13 +13,20 @@ export default function SessionsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Auto-select a session only on first load. Re-selecting on every refresh
+  // would fight the user: on mobile, tapping "Back" sets null and the next
+  // refresh would snap them right back into the session they just left.
+  const didAutoSelect = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const list = await api.listSessions();
       setSessions(list);
       setError(null);
-      setSelectedId((current) => current ?? list.find((s) => s.status === 'running')?.id ?? null);
+      if (!didAutoSelect.current) {
+        didAutoSelect.current = true;
+        setSelectedId((current) => current ?? list.find((s) => s.status === 'running')?.id ?? null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
     }

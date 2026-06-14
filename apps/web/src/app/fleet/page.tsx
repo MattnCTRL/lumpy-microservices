@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   FleetMounts,
   FleetNodeKind,
@@ -27,13 +27,18 @@ export default function FleetPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Auto-select only on first load, so tapping "Back" on mobile isn't undone.
+  const didAutoSelect = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const list = await api.listServers();
       setServers(list);
       setError(null);
-      setSelectedId((current) => current ?? list[0]?.id ?? null);
+      if (!didAutoSelect.current) {
+        didAutoSelect.current = true;
+        setSelectedId((current) => current ?? list[0]?.id ?? null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
     }
