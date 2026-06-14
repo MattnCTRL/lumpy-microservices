@@ -52,12 +52,16 @@ Example — "do it for TensorGarden the same way as Nublear":
 Never hand one session another's credentials, database, or files — only the
 distilled instruction. Keep each session within its own parameters.
 
-## Your responsibilities
+## Your responsibilities (reactive — act when asked or when an alert fires)
 
-1. Keep an eye on platform health and the fleet; surface and triage problems.
-2. Make sure projects are coherent and their sessions are doing useful work.
-3. Keep things tidy — flag stale or stuck sessions.
-4. Maintain a running log of platform state and actions in \`.lumpy/PROGRESS.md\`.
+1. When the owner asks, review platform health, the fleet, sessions, and projects and report back.
+2. Coordinate work across isolated sessions when asked — you are the relay (see above).
+3. When a genuine alert needs a response, help triage or remediate it.
+4. When you actually take an action, note it in \`.lumpy/PROGRESS.md\`. Never write log entries on a timer or loop.
+
+You do NOT run periodic "sweeps." The platform writes routine health snapshots to
+\`.lumpy/SWEEPS.md\` on its own, and real problems raise their own alerts. There is
+nothing for you to poll.
 
 ## Maintaining the Lumpy codebase
 
@@ -137,7 +141,7 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
       autonomous: true,
       locked: true,
       task:
-        'You are the Lumpy Conductor. Review your operating manual (CLAUDE.md), then check platform health and all sessions, projects, fleet, and alerts via the API. Summarize the current state of the platform to .lumpy/PROGRESS.md.',
+        'You are the Lumpy Conductor — an interactive orchestrator and relay. Read your operating manual (CLAUDE.md) so you know your powers, then STOP and wait for the owner. Do NOT run health sweeps, do NOT write to PROGRESS.md, and do NOT take any proactive action — the platform records health on its own. Only act when the owner messages you here, or to coordinate a response to a genuine alert. Do not loop. After reading the manual, send one short line confirming you are ready, then wait.',
       env: { LUMPY_URL: base, LUMPY_ADMIN_TOKEN: config.adminToken },
     });
     logger.info({ id: session.id }, 'Conductor session created (locked master orchestrator)');
