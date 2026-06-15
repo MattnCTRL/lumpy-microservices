@@ -118,11 +118,10 @@ export function SideNav() {
         </div>
       </nav>
 
-      {/* ---- Mobile bottom tab bar (5 tabs, never overflows) ---- */}
-      <nav
-        className="flex shrink-0 items-stretch border-t border-neutral-800 bg-neutral-950 md:hidden"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}
-      >
+      {/* ---- Mobile bottom tab bar: fixed to the viewport bottom and lifted
+           clear of the home indicator (see .mobile-tabbar). It can't scroll
+           away or get clipped, and content is padded behind it (.has-tabbar). */}
+      <nav className="mobile-tabbar flex items-stretch border-t border-neutral-800 bg-neutral-950 md:hidden">
         {MOBILE_PRIMARY.map((item) => (
           <Tab key={item.href} {...item} active={isActive(pathname, item.href)} />
         ))}
@@ -251,7 +250,7 @@ function MoreSheet({
   onSignOut: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-30 md:hidden" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
       <button aria-label="Close" className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div
         className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-neutral-800 bg-neutral-950 p-3"

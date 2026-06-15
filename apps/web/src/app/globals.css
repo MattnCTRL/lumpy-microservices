@@ -20,6 +20,35 @@ body {
   background-color: transparent !important;
 }
 
+/* App shell: dynamic viewport height so the layout matches the *visible*
+   area on iOS. 100vh runs taller than the screen and shoves the bottom nav
+   under the home indicator; 100dvh is the visible viewport. 100vh stays as a
+   fallback for browsers without dvh. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Mobile bottom tab bar: pinned to the bottom of the visual viewport and
+   lifted clear of the iOS home indicator with the safe-area inset. Because it
+   is fixed, it never scrolls away and never gets clipped. */
+.mobile-tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Reserve space at the bottom of page content so nothing hides behind the
+   fixed tab bar. Mobile only - the desktop rail sits in normal flow. */
+@media (max-width: 767px) {
+  .has-tabbar {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @layer components {
   .input {
     @apply w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-500;

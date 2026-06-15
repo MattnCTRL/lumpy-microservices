@@ -24,10 +24,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-mono">
         <AuthGate>
-          {/* Mobile: content with a bottom tab bar (col-reverse). Desktop: left rail. */}
-          <div className="flex h-screen flex-col-reverse md:flex-row">
+          {/* Mobile: full-height shell (dvh) with a fixed bottom tab bar that
+              floats over the content. Desktop: left rail beside the content. */}
+          <div className="app-shell md:flex md:flex-row">
             <SideNav />
-            <div className="min-h-0 min-w-0 flex-1">{children}</div>
+            <main className="has-tabbar h-full min-h-0 min-w-0 overflow-hidden md:flex-1">
+              {children}
+            </main>
           </div>
         </AuthGate>
       </body>
