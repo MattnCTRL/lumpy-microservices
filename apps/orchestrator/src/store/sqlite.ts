@@ -559,6 +559,15 @@ export class Store {
     this.db.prepare('DELETE FROM projects WHERE id = ?').run(id);
   }
 
+  /**
+   * Drop a project's hosted-service incident rows. Called on project delete: once
+   * a project (and its hosted services) is gone the URLs are no longer probed, so
+   * any open incident would otherwise stay open forever and skew uptime stats.
+   */
+  deleteHostedIncidentsForProject(projectId: string): void {
+    this.db.prepare('DELETE FROM hosted_incidents WHERE project_id = ?').run(projectId);
+  }
+
   /** A session's connectors with decrypted env, or empty defaults if none. */
   getConnectors(sessionId: string): SessionConnectors {
     const row = this.db

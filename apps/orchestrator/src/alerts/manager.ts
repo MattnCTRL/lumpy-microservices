@@ -4,6 +4,10 @@ import { logger } from '../logger.js';
 import { type AlertRule, DEFAULT_RULES, formatAlertMessage, type MetricKey } from './rules.js';
 
 const OFFLINE_RULE = 'offline';
+// Consecutive below-threshold samples required before an active alert resolves.
+// Without this, a metric oscillating at its threshold fires/resolves every poll,
+// restarting remediation each cycle.
+const CLEAR_SAMPLES = 3;
 
 /**
  * Evaluates metric thresholds against fleet events and maintains the set of
@@ -12,6 +16,8 @@ const OFFLINE_RULE = 'offline';
  */
 export class AlertsManager {
   private readonly counts = new Map<string, number>();
+  // Consecutive below-threshold samples per active/acknowledged alert (hysteresis).
+  private readonly belowCounts = new Map<string, number>();
   private readonly active = new Map<string, Alert>();
   // Dismissed alerts stay suppressed until their condition clears and recurs.
   private readonly acknowledged = new Set<string>();
@@ -71,6 +77,7 @@ export class AlertsManager {
   /** Resolve and re-arm: the condition genuinely cleared, so allow future alerts. */
   private clear(key: string): void {
     this.counts.set(key, 0);
+    this.belowCounts.set(key, 0);
     this.acknowledged.delete(key);
     this.resolve(key);
   }
@@ -82,6 +89,7 @@ export class AlertsManager {
       for (const rule of group) {
         const key = `${serverId}:${rule.id}`;
         if (rule === breached) {
+          this.belowCounts.set(key, 0);
           const count = (this.counts.get(key) ?? 0) + 1;
           this.counts.set(key, count);
           if (count >= rule.forSamples && !this.active.has(key) && !this.acknowledged.has(key)) {
@@ -100,7 +108,15 @@ export class AlertsManager {
             });
           }
         } else {
-          this.clear(key);
+          // Below this tier. Break the over-threshold streak immediately, but only
+          // resolve/re-arm after CLEAR_SAMPLES consecutive below-samples (hysteresis),
+          // and only bother counting when there is an active/dismissed alert to clear.
+          this.counts.set(key, 0);
+          if (this.active.has(key) || this.acknowledged.has(key)) {
+            const below = (this.belowCounts.get(key) ?? 0) + 1;
+            this.belowCounts.set(key, below);
+            if (below >= CLEAR_SAMPLES) this.clear(key);
+          }
         }
       }
     }

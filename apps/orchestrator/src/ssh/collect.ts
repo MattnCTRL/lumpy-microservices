@@ -9,8 +9,11 @@ export interface SshTarget {
   password?: string;
 }
 
-// One round trip: two CPU samples 1s apart, plus memory, load, uptime, disk.
+// One round trip: identify the OS, then two CPU samples 1s apart, plus memory,
+// load, uptime, disk. The /proc parsing below is Linux-only by design (macOS/BSD
+// hosts run the cross-platform Lumpy agent instead).
 const METRICS_COMMAND = [
+  'echo OS; uname -s',
   "echo C1; grep '^cpu ' /proc/stat",
   'sleep 1',
   "echo C2; grep '^cpu ' /proc/stat",
@@ -34,6 +37,20 @@ function clampPercent(value: number): number {
 /** Parse the output of METRICS_COMMAND into a metrics report. */
 export function parseMetrics(output: string): MetricsReport {
   const lines = output.split('\n');
+
+  // SSH monitoring parses Linux /proc; on a Mac/BSD that yields all-zero metrics
+  // that wrongly read as a healthy "online" host. Reject it with a clear message
+  // so the add-server test surfaces it (and a poll never fakes zeros).
+  const osIdx = lines.indexOf('OS');
+  if (osIdx >= 0) {
+    const os = (lines[osIdx + 1] ?? '').trim();
+    if (os && !/linux/i.test(os)) {
+      throw new Error(
+        `SSH monitoring supports Linux only (this host is ${os}); install the Lumpy agent to monitor it instead`,
+      );
+    }
+  }
+
   const cpuLines = lines.filter((line) => /^cpu\s+\d/.test(line));
   const memTotal = Number(/MemTotal:\s+(\d+)/.exec(output)?.[1] ?? 0);
   const memAvailable = Number(/MemAvailable:\s+(\d+)/.exec(output)?.[1] ?? 0);

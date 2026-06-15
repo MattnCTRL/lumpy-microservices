@@ -85,6 +85,53 @@ test('ingesting for an unknown server is rejected', () => {
   }
 });
 
+test('an SSH-monitored node is driven by polling, not Tailscale presence (no flap)', () => {
+  const { fleet, cleanup } = harness();
+  try {
+    const m = fleet.register({
+      name: 'mac',
+      address: '100.64.0.5',
+      tags: [],
+      kind: 'machine',
+      env: 'prod',
+      criticality: 'low',
+      ssh: { host: '100.64.0.5', port: 22, user: 'x', privateKey: 'k' },
+    });
+    fleet.ingest(m.id, SAMPLE); // a successful poll -> online
+    assert.equal(fleet.list().find((s) => s.id === m.id)?.status, 'online');
+    // Presence reports it absent from the tailnet; an SSH-polled node must ignore
+    // that (else it flips offline every presence tick while polls say online).
+    fleet.setPresence(new Set());
+    assert.equal(
+      fleet.list().find((s) => s.id === m.id)?.status,
+      'online',
+      'SSH node status is not overwritten by presence',
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test('an agentless machine/remote is driven by Tailscale presence', () => {
+  const { fleet, cleanup } = harness();
+  try {
+    const m = fleet.register({
+      name: 'phone',
+      address: '100.64.0.9',
+      tags: [],
+      kind: 'remote',
+      env: 'prod',
+      criticality: 'low',
+    });
+    fleet.setPresence(new Set(['100.64.0.9']));
+    assert.equal(fleet.list().find((s) => s.id === m.id)?.status, 'online');
+    fleet.setPresence(new Set());
+    assert.equal(fleet.list().find((s) => s.id === m.id)?.status, 'offline');
+  } finally {
+    cleanup();
+  }
+});
+
 test('a server goes offline once its heartbeat is stale', () => {
   mock.timers.enable({ apis: ['Date', 'setInterval'] });
   const dir = mkdtempSync(join(tmpdir(), 'lumpy-fleet-'));

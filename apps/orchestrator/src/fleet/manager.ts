@@ -137,14 +137,15 @@ export class FleetManager {
     clearInterval(this.timer);
   }
 
-  /** Flip cloud servers whose heartbeat has gone stale to offline. */
+  /** Flip poll/heartbeat-driven nodes whose last sample has gone stale to offline. */
   checkStale(): void {
     const now = Date.now();
     for (const server of this.store.listServers()) {
-      // Only always-on cloud servers use heartbeat staleness. Machines (laptops)
-      // and remotes (phones/tablets) sleep, so their status comes from Tailscale
-      // presence instead - being agent-less or asleep must not read as "offline".
-      if (server.kind !== 'server') continue;
+      // Status comes from a poll/heartbeat for always-on cloud servers AND any
+      // node monitored over SSH (kind doesn't matter - an SSH-polled host has a
+      // direct signal). Agent-less machines/remotes sleep, so THEIR status comes
+      // from Tailscale presence (below); being asleep must not read as "offline".
+      if (server.kind !== 'server' && !server.ssh) continue;
       const last = this.lastSeenMs.get(server.id);
       if (last !== undefined && now - last > HEARTBEAT_TIMEOUT_MS) {
         this.setStatus(server.id, 'offline');
@@ -160,7 +161,10 @@ export class FleetManager {
    */
   setPresence(onlineAddresses: Set<string>): void {
     for (const server of this.store.listServers()) {
-      if (server.kind === 'server') continue;
+      // Presence governs ONLY nodes with no direct signal. An SSH-polled node has
+      // one (ingest + checkStale), so letting presence also drive it made it flap
+      // between the poll's "online" and presence's "offline" every cycle.
+      if (server.kind === 'server' || server.ssh) continue;
       this.setStatus(server.id, onlineAddresses.has(server.address) ? 'online' : 'offline');
     }
   }

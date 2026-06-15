@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import { parseMetrics } from './collect.js';
 
 const SAMPLE = [
+  'OS',
+  'Linux',
   'C1',
   'cpu  100 0 50 1000 10 0 5 0 0 0',
   'C2',
@@ -32,4 +34,9 @@ test('parseMetrics is resilient to empty output', () => {
   const metrics = parseMetrics('');
   assert.equal(metrics.cpuPercent, 0);
   assert.equal(metrics.memPercent, 0);
+});
+
+test('parseMetrics rejects a non-Linux host instead of reporting fake zeros', () => {
+  const darwin = ['OS', 'Darwin', 'C1', 'cpu  1 0 1 1 0 0 0 0 0 0'].join('\n');
+  assert.throws(() => parseMetrics(darwin), /Linux only/);
 });

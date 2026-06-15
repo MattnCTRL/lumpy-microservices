@@ -63,22 +63,17 @@ test('does not fire twice for a persisting condition', () => {
   assert.equal(events.filter((e) => e.type === 'alert.fired').length, 1);
 });
 
-test('resolves when the metric returns to normal', () => {
+test('resolves after the metric stays normal (hysteresis: not on a single dip)', () => {
   const { bus, events } = harness();
-  bus.publish({
-    type: 'fleet.metrics',
-    id: 's1',
-    name: 'web',
-    metrics: metrics({ diskPercent: 92 }),
-    at: 't',
-  });
-  bus.publish({
-    type: 'fleet.metrics',
-    id: 's1',
-    name: 'web',
-    metrics: metrics({ diskPercent: 40 }),
-    at: 't',
-  });
+  bus.publish(diskMetric(92)); // fire critical
+  bus.publish(diskMetric(40)); // one dip - must NOT resolve yet
+  assert.equal(
+    events.some((e) => e.type === 'alert.resolved'),
+    false,
+    'a single below-threshold sample does not resolve',
+  );
+  bus.publish(diskMetric(40));
+  bus.publish(diskMetric(40)); // sustained normal -> resolves
   assert.ok(events.some((e) => e.type === 'alert.resolved'));
 });
 
@@ -125,8 +120,11 @@ test('dismiss suppresses re-firing until the condition clears and recurs', () =>
   bus.publish(diskMetric(92));
   assert.equal(events.filter((e) => e.type === 'alert.fired').length, 0);
 
-  bus.publish(diskMetric(40)); // clears
-  bus.publish(diskMetric(92)); // recurs -> fires again
+  // Sustained-normal re-arms (hysteresis), then a recurrence fires again.
+  bus.publish(diskMetric(40));
+  bus.publish(diskMetric(40));
+  bus.publish(diskMetric(40));
+  bus.publish(diskMetric(92));
   assert.ok(events.some((e) => e.type === 'alert.fired'));
 });
 

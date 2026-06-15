@@ -258,6 +258,9 @@ export const projectsModule: LumpyModule = {
       const { id } = request.params as { id: string };
       if (!store.getProject(id)) return reply.status(404).send({ error: 'project not found' });
       store.deleteProject(id);
+      // The project's hosted-service URLs are no longer probed, so clear their
+      // incidents rather than leaving an open one skewing uptime forever.
+      store.deleteHostedIncidentsForProject(id);
       return reply.status(204).send();
     });
 
