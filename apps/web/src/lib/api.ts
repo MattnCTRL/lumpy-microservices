@@ -53,8 +53,13 @@ function resolveOrchestratorUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   if (explicit && /^https?:\/\//.test(explicit)) return explicit.replace(/\/$/, '');
   if (typeof window !== 'undefined') {
+    // Behind a TLS reverse proxy (nginx/Tailscale) the orchestrator is fronted on
+    // the SAME origin (/api, /ws), so use it directly - never a separate :4317,
+    // which isn't proxied and would also be blocked as mixed content over https.
+    if (window.location.protocol === 'https:') return window.location.origin;
+    // Raw HTTP (e.g. the tailnet IP) reaches the orchestrator on its own port.
     const port = process.env.NEXT_PUBLIC_ORCHESTRATOR_PORT || '4317';
-    return `${window.location.protocol}//${window.location.hostname}:${port}`;
+    return `http://${window.location.hostname}:${port}`;
   }
   return 'http://127.0.0.1:4317';
 }
