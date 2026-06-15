@@ -19,6 +19,7 @@ import { Field } from '@/components/Field';
 import { Sparkline } from '@/components/Sparkline';
 import { api, fleetSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
 import { reconnectingSocket } from '@/lib/socket';
+import { SkeletonRows } from '@/components/Skeleton';
 
 export default function FleetPage() {
   const [servers, setServers] = useState<Server[]>([]);
@@ -27,6 +28,7 @@ export default function FleetPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   // Auto-select only on first load, so tapping "Back" on mobile isn't undone.
   const didAutoSelect = useRef(false);
 
@@ -41,6 +43,8 @@ export default function FleetPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -121,6 +125,10 @@ export default function FleetPage() {
               Add
             </button>
           </div>
+          {loading && servers.length === 0 ? (
+            <SkeletonRows rows={4} />
+          ) : (
+            <>
           <FleetGroup
             title="Servers"
             empty="No servers yet."
@@ -145,6 +153,8 @@ export default function FleetPage() {
             selectedId={selectedId}
             onSelect={(id) => void select(id)}
           />
+            </>
+          )}
         </aside>
 
         <main className={`min-h-0 flex-1 overflow-y-auto p-3 ${selected ? 'block' : 'hidden md:block'}`}>
@@ -156,6 +166,7 @@ export default function FleetPage() {
               onBack={() => setSelectedId(null)}
               onChanged={() => void refresh()}
               onDelete={async () => {
+                if (!confirm(`Remove "${selected.name}" from the fleet?`)) return;
                 await api.deleteServer(selected.id);
                 setSelectedId(null);
                 void refresh();

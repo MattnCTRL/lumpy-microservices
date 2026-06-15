@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Project, Schedule } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { SkeletonRows } from '@/components/Skeleton';
 
 const CRON_PRESETS: { label: string; cron: string }[] = [
   { label: 'Every 15 min', cron: '*/15 * * * *' },
@@ -31,6 +32,7 @@ export default function SchedulesPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -38,6 +40,8 @@ export default function SchedulesPage() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -63,6 +67,7 @@ export default function SchedulesPage() {
     }
   };
   const remove = async (s: Schedule) => {
+    if (!confirm(`Delete schedule "${s.name}"?`)) return;
     await api.deleteSchedule(s.id);
     void refresh();
   };
@@ -86,7 +91,9 @@ export default function SchedulesPage() {
       {error && <p className="mb-3 text-sm text-red-700">{error} - {ORCHESTRATOR_URL}</p>}
       {note && <p className="mb-3 text-sm text-emerald-700">{note}</p>}
 
-      {schedules.length === 0 ? (
+      {loading && schedules.length === 0 ? (
+        <SkeletonRows rows={3} />
+      ) : schedules.length === 0 ? (
         <p className="text-sm text-neutral-500">
           No schedules yet. Create one to run a task on a cadence.
         </p>

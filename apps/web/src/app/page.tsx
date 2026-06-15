@@ -13,6 +13,7 @@ import type {
   Session,
 } from '@lumpy/shared';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { SkeletonCards } from '@/components/Skeleton';
 
 export default function DashboardPage() {
   const [servers, setServers] = useState<Server[]>([]);
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [repoSync, setRepoSync] = useState<RepoSyncStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -45,6 +47,8 @@ export default function DashboardPage() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -75,15 +79,15 @@ export default function DashboardPage() {
     <div className="mx-auto h-full max-w-4xl overflow-y-auto p-4">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-neutral-100">Lumpy</h1>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            attention > 0
-              ? 'bg-amber-100 text-amber-700'
-              : 'bg-emerald-100 text-emerald-700'
-          }`}
-        >
-          {attention > 0 ? `${attention} need attention` : 'all clear ✅'}
-        </span>
+        {!loading && (
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              attention > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+            }`}
+          >
+            {attention > 0 ? `${attention} need attention` : 'all clear ✅'}
+          </span>
+        )}
       </div>
       {error && (
         <p className="mb-3 text-sm text-red-700">
@@ -91,8 +95,12 @@ export default function DashboardPage() {
         </p>
       )}
 
+      {loading ? (
+        <SkeletonCards count={7} />
+      ) : (
+        <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Card href="/fleet" title="Servers" stat={`${serversOnline}/${cloud.length}`} hint="online">
+        <Card href="/fleet" title="Servers" stat={`${serversOnline}/${cloud.length}`} hint="online" tint="ice">
           {cloud.length === 0 ? (
             <Empty>No servers yet.</Empty>
           ) : (
@@ -107,6 +115,7 @@ export default function DashboardPage() {
           title="Hosted services"
           stat={`${services.length - servicesDown.length}/${services.length}`}
           hint="up"
+          tint="mint"
         >
           {services.length === 0 ? (
             <Empty>None tracked yet.</Empty>
@@ -127,6 +136,7 @@ export default function DashboardPage() {
           title="Sessions"
           stat={`${running.length}`}
           hint="running"
+          tint="violet"
           accent={needsYou.length > 0 ? 'amber' : undefined}
         >
           {needsYou.length > 0 && (
@@ -153,6 +163,7 @@ export default function DashboardPage() {
           title="Alerts"
           stat={`${alerts.length}`}
           hint="active"
+          tint="coral"
           accent={criticalAlerts > 0 ? 'red' : undefined}
         >
           {alerts.length === 0 ? (
@@ -176,6 +187,7 @@ export default function DashboardPage() {
           title="Schedules"
           stat={`${enabledSchedules.length}`}
           hint="enabled"
+          tint="ice"
         >
           {schedules.length === 0 ? (
             <Empty>No schedules.</Empty>
@@ -198,7 +210,7 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        <Card href="/fleet" title="Recent incidents" stat={`${incidents.filter((i) => !i.resolvedAt).length}`} hint="open">
+        <Card href="/fleet" title="Recent incidents" stat={`${incidents.filter((i) => !i.resolvedAt).length}`} hint="open" tint="coral">
           {incidents.length === 0 ? (
             <Empty>No incidents recorded. 🎉</Empty>
           ) : (
@@ -242,6 +254,8 @@ export default function DashboardPage() {
           </ul>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }
@@ -270,6 +284,7 @@ function Card({
   stat,
   hint,
   accent,
+  tint,
   children,
 }: {
   href: string;
@@ -277,6 +292,7 @@ function Card({
   stat: string;
   hint: string;
   accent?: 'amber' | 'red';
+  tint?: 'mint' | 'ice' | 'violet' | 'coral';
   children: React.ReactNode;
 }) {
   const accentRing =
@@ -284,7 +300,7 @@ function Card({
   return (
     <Link
       href={href}
-      className={`surface block p-4 transition hover:-translate-y-0.5 hover:shadow-glass-lg ${accentRing}`}
+      className={`surface ${tint ? `tint-${tint}` : ''} block p-4 transition hover:-translate-y-0.5 hover:shadow-glass-lg ${accentRing}`}
     >
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-medium text-neutral-300">{title}</h2>

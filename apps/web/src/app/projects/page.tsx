@@ -11,12 +11,14 @@ import type {
 } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { SkeletonRows } from '@/components/Skeleton';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -26,6 +28,8 @@ export default function ProjectsPage() {
       setSelectedId((cur) => cur ?? list[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -57,7 +61,9 @@ export default function ProjectsPage() {
               New
             </button>
           </div>
-          {projects.length === 0 ? (
+          {loading && projects.length === 0 ? (
+            <SkeletonRows rows={4} />
+          ) : projects.length === 0 ? (
             <p className="px-1 py-2 text-sm text-neutral-500">No projects yet.</p>
           ) : (
             <ul className="space-y-1.5">

@@ -4,18 +4,22 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Alert, ConsultVerdict, PendingRemediation } from '@lumpy/shared';
 import { alertsSocketUrl, api, ORCHESTRATOR_URL } from '@/lib/api';
 import { reconnectingSocket } from '@/lib/socket';
+import { SkeletonRows } from '@/components/Skeleton';
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [pending, setPending] = useState<PendingRemediation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
       setAlerts(await api.listAlerts());
       setError(null);
+      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
+      setLoading(false);
       return;
     }
     // Best-effort: a pending-remediation hiccup must not blank the alerts view.
@@ -63,7 +67,9 @@ export default function AlertsPage() {
         Active alerts {alerts.length > 0 && `(${alerts.length})`}
       </h2>
 
-      {alerts.length === 0 ? (
+      {loading && alerts.length === 0 ? (
+        <SkeletonRows rows={3} />
+      ) : alerts.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-sm text-neutral-500">
           All clear - no active alerts.
         </div>

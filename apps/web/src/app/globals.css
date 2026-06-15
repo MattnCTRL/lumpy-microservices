@@ -94,4 +94,21 @@ body::before {
   .input {
     @apply w-full rounded-xl border border-glass bg-white/70 px-3 py-1.5 text-sm text-ink outline-none transition placeholder:text-muted focus:border-ice focus:bg-white;
   }
+  /* Liquid-crystal accent washes layered over a .surface (color + image compose). */
+  .tint-mint {
+    background-image: linear-gradient(135deg, rgba(81, 239, 195, 0.22), transparent 62%);
+  }
+  .tint-ice {
+    background-image: linear-gradient(135deg, rgba(104, 200, 255, 0.22), transparent 62%);
+  }
+  .tint-violet {
+    background-image: linear-gradient(135deg, rgba(168, 136, 255, 0.22), transparent 62%);
+  }
+  .tint-coral {
+    background-image: linear-gradient(135deg, rgba(255, 135, 111, 0.2), transparent 62%);
+  }
+  /* Shimmer placeholder bar for loading states. */
+  .skeleton-bar {
+    @apply animate-pulse rounded-md bg-white/60;
+  }
 }

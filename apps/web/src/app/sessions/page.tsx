@@ -7,12 +7,14 @@ import { Field } from '@/components/Field';
 import { Terminal } from '@/components/Terminal';
 import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
 import { reconnectingSocket } from '@/lib/socket';
+import { SkeletonRows } from '@/components/Skeleton';
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   // Auto-select a session only on first load. Re-selecting on every refresh
   // would fight the user: on mobile, tapping "Back" sets null and the next
   // refresh would snap them right back into the session they just left.
@@ -29,6 +31,8 @@ export default function SessionsPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -85,6 +89,9 @@ export default function SessionsPage() {
               New
             </button>
           </div>
+          {loading && sessions.length === 0 ? (
+            <SkeletonRows rows={4} />
+          ) : (
           <SessionList
             sessions={sessions}
             selectedId={selectedId}
@@ -94,11 +101,13 @@ export default function SessionsPage() {
               void refresh();
             }}
             onDelete={async (id) => {
+              if (!confirm('Delete this session? This removes it permanently.')) return;
               await api.deleteSession(id);
               setSelectedId((current) => (current === id ? null : current));
               void refresh();
             }}
           />
+          )}
         </aside>
 
         <main className={`min-h-0 flex-1 p-3 ${selected ? 'block' : 'hidden md:block'}`}>
@@ -351,7 +360,11 @@ function StoppedActions({
         </button>
         <button
           disabled={busy !== null}
-          onClick={() => run('delete', () => api.deleteSession(session.id), onDeleted)}
+          onClick={() => {
+            if (confirm('Delete this session? This removes it permanently.')) {
+              void run('delete', () => api.deleteSession(session.id), onDeleted);
+            }
+          }}
           className="rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-red-700 disabled:opacity-50"
         >
           {busy === 'delete' ? 'Deleting…' : 'Delete'}

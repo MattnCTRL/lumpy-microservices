@@ -3,6 +3,7 @@ import '@xterm/xterm/css/xterm.css';
 import './globals.css';
 import { AuthGate } from '@/components/AuthGate';
 import { InstanceBanner } from '@/components/InstanceBanner';
+import { ServiceWorker } from '@/components/ServiceWorker';
 import { SideNav } from '@/components/SideNav';
 import { Toaster } from '@/components/Toaster';
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0a0a0a',
+  themeColor: '#eef8ff',
   width: 'device-width',
   initialScale: 1,
   // Let content extend under the notch/home indicator so we can pad with
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-sans">
+        <ServiceWorker />
         <InstanceBanner />
         <Toaster />
         <AuthGate>

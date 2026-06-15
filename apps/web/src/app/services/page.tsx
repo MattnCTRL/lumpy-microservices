@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Service } from '@lumpy/shared';
 import { Field } from '@/components/Field';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { SkeletonRows } from '@/components/Skeleton';
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -11,6 +12,7 @@ export default function ServicesPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -18,6 +20,8 @@ export default function ServicesPage() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -55,7 +59,9 @@ export default function ServicesPage() {
       {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
       {note && <p className="mb-3 text-sm text-emerald-700">{note}</p>}
 
-      {services.length === 0 ? (
+      {loading && services.length === 0 ? (
+        <SkeletonRows rows={3} />
+      ) : services.length === 0 ? (
         <p className="text-sm text-neutral-500">
           No services yet. Create one - a focused specialist (e.g. &quot;DB migration
           reviewer&quot;, &quot;dependency upgrader&quot;) that Lumpy can deploy on demand.

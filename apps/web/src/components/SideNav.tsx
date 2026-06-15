@@ -342,9 +342,19 @@ function Profile({ auth, onSignOut }: { auth: AuthState | null; onSignOut: () =>
 function HealthBadge({ health }: { health: HealthResponse | null }) {
   if (!health) return <span className="text-xs text-red-700">offline</span>;
   return (
-    <span className="flex items-center gap-2 text-xs text-neutral-500">
-      <span className={`h-2 w-2 rounded-full ${health.tmux ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-      {health.tmux ? 'tmux ready' : 'tmux missing'} · v{health.version}
-    </span>
+    <div className="space-y-0.5 text-xs text-neutral-500">
+      <span className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${health.tmux ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+        {health.tmux ? 'tmux ready' : 'tmux missing'} · v{health.version}
+        {health.instance && (
+          <span className="rounded-full bg-white/70 px-1.5 text-[10px] font-semibold text-ink">
+            {health.instance}
+          </span>
+        )}
+      </span>
+      <span className="block pl-4 text-[11px]">
+        {health.sessionCount} session{health.sessionCount === 1 ? '' : 's'} · {health.rssMb} MB
+      </span>
+    </div>
   );
 }
