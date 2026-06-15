@@ -222,15 +222,16 @@ export const fleetModule: LumpyModule = {
     registerRest(ctx, fleet, hosted);
     registerEventsWebSocket(ctx);
 
-    // Remotes (phones/tablets) can't run an agent, so derive their online
-    // status from Tailscale presence instead of metric heartbeats.
-    const refreshRemotes = async (): Promise<void> => {
-      if (!fleet.list().some((s) => s.kind === 'remote')) return;
+    // Machines (laptops) and remotes (phones/tablets) sleep and may run no
+    // agent, so derive their online status from Tailscale presence rather than
+    // metric heartbeats — a reachable device must not read as "offline".
+    const refreshPresence = async (): Promise<void> => {
+      if (!fleet.list().some((s) => s.kind === 'machine' || s.kind === 'remote')) return;
       const online = new Set((await tailnetDevices()).filter((d) => d.online).map((d) => d.address));
-      fleet.setRemotePresence(online);
+      fleet.setPresence(online);
     };
-    void refreshRemotes();
-    const timer = setInterval(() => void refreshRemotes(), REMOTE_PRESENCE_INTERVAL_MS);
+    void refreshPresence();
+    const timer = setInterval(() => void refreshPresence(), REMOTE_PRESENCE_INTERVAL_MS);
     timer.unref();
   },
 };

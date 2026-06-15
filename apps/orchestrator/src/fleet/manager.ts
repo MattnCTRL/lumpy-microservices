@@ -137,12 +137,14 @@ export class FleetManager {
     clearInterval(this.timer);
   }
 
-  /** Flip servers whose heartbeat has gone stale to offline. */
+  /** Flip cloud servers whose heartbeat has gone stale to offline. */
   checkStale(): void {
     const now = Date.now();
     for (const server of this.store.listServers()) {
-      // Remotes don't send heartbeats; their status comes from Tailscale presence.
-      if (server.kind === 'remote') continue;
+      // Only always-on cloud servers use heartbeat staleness. Machines (laptops)
+      // and remotes (phones/tablets) sleep, so their status comes from Tailscale
+      // presence instead — being agent-less or asleep must not read as "offline".
+      if (server.kind !== 'server') continue;
       const last = this.lastSeenMs.get(server.id);
       if (last !== undefined && now - last > HEARTBEAT_TIMEOUT_MS) {
         this.setStatus(server.id, 'offline');
@@ -151,12 +153,14 @@ export class FleetManager {
   }
 
   /**
-   * Set online/offline for remote (phone/tablet) nodes from the set of
-   * addresses currently present on the tailnet.
+   * Set online/offline for tailnet devices (machines + remotes) from the set of
+   * addresses currently present on the tailnet. Cloud servers are left to their
+   * heartbeat. A machine on the tailnet is reachable, so it's online even with
+   * no agent; metrics (when an agent is installed) are a separate concern.
    */
-  setRemotePresence(onlineAddresses: Set<string>): void {
+  setPresence(onlineAddresses: Set<string>): void {
     for (const server of this.store.listServers()) {
-      if (server.kind !== 'remote') continue;
+      if (server.kind === 'server') continue;
       this.setStatus(server.id, onlineAddresses.has(server.address) ? 'online' : 'offline');
     }
   }
