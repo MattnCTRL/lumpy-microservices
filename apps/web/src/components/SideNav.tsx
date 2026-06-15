@@ -119,7 +119,10 @@ export function SideNav() {
       </nav>
 
       {/* ---- Mobile bottom tab bar (5 tabs, never overflows) ---- */}
-      <nav className="flex shrink-0 items-stretch border-t border-neutral-800 bg-neutral-950 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav
+        className="flex shrink-0 items-stretch border-t border-neutral-800 bg-neutral-950 md:hidden"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}
+      >
         {MOBILE_PRIMARY.map((item) => (
           <Tab key={item.href} {...item} active={isActive(pathname, item.href)} />
         ))}
@@ -250,7 +253,10 @@ function MoreSheet({
   return (
     <div className="fixed inset-0 z-30 md:hidden" role="dialog" aria-modal="true">
       <button aria-label="Close" className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-neutral-800 bg-neutral-950 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-neutral-800 bg-neutral-950 p-3"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}
+      >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-700" />
         <div className="flex flex-col gap-1">
           {items.map((item) => {
