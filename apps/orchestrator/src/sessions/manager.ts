@@ -77,6 +77,8 @@ export class SessionManager {
   private readonly activities = new Map<string, SessionActivity>();
   private readonly prompts = new Map<string, SessionPrompt | null>();
   private readonly lastTouch = new Map<string, number>();
+  // Per-session serialization of input writes (see input()).
+  private readonly inputChains = new Map<string, Promise<void>>();
 
   constructor(
     private readonly store: Store,
@@ -110,10 +112,22 @@ export class SessionManager {
    * (from a mouse scroll) doesn't silently swallow the keystrokes.
    */
   async input(id: string, data: string): Promise<boolean> {
-    const broker = this.getBroker(id);
-    if (!broker) return false;
-    await tmux.cancelCopyMode(this.tmuxName(id));
-    broker.write(data);
+    if (!this.getBroker(id)) return false;
+    // Serialize writes per session: cancelCopyMode is an async tmux subprocess, so
+    // firing input frames unserialized could let a later keystroke's write land
+    // before an earlier one (visible when a high-latency link coalesces frames into
+    // a sub-millisecond burst). Chaining applies them strictly in arrival order.
+    // The catch also keeps a write failure from becoming an unhandled rejection.
+    const prev = this.inputChains.get(id) ?? Promise.resolve();
+    const next = prev
+      .then(async () => {
+        const broker = this.getBroker(id);
+        if (!broker) return;
+        await tmux.cancelCopyMode(this.tmuxName(id));
+        broker.write(data);
+      })
+      .catch((error) => logger.warn({ id, error }, 'session input failed'));
+    this.inputChains.set(id, next);
     return true;
   }
 
@@ -517,6 +531,7 @@ export class SessionManager {
     this.trackers.delete(id);
     this.activities.delete(id);
     this.prompts.delete(id);
+    this.inputChains.delete(id);
     tracker?.stop();
     broker?.dispose();
     return true;

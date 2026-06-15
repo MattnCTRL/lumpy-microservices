@@ -39,6 +39,13 @@ export const remediationModule: LumpyModule = {
   version: '0.1.0',
   description: 'Autonomous Claude sessions to investigate or fix alerts, tiered by severity.',
   register(ctx: ModuleContext) {
+    // A pending hold older than this is treated as stale (e.g. orphaned by a
+    // restart) and pruned so it can't suppress the alert forever.
+    const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
+    const pruneStale = (): void =>
+      ctx.store.prunePendingRemediations(new Date(Date.now() - PENDING_TTL_MS).toISOString());
+    pruneStale(); // reconcile on boot
+
     const handling = new Set<string>(); // already acted on (transient, in-memory)
 
     // Hold an alert for one-tap approval and announce it. Persisted via the store
@@ -162,6 +169,7 @@ export const remediationModule: LumpyModule = {
       const { remediationMode: mode, remediationAutoSeverities } = ctx.settings.get();
       if (mode === 'off') return;
 
+      pruneStale(); // never let a stale hold permanently dedup an alert away
       const alert = event.alert;
       if (handling.has(alert.id) || ctx.store.getPendingRemediation(alert.id)) return;
 

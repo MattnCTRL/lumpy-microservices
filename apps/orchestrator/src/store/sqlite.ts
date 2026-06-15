@@ -328,12 +328,25 @@ export class Store {
   }
 
   addPendingRemediation(alert: Alert, at: string): void {
+    // Preserve the original created_at on a re-fire (only refresh the alert
+    // payload) so the hold age - which drives TTL pruning - stays truthful.
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO pending_remediations (alert_id, alert, created_at)
-         VALUES (@alert_id, @alert, @created_at)`,
+        `INSERT INTO pending_remediations (alert_id, alert, created_at)
+         VALUES (@alert_id, @alert, @created_at)
+         ON CONFLICT(alert_id) DO UPDATE SET alert = excluded.alert`,
       )
       .run({ alert_id: alert.id, alert: JSON.stringify(alert), created_at: at });
+  }
+
+  /**
+   * Drop pending remediations created before the cutoff. A hold orphaned by a
+   * restart (the alert resolved while the in-memory alerts manager was empty, so
+   * no alert.resolved cleared it) would otherwise linger and make the dedup
+   * suppress that alert id forever; aging it out lets the alert be handled again.
+   */
+  prunePendingRemediations(cutoffIso: string): void {
+    this.db.prepare('DELETE FROM pending_remediations WHERE created_at < ?').run(cutoffIso);
   }
 
   getPendingRemediation(alertId: string): Alert | null {

@@ -92,7 +92,11 @@ export function Terminal({ sessionId }: { sessionId: string }) {
                 done = true;
               } else if (msg.type === 'error' && msg.message) {
                 term.writeln(`\r\n\x1b[33m[${msg.message}]\x1b[0m`);
-                if (/not found/i.test(msg.message)) done = true;
+                // Stop retrying on terminal conditions: session gone, or the server
+                // closed the socket for auth/role reasons (retrying can't fix those).
+                if (/not found|authentication required|admin role/i.test(msg.message)) {
+                  done = true;
+                }
               }
             } catch {
               // non-JSON text frame; ignore

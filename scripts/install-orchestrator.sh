@@ -59,7 +59,14 @@ mkdir -p "$INSTALL_DIR/data"
 ENV_FILE="$INSTALL_DIR/.env"
 touch "$ENV_FILE" && chmod 600 "$ENV_FILE"
 if ! grep -q '^LUMPY_AUTH_SECRET=' "$ENV_FILE"; then
-  echo "LUMPY_AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >>"$ENV_FILE"
+  # Capture first so a node failure can't write an empty value (which set -u won't
+  # catch inside a command substitution, and the anchored guard would never repair).
+  SECRET="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
+  if [ -n "$SECRET" ]; then
+    echo "LUMPY_AUTH_SECRET=$SECRET" >>"$ENV_FILE"
+  else
+    echo "warning: could not generate LUMPY_AUTH_SECRET; set it manually in $ENV_FILE" >&2
+  fi
 fi
 
 cat >/etc/systemd/system/lumpy-orchestrator.service <<EOF

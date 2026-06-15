@@ -50,3 +50,19 @@ test('adding the same alert twice keeps a single pending row', () => {
   store.addPendingRemediation(alert, '2026-06-15T00:05:00.000Z');
   assert.equal(store.listPendingRemediations().length, 1);
 });
+
+test('re-adding a pending alert preserves its original created_at', () => {
+  const store = tempStore();
+  store.addPendingRemediation(alert, '2026-06-15T00:00:00.000Z');
+  store.addPendingRemediation(alert, '2026-06-15T06:00:00.000Z'); // a later re-fire
+  assert.equal(store.listPendingRemediations()[0]?.createdAt, '2026-06-15T00:00:00.000Z');
+});
+
+test('pruning drops holds older than the cutoff and keeps fresh ones', () => {
+  const store = tempStore();
+  store.addPendingRemediation({ ...alert, id: 'stale' }, '2026-06-14T00:00:00.000Z');
+  store.addPendingRemediation({ ...alert, id: 'fresh' }, '2026-06-15T12:00:00.000Z');
+  store.prunePendingRemediations('2026-06-15T00:00:00.000Z');
+  assert.equal(store.getPendingRemediation('stale'), null, 'stale hold pruned');
+  assert.ok(store.getPendingRemediation('fresh'), 'fresh hold kept');
+});

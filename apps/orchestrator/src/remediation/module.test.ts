@@ -74,6 +74,7 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
       removePendingRemediation: (id: string) => {
         pendingStore.delete(id);
       },
+      prunePendingRemediations: () => undefined,
     },
     logger: {},
   } as unknown as ModuleContext;

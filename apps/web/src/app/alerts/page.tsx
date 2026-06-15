@@ -11,12 +11,17 @@ export default function AlertsPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const [a, p] = await Promise.all([api.listAlerts(), api.listPendingRemediations()]);
-      setAlerts(a);
-      setPending(p);
+      setAlerts(await api.listAlerts());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
+      return;
+    }
+    // Best-effort: a pending-remediation hiccup must not blank the alerts view.
+    try {
+      setPending(await api.listPendingRemediations());
+    } catch {
+      // leave the prior pending list in place
     }
   }, []);
 

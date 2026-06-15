@@ -33,7 +33,8 @@ export function buildNotification(
   apiUrl: string,
   webUrl: string = apiUrl,
 ): Notification | null {
-  const link = (path: string): string | undefined => (webUrl ? `${webUrl}${path}` : undefined);
+  const link = (path: string): string | undefined =>
+    webUrl ? `${webUrl.replace(/\/$/, '')}${path}` : undefined;
 
   if (event.type === 'session.activity' && event.activity === 'awaiting_permission') {
     const actions: NtfyAction[] = apiUrl
