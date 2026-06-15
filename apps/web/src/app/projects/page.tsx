@@ -39,7 +39,7 @@ export default function ProjectsPage() {
     <div className="flex h-full flex-col">
       {error && (
         <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
-          {error} — is the orchestrator running on {ORCHESTRATOR_URL}?
+          {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -239,7 +239,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
       hint="The full picture the librarian draws from to build this project's manual."
     >
       <div className="space-y-3">
-        <Field label="Git repos" hint="one per line — a project can span several repos (optional)">
+        <Field label="Git repos" hint="one per line - a project can span several repos (optional)">
           <textarea
             value={repos}
             onChange={(e) => setRepos(e.target.value)}
@@ -267,7 +267,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
         )}
         <Field
           label="Servers"
-          hint="cloud servers from the Fleet that this project runs on — attributes the infra to this project."
+          hint="cloud servers from the Fleet that this project runs on - attributes the infra to this project."
         >
           {servers.length === 0 ? (
             <p className="text-xs text-neutral-500">No servers in the Fleet yet.</p>
@@ -291,7 +291,7 @@ function SourcesPanel({ project, onChanged }: { project: Project; onChanged: () 
         </Field>
         <Field
           label="Hosted services"
-          hint="live apps/products this project runs (e.g. NubSec). Pick the server each runs on — the Fleet shows them with live status under that machine."
+          hint="live apps/products this project runs (e.g. NubSec). Pick the server each runs on - the Fleet shows them with live status under that machine."
         >
           <div className="space-y-2">
             {hostedServices.map((svc, i) => (
@@ -425,7 +425,7 @@ function KnowledgePanel({ project }: { project: Project }) {
     setNote(null);
     try {
       await api.deriveKnowledge(project.id);
-      setNote('Librarian started — it will read your sources and write a draft. Refresh in a bit.');
+      setNote('Librarian started - it will read your sources and write a draft. Refresh in a bit.');
     } finally {
       setBusy(null);
     }
@@ -558,7 +558,7 @@ function SessionsPanel({ project }: { project: Project }) {
   };
 
   return (
-    <Section title="Agents (sessions)" hint="Claude sessions running in this project — all governed by the manual above.">
+    <Section title="Agents (sessions)" hint="Claude sessions running in this project - all governed by the manual above.">
       <div className="space-y-2">
         {sessions.length === 0 ? (
           <p className="text-sm text-neutral-500">No sessions in this project yet.</p>
@@ -667,7 +667,7 @@ function CreateProjectDialog({
           <Field label="Name">
             <input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="Latchkey" />
           </Field>
-          <Field label="Workspace" hint="path on the box — blank uses /home/lumpy/projects/<name>">
+          <Field label="Workspace" hint="path on the box - blank uses /home/lumpy/projects/<name>">
             <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} className="input" placeholder="/home/lumpy/projects/latchkey" />
           </Field>
           <Field label="Description" hint="optional">

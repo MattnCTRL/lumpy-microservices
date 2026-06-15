@@ -26,7 +26,7 @@ import { Store } from './store/sqlite.js';
 
 async function main(): Promise<void> {
   if (!(await tmux.isAvailable())) {
-    logger.warn('tmux is not installed — sessions cannot be created until it is available');
+    logger.warn('tmux is not installed - sessions cannot be created until it is available');
   }
 
   const store = new Store(config.dataDir);

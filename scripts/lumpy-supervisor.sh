@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# lumpy-supervisor — a watchdog that runs OUTSIDE the orchestrator (its own
+# lumpy-supervisor - a watchdog that runs OUTSIDE the orchestrator (its own
 # systemd service) so it survives the orchestrator dying. It does two things:
 #
 #   1. While Lumpy is healthy and stable (and no deploy is in progress), it
 #      records the running commit as "last known good".
 #   2. If Lumpy stays unhealthy for too long (a crash-looping bad deploy that
 #      safe-deploy didn't catch), it resets to the last-good commit, rebuilds,
-#      restarts, and alerts — so the platform self-heals even if it can't be
+#      restarts, and alerts - so the platform self-heals even if it can't be
 #      reached from the UI.
 #
 # It deliberately does nothing while a `.deploying` lock exists (safe-deploy is
@@ -61,7 +61,7 @@ while true; do
   log "health fail ($fail_streak/$FAIL_LIMIT)"
   [ "$fail_streak" -lt "$FAIL_LIMIT" ] && continue
 
-  # Sustained failure with no deploy in progress — self-heal.
+  # Sustained failure with no deploy in progress - self-heal.
   good="$(cat "$GOOD_FILE" 2>/dev/null)"
   cur="$(git -C "$DIR" rev-parse HEAD 2>/dev/null)"
   if [ -z "$good" ] || [ "$good" = "$cur" ]; then
@@ -72,7 +72,7 @@ while true; do
   fi
 
   log "ROLLING BACK $cur -> $good"
-  notify "Lumpy unhealthy — auto-rolling back $cur -> $good."
+  notify "Lumpy unhealthy - auto-rolling back $cur -> $good."
   git -C "$DIR" reset --hard "$good" >>"$LOG" 2>&1
   (
     cd "$DIR" || exit

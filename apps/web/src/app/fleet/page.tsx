@@ -102,7 +102,7 @@ export default function FleetPage() {
     <div className="flex h-full flex-col">
       {error && (
         <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
-          {error} — is the orchestrator running on {ORCHESTRATOR_URL}?
+          {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
 
@@ -574,7 +574,7 @@ function SshSetupDialog({
       >
         <h2 className="text-base font-semibold text-neutral-100">SSH monitoring · {server.name}</h2>
         <p className="mb-4 mt-1 text-xs text-neutral-500">
-          Lumpy connects over SSH and polls metrics — no agent to install. The connection is tested
+          Lumpy connects over SSH and polls metrics - no agent to install. The connection is tested
           before credentials are saved (encrypted at rest).
         </p>
         <div className="space-y-3">
@@ -807,7 +807,7 @@ function AddServerDialog({
         {discovered.length > 0 && (
           <div className="mb-4">
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-              On your tailnet — tap to fill
+              On your tailnet - tap to fill
             </p>
             <div className="flex flex-wrap gap-1.5">
               {discovered.map((d) => (
@@ -825,7 +825,7 @@ function AddServerDialog({
               ))}
             </div>
             <p className="mt-1.5 text-xs text-neutral-600">
-              Machines need the agent — see the install command in the docs after adding.
+              Machines need the agent - see the install command in the docs after adding.
             </p>
           </div>
         )}
@@ -841,7 +841,7 @@ function AddServerDialog({
 
         {mode === 'ssh' && (
           <p className="mb-3 text-xs text-neutral-500">
-            Lumpy connects over SSH and monitors the server for you — no agent to install. The
+            Lumpy connects over SSH and monitors the server for you - no agent to install. The
             connection is tested before the server is added.
           </p>
         )}

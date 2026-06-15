@@ -11,9 +11,9 @@ function describe(event: LumpyEvent): { kind: string; title: string } | null {
         title: `Session ${event.status === 'running' ? 'started' : 'stopped'}: ${event.name}`,
       };
     case 'alert.fired':
-      return { kind: 'alert', title: `Alert: ${event.alert.serverName} — ${event.alert.label}` };
+      return { kind: 'alert', title: `Alert: ${event.alert.serverName} - ${event.alert.label}` };
     case 'alert.resolved':
-      return { kind: 'alert', title: `Resolved: ${event.serverName} — ${event.label}` };
+      return { kind: 'alert', title: `Resolved: ${event.serverName} - ${event.label}` };
     case 'remediation.started':
       return { kind: 'remediation', title: `Remediation (${event.mode}): ${event.serverName}` };
     case 'hosted.status':

@@ -9,7 +9,7 @@ const ANSI_PATTERN = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\
 
 /**
  * Signals that the session is asking the operator to approve an action. These
- * are intentionally tolerant — the terminal stream is the ground truth and the
+ * are intentionally tolerant - the terminal stream is the ground truth and the
  * operator can always act manually if a prompt is not recognized.
  */
 const PERMISSION_PATTERNS = [
@@ -40,7 +40,7 @@ function clip(text: string, max = 100): string {
 /**
  * Best-effort: pull the question and selectable options out of the (ANSI-
  * stripped) terminal tail so the UI can render a readable prompt. Tolerant by
- * design — when nothing recognizable is found it returns a generic question so
+ * design - when nothing recognizable is found it returns a generic question so
  * the operator still gets a clear "needs you" banner.
  */
 export function extractPrompt(tail: string): SessionPrompt {

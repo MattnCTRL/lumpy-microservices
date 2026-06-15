@@ -12,7 +12,7 @@ interface Item {
   icon: string;
 }
 
-// Full nav — shown on the desktop left rail.
+// Full nav - shown on the desktop left rail.
 const NAV: Item[] = [
   { href: '/', label: 'Home', icon: '🏠' },
   { href: '/projects', label: 'Projects', icon: '📁' },

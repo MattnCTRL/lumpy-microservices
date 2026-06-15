@@ -220,7 +220,7 @@ export class Store {
       );
     `);
     // Account-level encrypted secrets (e.g. the Supabase Personal Access Token
-    // shared across all projects — scoped per-project at launch via --project-ref).
+    // shared across all projects - scoped per-project at launch via --project-ref).
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS secrets (
         key TEXT PRIMARY KEY,
@@ -625,7 +625,7 @@ export class Store {
     );
   }
 
-  /** Uptime fraction (0–1) for a URL over the window [sinceMs, nowMs]. */
+  /** Uptime fraction (0-1) for a URL over the window [sinceMs, nowMs]. */
   hostedUptime(url: string, sinceMs: number, nowMs: number): number {
     const windowMs = Math.max(1, nowMs - sinceMs);
     const rows = this.db

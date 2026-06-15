@@ -1,7 +1,7 @@
 /**
  * Generates the one-line enrollment script served at GET /enroll. Running it on
  * a machine (`curl -fsSL <box>/enroll | sh`) downloads the self-contained agent
- * bundle and installs it as a background service — no git clone, no npm, just
+ * bundle and installs it as a background service - no git clone, no npm, just
  * Node. The orchestrator's base URL is baked in so the agent reports home.
  */
 export function enrollScript(baseUrl: string): string {
@@ -17,7 +17,7 @@ if command -v node >/dev/null 2>&1; then
 elif [ -x "$DIR/node/bin/node" ]; then
   NODE="$DIR/node/bin/node"
 else
-  # No Node present — fetch a private runtime (no admin, no Homebrew needed).
+  # No Node present - fetch a private runtime (no admin, no Homebrew needed).
   NV="v20.18.1"
   OS_L="$(uname | tr '[:upper:]' '[:lower:]')"
   case "$(uname -m)" in
@@ -84,7 +84,7 @@ UNIT
     echo "Lumpy: agent installed as \\"$NAME\\" (systemd)."
   else
     ( LUMPY_URL="$LUMPY_URL" LUMPY_AGENT_NAME="$NAME" nohup "$NODE" "$DIR/agent.mjs" >/tmp/lumpy-agent.log 2>&1 & ) 2>/dev/null || true
-    echo "Lumpy: agent started (foreground/no systemd — re-run as root for a boot service)."
+    echo "Lumpy: agent started (foreground/no systemd - re-run as root for a boot service)."
   fi
 else
   echo "Lumpy: unsupported OS $OS" >&2

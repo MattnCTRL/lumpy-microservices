@@ -8,7 +8,7 @@ export interface LaunchOptions {
   /**
    * Path to the workspace's .mcp.json. When set, the session uses ONLY this
    * config (--strict-mcp-config) so it can never inherit another project's or
-   * the user's MCP servers — critical for keeping each project's data isolated.
+   * the user's MCP servers - critical for keeping each project's data isolated.
    */
   mcpConfig?: string;
 }
@@ -23,8 +23,8 @@ function shquote(value: string): string {
  * up from recorded progress instead of starting over.
  */
 export const PROGRESS_NOTE =
-  'As you work, keep a concise running log at .lumpy/PROGRESS.md — what you have done, ' +
-  'the current state, and the next steps — and update it before you stop, so this work ' +
+  'As you work, keep a concise running log at .lumpy/PROGRESS.md - what you have done, ' +
+  'the current state, and the next steps - and update it before you stop, so this work ' +
   'can be resumed later without losing context.';
 
 /**

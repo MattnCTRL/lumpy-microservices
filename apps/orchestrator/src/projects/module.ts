@@ -36,7 +36,7 @@ function buildLibrarianTask(project: Project, mountPath: string | null, servers:
   if (project.sources.useConnectors) {
     const dbList = project.sources.databases.length
       ? ` This project's databases, by purpose: ${project.sources.databases
-          .map((d) => `${d.label} — ${d.url}`)
+          .map((d) => `${d.label} - ${d.url}`)
           .join('; ')}.`
       : '';
     sources.push(
@@ -51,7 +51,7 @@ function buildLibrarianTask(project: Project, mountPath: string | null, servers:
     '',
     'Produce a single Markdown operating manual covering: what this project is and its goals; its architecture and key components; data sources and schemas; the conventions and rules that govern work here; important workflows; and any gotchas or constraints.',
     '',
-    `Write the result to ${DRAFT_PATH} (create the .lumpy/knowledge directory if needed). Do NOT modify CLAUDE.md — your draft will be reviewed and approved by the owner. When the draft is written, stop.`,
+    `Write the result to ${DRAFT_PATH} (create the .lumpy/knowledge directory if needed). Do NOT modify CLAUDE.md - your draft will be reviewed and approved by the owner. When the draft is written, stop.`,
   ].join('\n');
 }
 
@@ -140,9 +140,9 @@ function supabaseRef(url: string): string | null {
 }
 
 /**
- * Write the project's own `.mcp.json` — one Supabase MCP per database, each
+ * Write the project's own `.mcp.json` - one Supabase MCP per database, each
  * scoped to THAT database's ref (so a session can never touch another project's
- * — or another of this project's — databases unintentionally). The token is not
+ * - or another of this project's - databases unintentionally). The token is not
  * written to the file; it is referenced via ${SUPABASE_ACCESS_TOKEN} and
  * injected at launch from the encrypted store. Non-Supabase databases are
  * recorded on the project for the librarian but get no MCP server.

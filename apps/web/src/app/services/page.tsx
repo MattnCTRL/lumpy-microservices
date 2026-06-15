@@ -29,7 +29,7 @@ export default function ServicesPage() {
     setNote(null);
     try {
       await api.deployService(s.id);
-      setNote(`Deployed "${s.name}" — running as a session.`);
+      setNote(`Deployed "${s.name}" - running as a session.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'deploy failed');
     }
@@ -57,7 +57,7 @@ export default function ServicesPage() {
 
       {services.length === 0 ? (
         <p className="text-sm text-neutral-500">
-          No services yet. Create one — a focused specialist (e.g. &quot;DB migration
+          No services yet. Create one - a focused specialist (e.g. &quot;DB migration
           reviewer&quot;, &quot;dependency upgrader&quot;) that Lumpy can deploy on demand.
         </p>
       ) : (
@@ -194,7 +194,7 @@ function ServiceDialog({
           <Field label="Name">
             <input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="DB migration reviewer" />
           </Field>
-          <Field label="Speciality" hint="one line — its distinct function">
+          <Field label="Speciality" hint="one line - its distinct function">
             <input value={speciality} onChange={(e) => setSpeciality(e.target.value)} className="input" placeholder="reviews SQL migrations for safety" />
           </Field>
           <Field label="Description" hint="optional">
@@ -209,7 +209,7 @@ function ServiceDialog({
               <ul className="space-y-1 text-xs text-neutral-500">
                 {service.improvements.map((imp, i) => (
                   <li key={i}>
-                    <span className="text-indigo-400/80">v{imp.version}</span> — {imp.note}
+                    <span className="text-indigo-400/80">v{imp.version}</span> - {imp.note}
                   </li>
                 ))}
               </ul>

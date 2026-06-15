@@ -2,7 +2,7 @@ import type { Playbook } from '@lumpy/shared';
 
 /**
  * Built-in remediation playbooks. Each maps one or more alert rules to a vetted
- * instruction for the remediation session — more specific and safer than a
+ * instruction for the remediation session - more specific and safer than a
  * generic "investigate" prompt. (User-editable playbooks are a future addition.)
  */
 export const DEFAULT_PLAYBOOKS: Playbook[] = [
@@ -27,7 +27,7 @@ export const DEFAULT_PLAYBOOKS: Playbook[] = [
     task:
       'CPU has been sustained high. Identify the top CPU-consuming processes (e.g. `ps aux ' +
       '--sort=-%cpu | head` or `top -bn1`) and report what is driving it. Only act if there is an ' +
-      'obviously stuck/runaway process that is clearly safe to restart — otherwise just report.',
+      'obviously stuck/runaway process that is clearly safe to restart - otherwise just report.',
   },
   {
     id: 'memory-triage',
@@ -47,7 +47,7 @@ export const DEFAULT_PLAYBOOKS: Playbook[] = [
     requiresApproval: false,
     task:
       'The server stopped sending heartbeats. Diagnose why: check basic connectivity, whether the ' +
-      'host is reachable, and whether the monitoring agent is running. Do NOT make changes — ' +
+      'host is reachable, and whether the monitoring agent is running. Do NOT make changes - ' +
       'report the likely cause and recommended fix.',
   },
 ];

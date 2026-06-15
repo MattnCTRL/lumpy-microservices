@@ -87,7 +87,7 @@ export default function DashboardPage() {
       </div>
       {error && (
         <p className="mb-3 text-sm text-red-400">
-          {error} — is the orchestrator running on {ORCHESTRATOR_URL}?
+          {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </p>
       )}
 
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                   key={s.id}
                   dot="bg-neutral-500"
                   label={s.name}
-                  right={s.nextRunAt ? new Date(s.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  right={s.nextRunAt ? new Date(s.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                 />
               ))
           )}
@@ -250,7 +250,7 @@ const ACTIVITY_ICON: Record<string, string> = {
   session: '⌨',
   alert: '🔔',
   hosted: '🌐',
-  remediation: '🤖',
+  remediation: '🔧',
   cert: '🔒',
 };
 

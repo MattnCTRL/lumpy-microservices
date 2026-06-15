@@ -71,7 +71,7 @@ const PRESETS: Preset[] = [
       headers: { Authorization: 'Bearer ${TENSORGARDEN_API_KEY}' },
     },
     envKey: 'TENSORGARDEN_API_KEY',
-    note: 'portal MCP — create an API key (tg_live_…) in the TensorGarden portal',
+    note: 'portal MCP - create an API key (tg_live_…) in the TensorGarden portal',
   },
 ];
 
@@ -277,7 +277,7 @@ export function ConnectorsDialog({
                         value={cAuth}
                         onChange={(e) => setCAuth(e.target.value)}
                         type="password"
-                        placeholder="Bearer token (optional — stored encrypted)"
+                        placeholder="Bearer token (optional - stored encrypted)"
                         className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
                       />
                     </>
@@ -298,7 +298,7 @@ export function ConnectorsDialog({
                 </div>
               )}
               {Object.keys(mcpServers).length === 0 ? (
-                <p className="text-xs text-neutral-600">None yet — add one above.</p>
+                <p className="text-xs text-neutral-600">None yet - add one above.</p>
               ) : (
                 <ul className="space-y-1.5">
                   {Object.entries(mcpServers).map(([name, def]) => (

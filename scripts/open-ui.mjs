@@ -1,5 +1,5 @@
 // Waits for the web UI to be ready during `npm run dev`, then opens it in the
-// default browser once. Safe to fail — it never blocks the dev servers.
+// default browser once. Safe to fail - it never blocks the dev servers.
 
 import { spawn } from 'node:child_process';
 

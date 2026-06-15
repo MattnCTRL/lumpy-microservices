@@ -19,7 +19,7 @@ interface Digest {
 }
 
 /**
- * Daily digest: a once-a-day platform summary pushed to the phone — fleet
+ * Daily digest: a once-a-day platform summary pushed to the phone - fleet
  * health, hosted-service uptime, sessions needing input, active alerts, and
  * upcoming schedules. Composed from the fully-resolved API so it sees the same
  * state the UI does.
@@ -52,7 +52,7 @@ export const digestModule: LumpyModule = {
       const schedules = store.listSchedules();
       const incidents = store.listHostedIncidents(200);
 
-      // Cloud servers only — machines/remotes are personal devices that sleep.
+      // Cloud servers only - machines/remotes are personal devices that sleep.
       const nodes = servers.filter((s) => s.kind === 'server');
       const offline = nodes.filter((s) => s.status === 'offline');
       const onlineCount = nodes.filter((s) => s.status === 'online').length;
@@ -95,7 +95,7 @@ export const digestModule: LumpyModule = {
       const attention =
         offline.length + down.length + alerts.length + needsYou.length;
       return {
-        title: attention > 0 ? `Lumpy — ${attention} need attention` : 'Lumpy — all clear ✅',
+        title: attention > 0 ? `Lumpy - ${attention} need attention` : 'Lumpy - all clear ✅',
         message: lines.join('\n'),
         priority: attention > 0 ? 4 : 3,
       };
@@ -122,7 +122,7 @@ export const digestModule: LumpyModule = {
     const sweep = async (): Promise<void> => {
       const digest = await compose();
       const stamp = `${new Date().toISOString().slice(0, 16)}Z`;
-      const entry = `\n## ${stamp} — ${digest.title}\n${digest.message}\n`;
+      const entry = `\n## ${stamp} - ${digest.title}\n${digest.message}\n`;
       try {
         mkdirSync(reportDir, { recursive: true });
         let content = existsSync(reportPath)

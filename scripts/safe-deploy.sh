@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# safe-deploy.sh — apply Lumpy's current code, verify it, and AUTO-ROLLBACK if
+# safe-deploy.sh - apply Lumpy's current code, verify it, and AUTO-ROLLBACK if
 # the build fails or the platform doesn't come back healthy. This is what lets
 # the Conductor change Lumpy's own code without bricking the platform.
 #
@@ -59,7 +59,7 @@ log "target=$TARGET"
 
 # 1) Build the new code. A build failure never reaches a restart.
 if ! build; then
-  log "BUILD FAILED at $TARGET — rolling back to $SNAPSHOT"
+  log "BUILD FAILED at $TARGET - rolling back to $SNAPSHOT"
   git reset -q --hard "$SNAPSHOT"
   build || log "WARNING: rollback build also failed"
   restart
@@ -76,8 +76,8 @@ if healthy; then
   exit 0
 fi
 
-# 3) Unhealthy after restart — roll back and recover.
-log "HEALTH CHECK FAILED at $TARGET — rolling back to $SNAPSHOT"
+# 3) Unhealthy after restart - roll back and recover.
+log "HEALTH CHECK FAILED at $TARGET - rolling back to $SNAPSHOT"
 git reset -q --hard "$SNAPSHOT"
 build
 restart

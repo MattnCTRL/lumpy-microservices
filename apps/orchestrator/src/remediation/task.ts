@@ -26,9 +26,9 @@ export function buildRemediationTask(
   const constraint =
     mode === 'auto'
       ? '\n\nYou may make safe, non-destructive changes; never delete data or take irreversible ' +
-        'actions — if a fix would require that, stop and report instead. Summarize what you found ' +
+        'actions - if a fix would require that, stop and report instead. Summarize what you found ' +
         'and what you changed.'
-      : '\n\nDo NOT make any changes — produce a concise diagnosis and a recommended fix only.';
+      : '\n\nDo NOT make any changes - produce a concise diagnosis and a recommended fix only.';
 
   return context + body + constraint;
 }

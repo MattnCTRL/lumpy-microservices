@@ -5,7 +5,7 @@ export const USER_COOKIE = 'lumpy_user';
 
 /**
  * The role for a GitHub login. When no admin allow-list is configured, everyone
- * who signs in is an admin — so turning on auth can never lock the owner out.
+ * who signs in is an admin - so turning on auth can never lock the owner out.
  * Otherwise only listed logins are admins; everyone else is a read-only viewer.
  */
 export function roleFor(login: string, adminLogins: string[]): Role {
@@ -17,7 +17,7 @@ export type GateDecision = 'allow' | 'unauthenticated' | 'forbidden';
 
 /**
  * Telemetry ingestion from agents (self-registration and metric pushes) is
- * machine-to-machine, not a human control action — agents have no GitHub login.
+ * machine-to-machine, not a human control action - agents have no GitHub login.
  * These paths are gated by the agent token instead (see http.ts).
  */
 export function isAgentIngestPath(method: string, path: string): boolean {

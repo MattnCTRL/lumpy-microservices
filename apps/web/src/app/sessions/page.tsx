@@ -66,7 +66,7 @@ export default function SessionsPage() {
     <div className="flex h-full flex-col">
       {error && (
         <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
-          {error} — is the orchestrator running on {ORCHESTRATOR_URL}?
+          {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
 
@@ -406,20 +406,20 @@ function PromptBanner({
   );
 }
 
-// Terminal control keys, clearly labelled — for navigating menus and
+// Terminal control keys, clearly labelled - for navigating menus and
 // interrupting, the things a typed message can't express. Menu *answers*
 // (1/2/3, yes/no) are surfaced contextually by the PromptBanner instead.
 const TERMINAL_KEYS: { label: string; data: string; title: string }[] = [
   { label: '↵ Enter', data: '\r', title: 'Submit / confirm the current line' },
-  { label: '↑', data: '\x1b[A', title: 'Up — move through a menu or history' },
-  { label: '↓', data: '\x1b[B', title: 'Down — move through a menu' },
+  { label: '↑', data: '\x1b[A', title: 'Up - move through a menu or history' },
+  { label: '↓', data: '\x1b[B', title: 'Down - move through a menu' },
   { label: 'Esc', data: '\x1b', title: 'Cancel / dismiss' },
   { label: '⌃C Stop', data: '\x03', title: 'Interrupt the running task' },
 ];
 
 /**
  * The session composer. Typing a message and pressing Send clears whatever is
- * on the session's input line, types your message, and submits it — so it
+ * on the session's input line, types your message, and submits it - so it
  * behaves like a chat box wired to the live session, regardless of any text
  * Claude has pre-filled. The labelled key row handles menu navigation; the
  * PromptBanner handles menu answers.
@@ -621,7 +621,7 @@ function CreateDialog({
               className="input"
             />
           </Field>
-          <Field label="Task" hint="optional — what Claude should start working on">
+          <Field label="Task" hint="optional - what Claude should start working on">
             <textarea
               value={task}
               onChange={(e) => setTask(e.target.value)}
@@ -639,7 +639,7 @@ function CreateDialog({
             <span className="text-sm text-neutral-200">
               Autonomous
               <span className="mt-0.5 block text-xs text-neutral-500">
-                Claude runs commands without pausing for permission. Powerful — only on trusted
+                Claude runs commands without pausing for permission. Powerful - only on trusted
                 workspaces.
               </span>
             </span>

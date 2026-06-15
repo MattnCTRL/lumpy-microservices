@@ -166,7 +166,7 @@ export function Terminal({ sessionId }: { sessionId: string }) {
           A+
         </button>
       </div>
-      {/* Tapping focuses the terminal's input — on mobile this raises the
+      {/* Tapping focuses the terminal's input - on mobile this raises the
           keyboard so you can type directly into the session. */}
       <div
         ref={containerRef}

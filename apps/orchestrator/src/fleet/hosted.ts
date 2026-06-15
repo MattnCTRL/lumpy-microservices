@@ -26,7 +26,7 @@ const DAY_MS = 86_400_000;
 
 /**
  * Probes the URL of every project's hosted services and resolves them onto the
- * Fleet servers that run them — with live status, latency, TLS-cert expiry, and
+ * Fleet servers that run them - with live status, latency, TLS-cert expiry, and
  * 24h uptime computed from recorded incidents. Status transitions open/resolve
  * incidents and publish events (which the notify module turns into push).
  */

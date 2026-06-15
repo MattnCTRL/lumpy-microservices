@@ -45,7 +45,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
   if (event.type === 'alert.fired') {
     const alert = event.alert;
     return {
-      title: `${alert.serverName} — ${alert.label}`,
+      title: `${alert.serverName} - ${alert.label}`,
       message: alert.message,
       priority: alert.severity === 'critical' ? 5 : 3,
       tags: alert.severity === 'critical' ? ['rotating_light'] : ['warning'],
@@ -68,7 +68,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
         ]
       : [];
     return {
-      title: `${event.serverName} — approve remediation?`,
+      title: `${event.serverName} - approve remediation?`,
       message: `${event.label} (${event.severity}). Approve to let Claude investigate and fix.`,
       priority: 4,
       tags: ['warning'],
@@ -79,7 +79,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
 
   if (event.type === 'remediation.started') {
     return {
-      title: `${event.serverName} — ${event.mode === 'auto' ? 'auto-remediating' : 'investigating'}`,
+      title: `${event.serverName} - ${event.mode === 'auto' ? 'auto-remediating' : 'investigating'}`,
       message: 'Lumpy started an autonomous Claude session to handle the alert.',
       priority: 3,
       tags: ['robot'],
@@ -89,7 +89,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
 
   if (event.type === 'alert.resolved') {
     return {
-      title: `${event.serverName} — resolved`,
+      title: `${event.serverName} - resolved`,
       message: `${event.label} cleared`,
       priority: 2,
       tags: ['white_check_mark'],
@@ -100,7 +100,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
   if (event.type === 'hosted.status') {
     const down = event.status === 'down';
     return {
-      title: `${event.name} — ${down ? 'DOWN' : 'recovered'}`,
+      title: `${event.name} - ${down ? 'DOWN' : 'recovered'}`,
       message: down
         ? `${event.url} is not responding${event.statusCode ? ` (HTTP ${event.statusCode})` : ''}.`
         : `${event.url} is back up.`,
@@ -112,7 +112,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
 
   if (event.type === 'hosted.cert') {
     return {
-      title: `${event.name} — TLS cert expiring`,
+      title: `${event.name} - TLS cert expiring`,
       message: `Certificate for ${event.url} expires in ${event.daysLeft} day${event.daysLeft === 1 ? '' : 's'}.`,
       priority: 4,
       tags: ['warning'],

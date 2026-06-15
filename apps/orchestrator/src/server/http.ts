@@ -46,7 +46,7 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
   const githubReady = Boolean(config.github.clientId && config.github.clientSecret);
   if (config.requireAuth && !githubReady) {
     logger.warn(
-      'LUMPY_REQUIRE_AUTH is set but GitHub sign-in is not configured — auth gating is DISABLED to avoid lockout',
+      'LUMPY_REQUIRE_AUTH is set but GitHub sign-in is not configured - auth gating is DISABLED to avoid lockout',
     );
   }
   if (config.requireAuth && githubReady) {

@@ -11,8 +11,8 @@ const STATE_COOKIE = 'lumpy_oauth_state';
 
 /**
  * Sign in with GitHub. The Lumpy profile mirrors the GitHub account (avatar,
- * name, handle). Sign-in is optional — the app is already private on the
- * tailnet — and is disabled until LUMPY_GITHUB_CLIENT_ID/SECRET are set.
+ * name, handle). Sign-in is optional - the app is already private on the
+ * tailnet - and is disabled until LUMPY_GITHUB_CLIENT_ID/SECRET are set.
  */
 export const authModule: LumpyModule = {
   id: 'auth',

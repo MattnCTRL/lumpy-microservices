@@ -28,7 +28,7 @@ function mountPath(address: string): string | null {
 
 /**
  * Whether a machine's files are mounted on the orchestrator, and whether the
- * mount is responsive — a sleeping/unreachable host leaves a stalled FUSE
+ * mount is responsive - a sleeping/unreachable host leaves a stalled FUSE
  * mount, so we probe with a short timeout (a stalled `ls` hangs).
  */
 export async function mountState(address: string): Promise<MountState> {

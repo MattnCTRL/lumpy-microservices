@@ -27,7 +27,7 @@ export default function AlertsPage() {
     <div className="h-full overflow-y-auto p-4">
       {error && (
         <div className="mb-3 rounded bg-red-950/60 px-4 py-2 text-sm text-red-300">
-          {error} — is the orchestrator running on {ORCHESTRATOR_URL}?
+          {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
 
@@ -37,7 +37,7 @@ export default function AlertsPage() {
 
       {alerts.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-sm text-neutral-500">
-          All clear — no active alerts.
+          All clear - no active alerts.
         </div>
       ) : (
         <ul className="space-y-2">

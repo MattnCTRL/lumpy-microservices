@@ -6,7 +6,7 @@ import { buildRemediationTask } from './task.js';
 
 /**
  * Closes the loop: when an alert fires, handle it with an autonomous Claude
- * session. Tiered by severity — auto-run for the configured severities, others
+ * session. Tiered by severity - auto-run for the configured severities, others
  * wait for one-tap approval. Mode/policy are read live from settings, so they can
  * be changed from the UI without a restart.
  */
@@ -22,7 +22,7 @@ export const remediationModule: LumpyModule = {
     const start = async (alert: Alert, mode: 'investigate' | 'auto'): Promise<void> => {
       try {
         const session = await ctx.sessions.create({
-          name: `${mode === 'auto' ? 'Fix' : 'Investigate'}: ${alert.serverName} — ${alert.label}`,
+          name: `${mode === 'auto' ? 'Fix' : 'Investigate'}: ${alert.serverName} - ${alert.label}`,
           // Omit workspace so each remediation session is isolated in its own dir.
           command: ctx.config.defaultCommand,
           tags: ['remediation'],

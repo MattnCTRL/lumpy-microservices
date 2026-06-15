@@ -32,7 +32,7 @@ async function git(dir: string, args: string[], runAs: RunAs): Promise<{ ok: boo
  * Repo Sync: backs the box's real git repos up to GitHub on a schedule so work
  * that only exists on the box (e.g. uncommitted edits) can't be lost. It mirrors
  * each repo's current working state to a `lumpy-autosync` branch WITHOUT touching
- * the local branch or `main` — commit, push to the backup branch, then soft-undo
+ * the local branch or `main` - commit, push to the backup branch, then soft-undo
  * the commit so the working tree is exactly as it was.
  */
 export const repoSyncModule: LumpyModule = {

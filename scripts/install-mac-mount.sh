@@ -34,7 +34,7 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 if [ ! -f "$KEY" ]; then
-  echo "error: $KEY not found — run mount-mac.sh once first to create it" >&2
+  echo "error: $KEY not found - run mount-mac.sh once first to create it" >&2
   exit 1
 fi
 command -v sshfs >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y sshfs; }

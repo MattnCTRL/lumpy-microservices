@@ -20,7 +20,7 @@ function humanizeCron(cron: string): string {
 }
 
 function fmt(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
@@ -56,7 +56,7 @@ export default function SchedulesPage() {
     setNote(null);
     try {
       await api.runSchedule(s.id);
-      setNote(`Ran "${s.name}" — started a session.`);
+      setNote(`Ran "${s.name}" - started a session.`);
       void refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'run failed');
@@ -81,9 +81,9 @@ export default function SchedulesPage() {
         </button>
       </div>
       <p className="mb-4 text-xs text-neutral-500">
-        Recurring autonomous Claude jobs — manual refreshes, audits, health sweeps. Cron is UTC.
+        Recurring autonomous Claude jobs - manual refreshes, audits, health sweeps. Cron is UTC.
       </p>
-      {error && <p className="mb-3 text-sm text-red-400">{error} — {ORCHESTRATOR_URL}</p>}
+      {error && <p className="mb-3 text-sm text-red-400">{error} - {ORCHESTRATOR_URL}</p>}
       {note && <p className="mb-3 text-sm text-emerald-400">{note}</p>}
 
       {schedules.length === 0 ? (
@@ -243,7 +243,7 @@ function CreateDialog({
           </Field>
           <Field label="Project" hint="scope to a project's workspace, manual & connectors (optional)">
             <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="input">
-              <option value="">none — fresh workspace</option>
+              <option value="">none - fresh workspace</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}

@@ -5,7 +5,7 @@ import type { AuthState, Playbook, SettingsResponse } from '@lumpy/shared';
 import { api, type ModuleInfo } from '@/lib/api';
 
 const MODES: { value: 'off' | 'investigate' | 'auto'; label: string; hint: string }[] = [
-  { value: 'off', label: 'Off', hint: 'Alerts only notify — no sessions are started.' },
+  { value: 'off', label: 'Off', hint: 'Alerts only notify - no sessions are started.' },
   {
     value: 'investigate',
     label: 'Investigate',
@@ -189,7 +189,7 @@ export default function SettingsPage() {
         ) : settings.system.notifications.configured ? (
           <dl className="space-y-1 text-sm">
             <Row label="Status" value="enabled" />
-            <Row label="Topic" value={settings.system.notifications.topic ?? '—'} mono />
+            <Row label="Topic" value={settings.system.notifications.topic ?? '-'} mono />
             <Row label="Server" value={settings.system.notifications.server} mono />
           </dl>
         ) : (
@@ -213,7 +213,7 @@ export default function SettingsPage() {
             />
             <Row label="Workspace root" value={settings.system.workspaceRoot} mono />
             <Row label="Default command" value={settings.system.defaultCommand} mono />
-            <Row label="Public URL" value={settings.system.publicUrl ?? '—'} mono />
+            <Row label="Public URL" value={settings.system.publicUrl ?? '-'} mono />
           </dl>
         )}
         {modules.length > 0 && (

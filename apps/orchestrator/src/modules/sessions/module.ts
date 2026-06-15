@@ -80,7 +80,7 @@ function registerRest(ctx: ModuleContext): void {
     return session;
   });
 
-  // Read a session's recent output — used by the Conductor to relay distilled
+  // Read a session's recent output - used by the Conductor to relay distilled
   // knowledge between isolated sessions (it queries one, reads the answer here,
   // then instructs another). Sessions never read each other directly.
   app.get('/api/sessions/:id/output', async (request, reply) => {

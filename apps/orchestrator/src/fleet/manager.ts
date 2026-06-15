@@ -143,7 +143,7 @@ export class FleetManager {
     for (const server of this.store.listServers()) {
       // Only always-on cloud servers use heartbeat staleness. Machines (laptops)
       // and remotes (phones/tablets) sleep, so their status comes from Tailscale
-      // presence instead — being agent-less or asleep must not read as "offline".
+      // presence instead - being agent-less or asleep must not read as "offline".
       if (server.kind !== 'server') continue;
       const last = this.lastSeenMs.get(server.id);
       if (last !== undefined && now - last > HEARTBEAT_TIMEOUT_MS) {

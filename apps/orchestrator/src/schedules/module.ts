@@ -27,7 +27,7 @@ const updateSchema = z.object({
 
 /**
  * Scheduled tasks: recurring autonomous Claude jobs. A 5-field cron expression
- * (UTC) fires an autonomous session running the task — optionally scoped to a
+ * (UTC) fires an autonomous session running the task - optionally scoped to a
  * project's workspace, manual, and connectors.
  */
 export const schedulesModule: LumpyModule = {

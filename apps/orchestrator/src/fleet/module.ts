@@ -51,7 +51,7 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedSer
   const { app } = ctx;
 
   // Attach the services each machine hosts (resolved from projects, with status),
-  // and mark the box that runs Lumpy itself — surfacing Lumpy as a hosted service
+  // and mark the box that runs Lumpy itself - surfacing Lumpy as a hosted service
   // on its own home host (the "mother service").
   const lumpyUrl =
     ctx.config.webUrl || ctx.config.publicUrl || `http://${ctx.config.host}:3000`;
@@ -87,7 +87,7 @@ function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedSer
     return mountStates(machines.map((s) => ({ id: s.id, address: s.address })));
   });
 
-  // Tailnet devices not yet in the fleet — "available to add".
+  // Tailnet devices not yet in the fleet - "available to add".
   app.get('/api/fleet/discover', async (): Promise<TailnetDevice[]> => {
     const existing = new Set(fleet.list().map((s) => s.address));
     const devices = await tailnetDevices();
@@ -246,7 +246,7 @@ export const fleetModule: LumpyModule = {
 
     // Machines (laptops) and remotes (phones/tablets) sleep and may run no
     // agent, so derive their online status from Tailscale presence rather than
-    // metric heartbeats — a reachable device must not read as "offline".
+    // metric heartbeats - a reachable device must not read as "offline".
     const refreshPresence = async (): Promise<void> => {
       if (!fleet.list().some((s) => s.kind === 'machine' || s.kind === 'remote')) return;
       const online = new Set((await tailnetDevices()).filter((d) => d.online).map((d) => d.address));

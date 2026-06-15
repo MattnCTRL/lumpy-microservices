@@ -35,7 +35,7 @@ export class AlertsManager {
       if (event.type === 'fleet.metrics') {
         this.evaluate(event.id, event.name, event.metrics);
       } else if (event.type === 'fleet.server.status') {
-        // Phones/tablets AND laptops sleep constantly — offline is normal for
+        // Phones/tablets AND laptops sleep constantly - offline is normal for
         // them, not an incident. Only always-on cloud servers should page.
         if (event.kind === 'remote' || event.kind === 'machine') {
           if (event.status === 'online') this.clear(`${event.id}:${OFFLINE_RULE}`);

@@ -23,7 +23,7 @@ export const notifyModule: LumpyModule = {
   register(ctx: ModuleContext) {
     const { ntfyUrl, ntfyTopic, publicUrl } = ctx.config;
     if (!ntfyTopic) {
-      logger.warn('LUMPY_NTFY_TOPIC is not set — push notifications are disabled');
+      logger.warn('LUMPY_NTFY_TOPIC is not set - push notifications are disabled');
       return;
     }
 

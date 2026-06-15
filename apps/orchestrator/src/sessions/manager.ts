@@ -42,7 +42,7 @@ export interface CreateSessionArgs {
   /**
    * Explicit working directory. When omitted, each session gets its OWN
    * isolated directory so Claude's per-project state (history, todos,
-   * background tasks — keyed by cwd) never collides across sessions.
+   * background tasks - keyed by cwd) never collides across sessions.
    */
   workspace?: string;
   command: string;
@@ -179,11 +179,11 @@ export class SessionManager {
     const path = join(workspace, '.mcp.json');
     try {
       if (Object.keys(connectors.mcpServers).length > 0) {
-        // The session has its own MCP servers — write them.
+        // The session has its own MCP servers - write them.
         this.writeMcp(path, connectors.mcpServers);
       } else if (!existsSync(path)) {
         // Ensure a config file always exists so --strict-mcp-config has an
-        // explicit, empty source (no servers) — never falls back to user/global
+        // explicit, empty source (no servers) - never falls back to user/global
         // config. An existing file (e.g. a project's own .mcp.json) is left alone.
         this.writeMcp(path, {});
       }
@@ -256,7 +256,7 @@ export class SessionManager {
   /**
    * Make sure a session's working directory exists. When WE create it (it didn't
    * exist), chown it to the run-as user so the non-root session can write into
-   * it — including explicit workspaces (services, new projects), not just
+   * it - including explicit workspaces (services, new projects), not just
    * auto-isolated ones. Pre-existing directories are left untouched.
    */
   private ensureWorkspace(dir: string): void {
@@ -317,7 +317,7 @@ export class SessionManager {
   }
 
   /**
-   * Relaunch a stopped session from a clean slate — the plain command, no
+   * Relaunch a stopped session from a clean slate - the plain command, no
    * --continue and no task. Used for the Conductor so a crash/restart never
    * resurrects a prior (e.g. self-looping) conversation; it just comes back
    * idle and interactive.

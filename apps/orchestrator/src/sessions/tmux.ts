@@ -39,14 +39,14 @@ export async function isAvailable(): Promise<boolean> {
 /**
  * Exit copy-mode (scrollback) on a session's active pane if it's in one. A mouse
  * scroll puts the pane into copy-mode, where keystrokes navigate history instead
- * of reaching the program — so typed input silently vanishes. Cancelling first
+ * of reaching the program - so typed input silently vanishes. Cancelling first
  * makes input land. No-op (and ignored) when the pane isn't in a mode.
  */
 export async function cancelCopyMode(name: string): Promise<void> {
   try {
     await exec('tmux', ['send-keys', '-t', name, '-X', 'cancel'], options());
   } catch {
-    // Not in copy-mode (or no such pane) — nothing to cancel.
+    // Not in copy-mode (or no such pane) - nothing to cancel.
   }
 }
 
@@ -76,7 +76,7 @@ export async function sessionExists(name: string): Promise<boolean> {
 /**
  * Enable mouse mode on the tmux server (idempotent, global). Without it, the web
  * terminal's scroll wheel is translated to arrow keys inside Claude's full-screen
- * TUI — which recalls previous input instead of scrolling. With mouse on, tmux
+ * TUI - which recalls previous input instead of scrolling. With mouse on, tmux
  * forwards the wheel to the app (or scrolls its own buffer), so scrolling works
  * like a normal Claude Code session.
  */

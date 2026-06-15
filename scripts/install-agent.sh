@@ -7,7 +7,7 @@
 # Usage (run as root on the server you want to monitor):
 #   LUMPY_URL=http://<orchestrator-tailnet-ip>:4317 bash install-agent.sh
 #
-# The orchestrator must be reachable from this host — put both on the same
+# The orchestrator must be reachable from this host - put both on the same
 # Tailscale tailnet and use the orchestrator's tailnet IP.
 
 set -euo pipefail
@@ -42,7 +42,7 @@ else
 fi
 
 cd "$INSTALL_DIR"
-# Only the agent workspace — avoids building the orchestrator's native deps.
+# Only the agent workspace - avoids building the orchestrator's native deps.
 npm install -w @lumpy/agent --no-audit --no-fund
 
 cat >/etc/systemd/system/lumpy-agent.service <<EOF

@@ -40,7 +40,7 @@ const improveSchema = z.object({
 /** The prompt a deployed service runs, with a self-improvement hook. */
 function buildDeployTask(service: Service, base: string): string {
   return [
-    `You are the "${service.name}" micro service for Lumpy — speciality: ${service.speciality || 'general'}.`,
+    `You are the "${service.name}" micro service for Lumpy - speciality: ${service.speciality || 'general'}.`,
     '',
     'Your instructions:',
     service.instructions,

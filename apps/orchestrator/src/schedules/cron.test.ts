@@ -25,7 +25,7 @@ test('step and range fields work', () => {
   assert.equal(cronMatches(every15, new Date('2026-06-14T12:00:00Z')), true);
   assert.equal(cronMatches(every15, new Date('2026-06-14T12:15:00Z')), true);
   assert.equal(cronMatches(every15, new Date('2026-06-14T12:07:00Z')), false);
-  // Weekdays only (Mon–Fri). 2026-06-14 is a Sunday.
+  // Weekdays only (Mon-Fri). 2026-06-14 is a Sunday.
   assert.equal(cronMatches('0 8 * * 1-5', new Date('2026-06-14T08:00:00Z')), false);
   assert.equal(cronMatches('0 8 * * 1-5', new Date('2026-06-15T08:00:00Z')), true);
 });

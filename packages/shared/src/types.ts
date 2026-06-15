@@ -60,7 +60,7 @@ export interface CreateSessionInput {
 
 // --- Projects (governed workspaces with a knowledge base) ----------------
 
-/** Where a project's knowledge base is derived from — the full picture. */
+/** Where a project's knowledge base is derived from - the full picture. */
 /** A database this project uses. A project may have several, each with a purpose. */
 export interface ProjectDatabase {
   /** What this database is for, e.g. "main", "analytics", "game state". */
@@ -80,7 +80,7 @@ export interface HostedService {
 }
 
 export interface ProjectSources {
-  /** Git repos (urls or paths) to ingest — a project may span several. */
+  /** Git repos (urls or paths) to ingest - a project may span several. */
   repos: string[];
   /** Fleet node id whose local files to read over SSHFS (this Mac, Atlas, …). */
   machineId: string | null;
@@ -127,7 +127,7 @@ export interface CreateProjectInput {
   description?: string;
   origin?: ProjectOrigin;
   sources?: Partial<ProjectSources>;
-  /** Supabase access token (sbp_…) — stored encrypted, scoped to this project. */
+  /** Supabase access token (sbp_…) - stored encrypted, scoped to this project. */
   supabaseToken?: string;
 }
 
@@ -276,7 +276,7 @@ export interface McpServerDef {
 /**
  * The connectors a session/project uses: secret env vars (injected into the
  * session at launch), MCP servers (Supabase, Vercel, …), and the GitHub repo it
- * maps to. Secret values are never returned to clients — see the View type.
+ * maps to. Secret values are never returned to clients - see the View type.
  */
 export interface SessionConnectors {
   env: Record<string, string>;
@@ -373,7 +373,7 @@ export type ServerCriticality = 'low' | 'medium' | 'high';
 /**
  * `server` = always-on infrastructure (cloud hosts, VPSes). `machine` = a
  * personal computer (laptop/desktop) that runs the agent. `remote` = a phone or
- * tablet that can't run an agent — tracked by Tailscale presence only. Presented
+ * tablet that can't run an agent - tracked by Tailscale presence only. Presented
  * and reasoned about separately.
  */
 export type FleetNodeKind = 'server' | 'machine' | 'remote';
@@ -394,7 +394,7 @@ export interface ServerHostedService {
   checkedAt: string | null;
   /** Response latency of the last probe, in ms. */
   latencyMs: number | null;
-  /** Uptime fraction over the last 24h (0–1), from recorded incidents. */
+  /** Uptime fraction over the last 24h (0-1), from recorded incidents. */
   uptime24h: number | null;
   /** Days until the TLS certificate expires (https only). */
   certDaysLeft: number | null;

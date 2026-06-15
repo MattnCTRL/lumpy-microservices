@@ -40,7 +40,7 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-# Resolve the owning user's home, uid, gid — the mount is owned by them so
+# Resolve the owning user's home, uid, gid - the mount is owned by them so
 # Lumpy sessions (which run as this user) can read and write.
 if ! owner_home="$(getent passwd "$SESSION_USER" | cut -d: -f6)" || [ -z "$owner_home" ]; then
   echo "error: user '$SESSION_USER' not found" >&2
