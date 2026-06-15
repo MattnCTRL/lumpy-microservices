@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthGate } from '@/components/AuthGate';
 import { InstanceBanner } from '@/components/InstanceBanner';
 import { SideNav } from '@/components/SideNav';
+import { Toaster } from '@/components/Toaster';
 
 export const metadata: Metadata = {
   title: 'Lumpy Micro Services',
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-mono">
         <InstanceBanner />
+        <Toaster />
         <AuthGate>
           {/* Mobile: full-height shell (dvh) with a fixed bottom tab bar that
               floats over the content. Desktop: left rail beside the content. */}

@@ -107,6 +107,15 @@ export function ConnectorsDialog({
   const [cAuth, setCAuth] = useState(''); // bearer token or full header value
   const [cCmd, setCCmd] = useState('');
 
+  // Esc closes the dialog (a11y / expected modal behavior).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   useEffect(() => {
     api
       .getConnectors(sessionId)
@@ -205,8 +214,17 @@ export function ConnectorsDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
-      <div className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-black/60 p-4"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Connectors"
+        onClick={(e) => e.stopPropagation()}
+        className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+      >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-base font-semibold text-neutral-100">Connectors</h2>
           <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-200">

@@ -18,9 +18,14 @@ export const alertsModule: LumpyModule = {
       return reply.status(204).send();
     });
 
+    // Live channel for the Alerts page: alert lifecycle, remediation lifecycle
+    // (so a held approval appears/clears without a poll), and second-opinion
+    // verdicts. Previously this only forwarded alert.* and nothing subscribed.
     ctx.app.get('/ws/alerts', { websocket: true }, (socket: WebSocket) => {
+      const relevant = (type: string): boolean =>
+        type.startsWith('alert.') || type.startsWith('remediation.') || type === 'secondopinion';
       const unsubscribe = ctx.bus.subscribe((event) => {
-        if (!event.type.startsWith('alert.')) return;
+        if (!relevant(event.type)) return;
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
       });
       socket.on('close', unsubscribe);

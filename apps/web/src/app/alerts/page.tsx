@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { Alert, ConsultVerdict, PendingRemediation } from '@lumpy/shared';
-import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { alertsSocketUrl, api, ORCHESTRATOR_URL } from '@/lib/api';
+import { reconnectingSocket } from '@/lib/socket';
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -27,8 +28,14 @@ export default function AlertsPage() {
 
   useEffect(() => {
     void refresh();
-    const interval = setInterval(() => void refresh(), 4000);
-    return () => clearInterval(interval);
+    // Live: refresh on any alert / remediation / second-opinion event. A slow poll
+    // remains as a fallback so the view self-heals if the socket is briefly down.
+    const socket = reconnectingSocket(alertsSocketUrl(), () => void refresh());
+    const interval = setInterval(() => void refresh(), 20000);
+    return () => {
+      socket.close();
+      clearInterval(interval);
+    };
   }, [refresh]);
 
   return (
@@ -85,14 +92,8 @@ function PendingItem({
     setBusy(kind);
     setErr(null);
     try {
-      const res =
-        kind === 'approve'
-          ? await api.approveRemediation(pending.alertId)
-          : await api.dismissRemediation(pending.alertId);
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? res.statusText);
-      }
+      if (kind === 'approve') await api.approveRemediation(pending.alertId);
+      else await api.dismissRemediation(pending.alertId);
       onChange();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'failed');
