@@ -2,10 +2,11 @@ import { z } from 'zod';
 import type { SettingsResponse } from '@lumpy/shared';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { VERSION } from '../version.js';
-import { syncVercelToken } from './credentials.js';
+import { syncGithubToken, syncVercelToken } from './credentials.js';
 
 const SUPABASE_PAT = 'supabase_pat';
 const VERCEL_TOKEN = 'vercel_token';
+const GITHUB_TOKEN = 'github_token';
 
 const patchSchema = z.object({
   remediationMode: z.enum(['off', 'investigate', 'auto']).optional(),
@@ -14,6 +15,8 @@ const patchSchema = z.object({
   supabaseToken: z.string().optional(),
   /** Account-level Vercel Access Token; empty string clears it. */
   vercelToken: z.string().optional(),
+  /** Account-level GitHub token (covers all your repos); empty string clears it. */
+  githubToken: z.string().optional(),
 });
 
 function view(ctx: ModuleContext): SettingsResponse {
@@ -26,6 +29,7 @@ function view(ctx: ModuleContext): SettingsResponse {
     integrations: {
       supabaseConfigured: ctx.store.hasSecret(SUPABASE_PAT),
       vercelConfigured: ctx.store.hasSecret(VERCEL_TOKEN),
+      githubConfigured: ctx.store.hasSecret(GITHUB_TOKEN),
     },
     system: {
       version: VERSION,
@@ -57,7 +61,7 @@ export const settingsModule: LumpyModule = {
           .status(400)
           .send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
       }
-      const { supabaseToken, vercelToken, ...settings } = parsed.data;
+      const { supabaseToken, vercelToken, githubToken, ...settings } = parsed.data;
       ctx.settings.update(settings);
       if (supabaseToken !== undefined) {
         ctx.store.setSecret(SUPABASE_PAT, supabaseToken.trim() || null);
@@ -65,6 +69,10 @@ export const settingsModule: LumpyModule = {
       if (vercelToken !== undefined) {
         ctx.store.setSecret(VERCEL_TOKEN, vercelToken.trim() || null);
         syncVercelToken(ctx.store);
+      }
+      if (githubToken !== undefined) {
+        ctx.store.setSecret(GITHUB_TOKEN, githubToken.trim() || null);
+        syncGithubToken(ctx.store);
       }
       return view(ctx);
     });

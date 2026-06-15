@@ -12,6 +12,8 @@ import type {
   KnowledgeBase,
   Playbook,
   Project,
+  RepoSyncResult,
+  RepoSyncStatus,
   Schedule,
   CreateScheduleInput,
   UpdateScheduleInput,
@@ -110,6 +112,8 @@ export const api = {
 
   listAlerts: () => req('/api/alerts').then(parse<Alert[]>),
   listActivity: () => req('/api/activity').then(parse<ActivityEntry[]>),
+  getRepoSync: () => req('/api/reposync').then(parse<RepoSyncStatus>),
+  runRepoSync: () => send('/api/reposync/run', 'POST').then(parse<{ results: RepoSyncResult[] }>),
   dismissAlert: (id: string) =>
     send(`/api/alerts/${encodeURIComponent(id)}`, 'DELETE'),
 
@@ -121,6 +125,7 @@ export const api = {
     remediationAutoSeverities?: string[];
     supabaseToken?: string;
     vercelToken?: string;
+    githubToken?: string;
   }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
 

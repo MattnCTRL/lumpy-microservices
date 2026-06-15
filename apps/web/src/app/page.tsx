@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   Alert,
   HostedIncident,
+  RepoSyncStatus,
   Schedule,
   Server,
   ServerHostedService,
@@ -20,17 +21,19 @@ export default function DashboardPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [incidents, setIncidents] = useState<HostedIncident[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [repoSync, setRepoSync] = useState<RepoSyncStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [sv, se, al, sc, inc, act] = await Promise.all([
+      const [sv, se, al, sc, inc, act, rs] = await Promise.all([
         api.listServers(),
         api.listSessions(),
         api.listAlerts(),
         api.listSchedules().catch(() => []),
         api.listIncidents().catch(() => []),
         api.listActivity().catch(() => []),
+        api.getRepoSync().catch(() => null),
       ]);
       setServers(sv);
       setSessions(se);
@@ -38,6 +41,7 @@ export default function DashboardPage() {
       setSchedules(sc);
       setIncidents(inc);
       setActivity(act);
+      setRepoSync(rs);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
@@ -210,6 +214,14 @@ export default function DashboardPage() {
               ))
           )}
         </Card>
+
+        <RepoSyncCard
+          status={repoSync}
+          onRun={async () => {
+            await api.runRepoSync().catch(() => {});
+            void refresh();
+          }}
+        />
       </div>
 
       <section className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
@@ -302,6 +314,76 @@ function Row({ dot, label, right }: { dot: string; label: string; right: string 
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-neutral-600">{children}</p>;
+}
+
+function RepoSyncCard({ status, onRun }: { status: RepoSyncStatus | null; onRun: () => void }) {
+  const [busy, setBusy] = useState(false);
+  if (!status) return null;
+  const errors = status.results.filter((r) => r.status === 'error').length;
+  return (
+    <div
+      className={`rounded-lg border bg-neutral-950 p-4 ${errors ? 'border-red-900/50' : 'border-neutral-800'}`}
+    >
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="text-sm font-medium text-neutral-300">Repo backups</h2>
+        <span className="text-xs">
+          {status.configured ? (
+            <span className="text-emerald-400">GitHub linked</span>
+          ) : (
+            <span className="text-amber-400">no token</span>
+          )}
+        </span>
+      </div>
+      {!status.configured ? (
+        <p className="text-xs text-neutral-500">
+          Add a GitHub token in{' '}
+          <Link href="/settings" className="text-sky-400 hover:underline">
+            Settings
+          </Link>{' '}
+          to back the box&apos;s repos up to GitHub.
+        </p>
+      ) : (
+        <div className="space-y-1">
+          {status.results.length === 0 ? (
+            <Empty>No runs yet.</Empty>
+          ) : (
+            status.results
+              .slice(0, 5)
+              .map((r, i) => (
+                <Row
+                  key={`${r.repo}:${i}`}
+                  dot={
+                    r.status === 'pushed'
+                      ? 'bg-emerald-500'
+                      : r.status === 'error'
+                        ? 'bg-red-500'
+                        : 'bg-neutral-600'
+                  }
+                  label={r.repo}
+                  right={r.status}
+                />
+              ))
+          )}
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[11px] text-neutral-600">
+              {status.lastRunAt ? `last ${timeAgo(status.lastRunAt)}` : 'not run yet'} → {status.branch}
+            </span>
+            <button
+              onClick={() => {
+                setBusy(true);
+                onRun();
+                setTimeout(() => setBusy(false), 1500);
+              }}
+              disabled={busy}
+              className="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {busy ? 'backing up…' : 'back up now'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function serverDot(status: string): string {

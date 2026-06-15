@@ -51,6 +51,7 @@ export default function SettingsPage() {
     remediationAutoSeverities?: string[];
     supabaseToken?: string;
     vercelToken?: string;
+    githubToken?: string;
   }) => {
     try {
       setSettings(await api.updateSettings(p));
@@ -92,6 +93,13 @@ export default function SettingsPage() {
               help="Lets Lumpy sessions read and manage your Vercel deployments. Create one at vercel.com/account/tokens."
               configured={settings.integrations.vercelConfigured}
               onSave={(token) => patch({ vercelToken: token })}
+            />
+            <TokenSetting
+              label="GitHub Token"
+              placeholder="github_pat_… or ghp_…"
+              help="Covers all your repos. Lets the box push/pull and powers Repo Sync (backs the box's repos up to GitHub). Create a fine-grained PAT (Contents: read/write) at github.com/settings/tokens."
+              configured={settings.integrations.githubConfigured}
+              onSave={(token) => patch({ githubToken: token })}
             />
           </div>
         )}

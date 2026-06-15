@@ -10,12 +10,13 @@ import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
 import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
+import { repoSyncModule } from './reposync/module.js';
 import { schedulesModule } from './schedules/module.js';
 import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
 import { ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
-import { syncVercelToken } from './settings/credentials.js';
+import { syncGithubToken, syncVercelToken } from './settings/credentials.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
 import { createApp } from './server/http.js';
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
 
   const store = new Store(config.dataDir);
   syncVercelToken(store);
+  syncGithubToken(store);
   const bus = new EventBus();
   const settingsStore = new SettingsStore(config.dataDir, {
     remediationMode: config.remediationMode,
@@ -58,6 +60,7 @@ async function main(): Promise<void> {
     .add(projectsModule)
     .add(servicesModule)
     .add(schedulesModule)
+    .add(repoSyncModule)
     .add(sessionsModule)
     .add(fleetModule)
     .add(alertsModule)

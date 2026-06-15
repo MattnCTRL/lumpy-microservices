@@ -230,6 +230,23 @@ export interface UpdateScheduleInput {
   enabled?: boolean;
 }
 
+// --- Repo Sync (GitHub-as-hub backup of the box's repos) ----------------
+
+export interface RepoSyncResult {
+  repo: string;
+  /** 'pushed' = changes backed up, 'clean' = nothing to do, 'error' = failed, 'skipped' = no token/remote. */
+  status: 'pushed' | 'clean' | 'error' | 'skipped';
+  detail: string;
+  at: string;
+}
+
+export interface RepoSyncStatus {
+  configured: boolean;
+  branch: string;
+  lastRunAt: string | null;
+  results: RepoSyncResult[];
+}
+
 // --- Activity feed (audit trail) ----------------------------------------
 
 export interface ActivityEntry {
@@ -310,6 +327,8 @@ export interface SettingsResponse {
     supabaseConfigured: boolean;
     /** A Vercel Access Token is stored. */
     vercelConfigured: boolean;
+    /** A GitHub token is stored (enables the box to push/pull + Repo Sync). */
+    githubConfigured: boolean;
   };
   system: {
     version: string;
