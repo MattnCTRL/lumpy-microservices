@@ -375,6 +375,12 @@ export interface HealthResponse {
   publicUrl: string;
   /** Default root (on the orchestrator host) under which session workspaces resolve. */
   workspaceRoot: string;
+  /** Sessions currently running (attached brokers) - resource-pressure signal. */
+  sessionCount: number;
+  /** Orchestrator process resident set size, in MB. */
+  rssMb: number;
+  /** Deployment label (e.g. "box"); empty = unlabeled. */
+  instance: string;
 }
 
 /** Control messages sent from client to server over the session WebSocket. */

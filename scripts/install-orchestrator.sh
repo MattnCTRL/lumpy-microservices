@@ -86,6 +86,7 @@ Environment=LUMPY_PUBLIC_URL=http://${BIND}:4317
 # here, unlike on macOS, so the free-memory guard is enabled. Tune for box size.
 Environment=LUMPY_MAX_SESSIONS=${LUMPY_MAX_SESSIONS:-5}
 Environment=LUMPY_MIN_FREE_MEMORY_MB=${LUMPY_MIN_FREE_MEMORY_MB:-350}
+Environment=LUMPY_INSTANCE=box
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/npm run start -w @lumpy/orchestrator
 Restart=always

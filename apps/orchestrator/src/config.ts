@@ -91,6 +91,8 @@ export const config = {
   publicUrl: env('LUMPY_PUBLIC_URL', ''),
   // The web UI URL to return to after GitHub sign-in.
   webUrl: env('LUMPY_WEB_URL', ''),
+  // Deployment label surfaced on /api/health (e.g. "box"). Empty = unlabeled.
+  instanceLabel: env('LUMPY_INSTANCE', ''),
   // GitHub OAuth (Sign in with GitHub). Empty = sign-in disabled.
   github: {
     clientId: env('LUMPY_GITHUB_CLIENT_ID', ''),

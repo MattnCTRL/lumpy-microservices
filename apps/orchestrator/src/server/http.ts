@@ -81,6 +81,9 @@ export async function createApp(deps: AppDependencies): Promise<FastifyInstance>
       uptimeSeconds: Math.floor(process.uptime()),
       publicUrl: config.publicUrl,
       workspaceRoot: config.workspaceRoot,
+      sessionCount: deps.sessions.runningCount(),
+      rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+      instance: config.instanceLabel,
     };
   });
 

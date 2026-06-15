@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@xterm/xterm/css/xterm.css';
 import './globals.css';
 import { AuthGate } from '@/components/AuthGate';
+import { InstanceBanner } from '@/components/InstanceBanner';
 import { SideNav } from '@/components/SideNav';
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-mono">
+        <InstanceBanner />
         <AuthGate>
           {/* Mobile: full-height shell (dvh) with a fixed bottom tab bar that
               floats over the content. Desktop: left rail beside the content. */}
