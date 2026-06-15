@@ -106,6 +106,25 @@ test('a critical waits for approval, then runs when approved', async () => {
   assert.equal(created.length, 1, 'session created after approval');
 });
 
+test('a remediation holds its alert until the session ends, then frees it', async () => {
+  const { bus, created } = harness('investigate');
+  bus.publish({ type: 'alert.fired', alert: sampleAlert('warning'), at: 't' });
+  await tick();
+  assert.equal(created.length, 1);
+
+  // A brief resolve mid-fix must NOT free the alert while the session runs.
+  bus.publish({ type: 'alert.resolved', id: 's1:warning', serverName: 'web', label: 'Disk', at: 't' });
+  bus.publish({ type: 'alert.fired', alert: sampleAlert('warning'), at: 't' });
+  await tick();
+  assert.equal(created.length, 1, 'no duplicate remediation while the fix is in flight');
+
+  // Once the remediation session ends, a recurrence remediates again.
+  bus.publish({ type: 'session.status', id: 'sess1', name: 'x', status: 'stopped', at: 't' });
+  bus.publish({ type: 'alert.fired', alert: sampleAlert('warning'), at: 't' });
+  await tick();
+  assert.equal(created.length, 2, 'remediates again after the prior session finished');
+});
+
 test('off mode does nothing', async () => {
   const { bus, created } = harness('off');
   bus.publish({ type: 'alert.fired', alert: sampleAlert('warning'), at: 't' });

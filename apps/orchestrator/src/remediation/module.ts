@@ -47,6 +47,7 @@ export const remediationModule: LumpyModule = {
     pruneStale(); // reconcile on boot
 
     const handling = new Set<string>(); // already acted on (transient, in-memory)
+    const inFlight = new Map<string, string>(); // alertId -> running remediation sessionId
 
     // Hold an alert for one-tap approval and announce it. Persisted via the store
     // so a restart can't orphan a push notification's already-delivered approve
@@ -73,6 +74,7 @@ export const remediationModule: LumpyModule = {
           autonomous: true,
           task: buildRemediationTask(alert, mode, findPlaybook(alert.ruleId)?.task),
         });
+        inFlight.set(alert.id, session.id);
         ctx.bus.publish({
           type: 'remediation.started',
           alertId: alert.id,
@@ -159,9 +161,23 @@ export const remediationModule: LumpyModule = {
     });
 
     ctx.bus.subscribe((event) => {
+      if (event.type === 'session.status' && event.status === 'stopped') {
+        // A remediation session finished: free its alert so a future recurrence
+        // can be handled again (and stop tracking it as in-flight).
+        for (const [alertId, sessionId] of inFlight) {
+          if (sessionId === event.id) {
+            inFlight.delete(alertId);
+            handling.delete(alertId);
+          }
+        }
+        return;
+      }
       if (event.type === 'alert.resolved') {
-        handling.delete(event.id);
         ctx.store.removePendingRemediation(event.id);
+        // Keep `handling` while a remediation session is still running, so a brief
+        // dip below threshold mid-fix can't let a duplicate spawn; the session's
+        // stop event clears it. Otherwise the condition genuinely cleared.
+        if (!inFlight.has(event.id)) handling.delete(event.id);
         return;
       }
       if (event.type !== 'alert.fired') return;
