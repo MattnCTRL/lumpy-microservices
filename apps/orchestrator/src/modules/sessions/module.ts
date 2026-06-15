@@ -243,7 +243,10 @@ function registerWebSocket(ctx: ModuleContext): void {
         }
         return;
       }
-      if (message.type === 'input') broker.write(message.data);
+      // Route input through the manager (not broker.write) so a pane left in
+      // copy-mode by a mouse scroll is exited first - otherwise the keystrokes
+      // navigate scrollback and silently vanish instead of reaching the session.
+      if (message.type === 'input') void ctx.sessions.input(id, message.data);
       else broker.resize(message.cols, message.rows);
     });
 

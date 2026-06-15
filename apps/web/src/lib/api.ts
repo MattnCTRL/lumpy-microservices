@@ -39,7 +39,26 @@ export interface ModuleInfo {
   description?: string;
 }
 
-export const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? 'http://127.0.0.1:4317';
+/**
+ * The orchestrator base URL. An explicit absolute NEXT_PUBLIC_ORCHESTRATOR_URL
+ * always wins (build-time override). Otherwise it is derived at RUNTIME from the
+ * page's own host - the orchestrator is reached on the same host as the web UI,
+ * at NEXT_PUBLIC_ORCHESTRATOR_PORT (default 4317). Deriving at runtime means a
+ * Tailscale IP change or a switch to a MagicDNS name does not strand the client
+ * the way a build-time-baked IP would. SSR (no window) uses a local fallback;
+ * all real calls run in the browser after hydration.
+ */
+function resolveOrchestratorUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
+  if (explicit && /^https?:\/\//.test(explicit)) return explicit.replace(/\/$/, '');
+  if (typeof window !== 'undefined') {
+    const port = process.env.NEXT_PUBLIC_ORCHESTRATOR_PORT || '4317';
+    return `${window.location.protocol}//${window.location.hostname}:${port}`;
+  }
+  return 'http://127.0.0.1:4317';
+}
+
+export const ORCHESTRATOR_URL = resolveOrchestratorUrl();
 
 function socketUrl(pathname: string): string {
   const url = new URL(ORCHESTRATOR_URL);

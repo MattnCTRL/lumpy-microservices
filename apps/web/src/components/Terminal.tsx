@@ -48,36 +48,83 @@ export function Terminal({ sessionId }: { sessionId: string }) {
       termRef.current = term;
       fitRef.current = fit;
 
-      const socket = new WebSocket(sessionSocketUrl(sessionId));
-      socket.binaryType = 'arraybuffer';
-      socketRef.current = socket;
-
       const sendResize = () => {
         fit.fit();
-        if (socket.readyState === WebSocket.OPEN) {
+        const socket = socketRef.current;
+        if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
         }
       };
 
-      socket.onopen = () => sendResize();
-      socket.onmessage = (event) => {
-        if (typeof event.data === 'string') return;
-        term.write(new Uint8Array(event.data as ArrayBuffer));
-      };
-
       const dataDisposable = term.onData((data) => {
-        if (socket.readyState === WebSocket.OPEN) {
+        const socket = socketRef.current;
+        if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: 'input', data }));
         }
       });
 
+      // The session WebSocket transparently reconnects (capped backoff) so a
+      // routine orchestrator restart / safe-deploy or a network blip doesn't
+      // freeze the terminal forever. On reconnect the broker replays its ring
+      // buffer, so we reset and repaint from the fresh snapshot. `done` stops
+      // retrying once the session is genuinely gone.
+      let backoff = 1000;
+      let retry: ReturnType<typeof setTimeout> | null = null;
+      let done = false;
+
+      const connect = () => {
+        if (disposed || done) return;
+        const socket = new WebSocket(sessionSocketUrl(sessionId));
+        socket.binaryType = 'arraybuffer';
+        socketRef.current = socket;
+
+        socket.onopen = () => {
+          backoff = 1000;
+          term.reset();
+          sendResize();
+        };
+        socket.onmessage = (event) => {
+          if (typeof event.data === 'string') {
+            try {
+              const msg = JSON.parse(event.data) as { type?: string; status?: string; message?: string };
+              if (msg.type === 'status' && msg.status === 'stopped') {
+                term.writeln('\r\n\x1b[2m[session stopped]\x1b[0m');
+                done = true;
+              } else if (msg.type === 'error' && msg.message) {
+                term.writeln(`\r\n\x1b[33m[${msg.message}]\x1b[0m`);
+                if (/not found/i.test(msg.message)) done = true;
+              }
+            } catch {
+              // non-JSON text frame; ignore
+            }
+            return;
+          }
+          term.write(new Uint8Array(event.data as ArrayBuffer));
+        };
+        socket.onclose = () => {
+          if (disposed || done || retry) return;
+          retry = setTimeout(() => {
+            retry = null;
+            backoff = Math.min(backoff * 2, 15000);
+            connect();
+          }, backoff);
+        };
+        socket.onerror = () => socket.close();
+      };
+
       const onWindowResize = () => sendResize();
       window.addEventListener('resize', onWindowResize);
+      connect();
 
       teardown = () => {
         window.removeEventListener('resize', onWindowResize);
         dataDisposable.dispose();
-        socket.close();
+        if (retry) clearTimeout(retry);
+        const socket = socketRef.current;
+        if (socket) {
+          socket.onclose = null;
+          socket.close();
+        }
         term.dispose();
       };
     })();
