@@ -130,6 +130,18 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
     };
   }
 
+  // Only push when Codex actually blocked an auto-action - that's the moment the
+  // owner needs to know about. Advisory/approved consults stay in the feed.
+  if (event.type === 'secondopinion' && !event.proceeded) {
+    return {
+      title: `Codex held an auto-action - ${event.subject}`,
+      message: event.summary,
+      priority: 4,
+      tags: ['no_entry'],
+      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+    };
+  }
+
   return null;
 }
 

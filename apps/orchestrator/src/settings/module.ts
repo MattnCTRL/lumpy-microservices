@@ -1,22 +1,35 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { z } from 'zod';
 import type { SettingsResponse } from '@lumpy/shared';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { logger } from '../logger.js';
 import { VERSION } from '../version.js';
-import { syncGithubToken, syncVercelToken } from './credentials.js';
+import { syncCodexAuth, syncGithubToken, syncVercelToken } from './credentials.js';
+
+const exec = promisify(execFile);
 
 const SUPABASE_PAT = 'supabase_pat';
 const VERCEL_TOKEN = 'vercel_token';
 const GITHUB_TOKEN = 'github_token';
+const OPENAI_API_KEY = 'openai_api_key';
+
+// Cached once on boot: is the Codex CLI installed on this host? Surfaced in the
+// UI so a stored key + missing CLI is visible rather than a silent no-op.
+let codexCliInstalled = false;
 
 const patchSchema = z.object({
   remediationMode: z.enum(['off', 'investigate', 'auto']).optional(),
   remediationAutoSeverities: z.array(z.enum(['warning', 'critical'])).optional(),
+  secondOpinionMode: z.enum(['off', 'advisory', 'enforce']).optional(),
   /** Account-level Supabase Personal Access Token (sbp_…); empty string clears it. */
   supabaseToken: z.string().optional(),
   /** Account-level Vercel Access Token; empty string clears it. */
   vercelToken: z.string().optional(),
   /** Account-level GitHub token (covers all your repos); empty string clears it. */
   githubToken: z.string().optional(),
+  /** Account-level OpenAI API key (powers Codex consults); empty string clears it. */
+  openaiToken: z.string().optional(),
 });
 
 function view(ctx: ModuleContext): SettingsResponse {
@@ -30,6 +43,11 @@ function view(ctx: ModuleContext): SettingsResponse {
       supabaseConfigured: ctx.store.hasSecret(SUPABASE_PAT),
       vercelConfigured: ctx.store.hasSecret(VERCEL_TOKEN),
       githubConfigured: ctx.store.hasSecret(GITHUB_TOKEN),
+      codexConfigured: ctx.store.hasSecret(OPENAI_API_KEY),
+    },
+    secondOpinion: {
+      mode: current.secondOpinionMode,
+      cliInstalled: codexCliInstalled,
     },
     system: {
       version: VERSION,
@@ -52,6 +70,15 @@ export const settingsModule: LumpyModule = {
   version: '0.1.0',
   description: 'Runtime configuration and system overview.',
   register(ctx: ModuleContext) {
+    // Detect the Codex CLI once on boot (best-effort; surfaced in /api/settings).
+    exec('codex', ['--version'])
+      .then(() => {
+        codexCliInstalled = true;
+      })
+      .catch(() => {
+        codexCliInstalled = false;
+      });
+
     ctx.app.get('/api/settings', async () => view(ctx));
 
     ctx.app.patch('/api/settings', async (request, reply) => {
@@ -61,7 +88,7 @@ export const settingsModule: LumpyModule = {
           .status(400)
           .send({ error: parsed.error.issues[0]?.message ?? 'invalid input' });
       }
-      const { supabaseToken, vercelToken, githubToken, ...settings } = parsed.data;
+      const { supabaseToken, vercelToken, githubToken, openaiToken, ...settings } = parsed.data;
       ctx.settings.update(settings);
       if (supabaseToken !== undefined) {
         ctx.store.setSecret(SUPABASE_PAT, supabaseToken.trim() || null);
@@ -74,7 +101,13 @@ export const settingsModule: LumpyModule = {
         ctx.store.setSecret(GITHUB_TOKEN, githubToken.trim() || null);
         syncGithubToken(ctx.store);
       }
+      if (openaiToken !== undefined) {
+        ctx.store.setSecret(OPENAI_API_KEY, openaiToken.trim() || null);
+        syncCodexAuth(ctx.store);
+      }
       return view(ctx);
     });
+
+    logger.info('settings module ready');
   },
 };

@@ -12,11 +12,12 @@ import { notifyModule } from './notify/module.js';
 import { projectsModule } from './projects/module.js';
 import { repoSyncModule } from './reposync/module.js';
 import { schedulesModule } from './schedules/module.js';
+import { secondOpinionModule } from './secondopinion/module.js';
 import { servicesModule } from './services/module.js';
 import { remediationModule } from './remediation/module.js';
 import { ensureConductor } from './sessions/conductor.js';
 import { SessionManager } from './sessions/manager.js';
-import { syncGithubToken, syncVercelToken } from './settings/credentials.js';
+import { syncCodexAuth, syncGithubToken, syncVercelToken } from './settings/credentials.js';
 import { resolveRunAs } from './sessions/runas.js';
 import * as tmux from './sessions/tmux.js';
 import { createApp } from './server/http.js';
@@ -32,10 +33,12 @@ async function main(): Promise<void> {
   const store = new Store(config.dataDir);
   syncVercelToken(store);
   syncGithubToken(store);
+  syncCodexAuth(store);
   const bus = new EventBus();
   const settingsStore = new SettingsStore(config.dataDir, {
     remediationMode: config.remediationMode,
     remediationAutoSeverities: config.remediationAutoSeverities,
+    secondOpinionMode: config.secondOpinionMode,
   });
 
   let runAs = null;
@@ -65,6 +68,7 @@ async function main(): Promise<void> {
     .add(fleetModule)
     .add(alertsModule)
     .add(remediationModule)
+    .add(secondOpinionModule)
     .add(digestModule)
     .add(activityModule)
     .add(notifyModule);

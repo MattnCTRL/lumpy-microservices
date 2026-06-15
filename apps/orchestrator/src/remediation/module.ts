@@ -1,8 +1,30 @@
 import type { Alert } from '@lumpy/shared';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { secondOpinionGate } from '../secondopinion/consult.js';
 import { DEFAULT_PLAYBOOKS, findPlaybook } from './playbooks.js';
 import { buildRemediationTask } from './task.js';
+
+/** Frame an impending auto-remediation for a Codex second opinion. */
+function buildGatePrompt(alert: Alert, mode: 'investigate' | 'auto'): string {
+  const playbook = findPlaybook(alert.ruleId);
+  return [
+    `Lumpy is about to AUTONOMOUSLY ${mode === 'auto' ? 'FIX' : 'investigate'} an alert by`,
+    'launching an unattended agent, with no human in the loop.',
+    '',
+    `Server: ${alert.serverName}`,
+    `Alert: ${alert.label} (severity: ${alert.severity}, rule: ${alert.ruleId})`,
+    '',
+    'The agent will be given this task:',
+    '---',
+    buildRemediationTask(alert, mode, playbook?.task),
+    '---',
+    '',
+    mode === 'auto'
+      ? 'Should this fix run automatically, without a human reviewing it first?'
+      : 'Should this investigation run automatically?',
+  ].join('\n');
+}
 
 /**
  * Closes the loop: when an alert fires, handle it with an autonomous Claude
@@ -44,6 +66,45 @@ export const remediationModule: LumpyModule = {
       }
     };
 
+    // Before auto-running, get a Codex second opinion (per the configured mode).
+    // On an explicit reject, hold the action for one-tap approval instead of
+    // running it unattended. Always fails open if Codex can't be reached.
+    const gateThenStart = async (alert: Alert, mode: 'investigate' | 'auto'): Promise<void> => {
+      const subject = `${alert.serverName}: ${alert.label}`;
+      const gate = await secondOpinionGate(ctx.store, ctx.settings.get().secondOpinionMode, {
+        subject,
+        prompt: buildGatePrompt(alert, mode),
+      });
+      if (gate.verdict.available) {
+        ctx.bus.publish({
+          type: 'secondopinion',
+          subject,
+          verdict: gate.verdict.verdict,
+          summary: gate.verdict.summary,
+          proceeded: gate.proceed,
+          at: new Date().toISOString(),
+        });
+      }
+      if (!gate.proceed) {
+        handling.delete(alert.id);
+        pending.set(alert.id, alert);
+        ctx.bus.publish({
+          type: 'remediation.pending',
+          alertId: alert.id,
+          serverName: alert.serverName,
+          severity: alert.severity,
+          label: alert.label,
+          at: new Date().toISOString(),
+        });
+        logger.warn(
+          { alert: alert.id, summary: gate.verdict.summary },
+          'second opinion held auto-remediation for approval',
+        );
+        return;
+      }
+      await start(alert, mode);
+    };
+
     ctx.app.get('/api/playbooks', async () => DEFAULT_PLAYBOOKS);
 
     ctx.app.post('/api/remediation/:id/approve', async (request, reply) => {
@@ -75,7 +136,7 @@ export const remediationModule: LumpyModule = {
         remediationAutoSeverities.includes(alert.severity) && !playbook?.requiresApproval;
       if (autoOk) {
         handling.add(alert.id);
-        void start(alert, mode);
+        void gateThenStart(alert, mode);
       } else {
         pending.set(alert.id, alert);
         ctx.bus.publish({

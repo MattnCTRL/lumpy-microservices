@@ -20,6 +20,20 @@ const MODES: { value: 'off' | 'investigate' | 'auto'; label: string; hint: strin
 
 const SEVERITIES = ['warning', 'critical'];
 
+const GATE_MODES: { value: 'off' | 'advisory' | 'enforce'; label: string; hint: string }[] = [
+  { value: 'off', label: 'Off', hint: 'No second opinion. Autonomous actions run as configured.' },
+  {
+    value: 'advisory',
+    label: 'Advisory',
+    hint: 'Codex reviews and records its opinion, but never blocks an action.',
+  },
+  {
+    value: 'enforce',
+    label: 'Enforce',
+    hint: 'If Codex rejects an auto-action, hold it for your one-tap approval instead of running it.',
+  },
+];
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [auth, setAuth] = useState<AuthState | null>(null);
@@ -49,9 +63,11 @@ export default function SettingsPage() {
   const patch = async (p: {
     remediationMode?: string;
     remediationAutoSeverities?: string[];
+    secondOpinionMode?: string;
     supabaseToken?: string;
     vercelToken?: string;
     githubToken?: string;
+    openaiToken?: string;
   }) => {
     try {
       setSettings(await api.updateSettings(p));
@@ -101,7 +117,25 @@ export default function SettingsPage() {
               configured={settings.integrations.githubConfigured}
               onSave={(token) => patch({ githubToken: token })}
             />
+            <TokenSetting
+              label="OpenAI API Key"
+              placeholder="sk-…"
+              help="Powers Codex second-opinion consults (a read-only cross-model check on autonomous actions). Create one at platform.openai.com/api-keys."
+              configured={settings.integrations.codexConfigured}
+              onSave={(token) => patch({ openaiToken: token })}
+            />
           </div>
+        )}
+      </Section>
+
+      <Section
+        title="Second opinion (Codex)"
+        hint="A read-only, cross-model check before Lumpy acts on its own. Codex reviews each auto-remediation; on a reject it's held for your one-tap approval instead of running unattended."
+      >
+        {!settings ? (
+          <Loading />
+        ) : (
+          <SecondOpinion settings={settings} onMode={(mode) => patch({ secondOpinionMode: mode })} />
         )}
       </Section>
 
@@ -314,6 +348,53 @@ function TokenSetting({
         {configured ? 'Stored (encrypted). Enter a new one to replace it. ' : 'Not set. '}
         {help}
       </p>
+    </div>
+  );
+}
+
+function SecondOpinion({
+  settings,
+  onMode,
+}: {
+  settings: SettingsResponse;
+  onMode: (mode: 'off' | 'advisory' | 'enforce') => void;
+}) {
+  const { codexConfigured } = settings.integrations;
+  const { mode, cliInstalled } = settings.secondOpinion;
+  const status =
+    mode === 'off'
+      ? { tone: 'text-neutral-500', text: 'Disabled.' }
+      : !codexConfigured
+        ? {
+            tone: 'text-amber-400',
+            text: 'Add an OpenAI API key above to activate. Until then, actions run without a second opinion.',
+          }
+        : !cliInstalled
+          ? {
+              tone: 'text-amber-400',
+              text: 'Key stored, but the Codex CLI was not detected on the host. Consults are skipped (fail open).',
+            }
+          : { tone: 'text-emerald-400', text: 'Active. Codex reviews autonomous actions read-only.' };
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {GATE_MODES.map((m) => (
+          <label key={m.value} className="flex cursor-pointer items-start gap-2">
+            <input
+              type="radio"
+              name="secondOpinion"
+              checked={mode === m.value}
+              onChange={() => void onMode(m.value)}
+              className="mt-1"
+            />
+            <span className="text-sm text-neutral-200">
+              {m.label}
+              <span className="mt-0.5 block text-xs text-neutral-500">{m.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className={`text-xs ${status.tone}`}>{status.text}</p>
     </div>
   );
 }

@@ -23,6 +23,11 @@ function describe(event: LumpyEvent): { kind: string; title: string } | null {
       };
     case 'hosted.cert':
       return { kind: 'cert', title: `Cert expiring: ${event.name} (${event.daysLeft}d)` };
+    case 'secondopinion':
+      return {
+        kind: 'secondopinion',
+        title: `Second opinion (${event.verdict}${event.proceeded ? '' : ', held'}): ${event.subject}`,
+      };
     default:
       return null;
   }

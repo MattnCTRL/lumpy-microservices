@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path';
 export interface RuntimeSettings {
   remediationMode: 'off' | 'investigate' | 'auto';
   remediationAutoSeverities: string[];
+  /** Codex cross-model gate on autonomous actions: off | advisory | enforce. */
+  secondOpinionMode: 'off' | 'advisory' | 'enforce';
 }
 
 /**

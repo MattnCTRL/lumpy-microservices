@@ -108,6 +108,14 @@ export const config = {
   adminToken: env('LUMPY_ADMIN_TOKEN', '') || loadOrCreateAdminToken(dataDir),
   // Opt-in: run the locked Conductor (master orchestrator) session.
   conductorEnabled: env('LUMPY_CONDUCTOR', '') === 'true',
+  // Cross-model (Codex) second opinion on autonomous actions.
+  // off | advisory (consult + record) | enforce (hold an auto-fix Codex rejects).
+  // Only takes effect when an OpenAI API key is stored; otherwise it fails open.
+  secondOpinionMode: env('LUMPY_SECOND_OPINION', 'enforce') as 'off' | 'advisory' | 'enforce',
+  // Max wall-clock for a single Codex consult before it fails open.
+  codexTimeoutMs: Number(env('LUMPY_CODEX_TIMEOUT_MS', '120000')),
+  // Optional model override for Codex consults (empty = Codex default).
+  codexModel: env('LUMPY_CODEX_MODEL', ''),
 };
 
 /** Resolve a (possibly relative or ~-prefixed) workspace path against the root. */

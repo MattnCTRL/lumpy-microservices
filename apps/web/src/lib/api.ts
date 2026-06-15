@@ -2,6 +2,7 @@ import type {
   ActivityEntry,
   Alert,
   AuthState,
+  ConsultVerdict,
   CreateProjectInput,
   CreateServerInput,
   CreateSessionInput,
@@ -123,11 +124,15 @@ export const api = {
   updateSettings: (patch: {
     remediationMode?: string;
     remediationAutoSeverities?: string[];
+    secondOpinionMode?: string;
     supabaseToken?: string;
     vercelToken?: string;
     githubToken?: string;
+    openaiToken?: string;
   }) =>
     send('/api/settings', 'PATCH', patch).then(parse<SettingsResponse>),
+  secondOpinion: (input: { prompt: string; subject?: string }) =>
+    send('/api/secondopinion', 'POST', input).then(parse<ConsultVerdict>),
 
   listProjects: () => req('/api/projects').then(parse<Project[]>),
   getProject: (id: string) => req(`/api/projects/${id}`).then(parse<Project>),

@@ -329,6 +329,18 @@ export interface SettingsResponse {
     vercelConfigured: boolean;
     /** A GitHub token is stored (enables the box to push/pull + Repo Sync). */
     githubConfigured: boolean;
+    /** An OpenAI API key is stored (powers Codex second-opinion consults). */
+    codexConfigured: boolean;
+  };
+  /** Cross-model (Codex) second opinion on autonomous actions. */
+  secondOpinion: {
+    /**
+     * off: never consult. advisory: consult and record, but never block.
+     * enforce: hold an auto-action when Codex rejects it (falls back to one-tap approval).
+     */
+    mode: 'off' | 'advisory' | 'enforce';
+    /** The Codex CLI is installed and reachable on the orchestrator host. */
+    cliInstalled: boolean;
   };
   system: {
     version: string;
@@ -338,6 +350,20 @@ export interface SettingsResponse {
     defaultCommand: string;
     notifications: { configured: boolean; topic: string | null; server: string };
   };
+}
+
+/** A Codex second-opinion verdict (read-only, cross-model review). */
+export interface ConsultVerdict {
+  verdict: 'approve' | 'concern' | 'reject';
+  /** 0-100 self-rated confidence. */
+  confidence: number;
+  summary: string;
+  concerns: string[];
+  suggestions: string[];
+  /** True when Codex actually ran; false if skipped (no key / disabled / CLI missing). */
+  available: boolean;
+  /** Set when the consult could not complete (the gate then fails open). */
+  error?: string;
 }
 
 export interface HealthResponse {
@@ -584,4 +610,14 @@ export type LumpyEvent =
       daysLeft: number;
       at: string;
     }
-  | { type: 'digest'; title: string; message: string; priority: number; at: string };
+  | { type: 'digest'; title: string; message: string; priority: number; at: string }
+  | {
+      type: 'secondopinion';
+      /** Short label for the action that was reviewed. */
+      subject: string;
+      verdict: 'approve' | 'concern' | 'reject';
+      summary: string;
+      /** Whether the gate let the action proceed (false = held for approval). */
+      proceeded: boolean;
+      at: string;
+    };

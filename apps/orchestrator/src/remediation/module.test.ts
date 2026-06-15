@@ -47,9 +47,20 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
       defaultCommand: 'claude',
     },
     settings: {
-      get: () => ({ remediationMode: mode, remediationAutoSeverities: autoSeverities }),
-      update: () => ({ remediationMode: mode, remediationAutoSeverities: autoSeverities }),
+      get: () => ({
+        remediationMode: mode,
+        remediationAutoSeverities: autoSeverities,
+        secondOpinionMode: 'enforce' as const,
+      }),
+      update: () => ({
+        remediationMode: mode,
+        remediationAutoSeverities: autoSeverities,
+        secondOpinionMode: 'enforce' as const,
+      }),
     },
+    // No key configured -> the second-opinion gate fails open (proceeds), so these
+    // tests exercise the gate path without reaching the Codex CLI.
+    store: { getSecret: () => null },
     logger: {},
   } as unknown as ModuleContext;
   remediationModule.register(ctx);

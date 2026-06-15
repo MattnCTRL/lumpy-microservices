@@ -5,7 +5,11 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { SettingsStore } from './store.js';
 
-const seed = { remediationMode: 'off' as const, remediationAutoSeverities: ['warning'] };
+const seed = {
+  remediationMode: 'off' as const,
+  remediationAutoSeverities: ['warning'],
+  secondOpinionMode: 'enforce' as const,
+};
 
 test('seeds from defaults and updates in memory', () => {
   const dir = mkdtempSync(join(tmpdir(), 'lumpy-settings-'));

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { chownSync, rmSync, writeFileSync } from 'node:fs';
+import { chownSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
@@ -68,5 +68,38 @@ export function syncGithubToken(store: Store): void {
     }
   } catch (error) {
     logger.warn({ error }, 'could not wire the GitHub token into git');
+  }
+}
+
+/**
+ * Mirror the account OpenAI API key into the session user's Codex auth file
+ * (`~/.codex/auth.json`), so read-only Codex second-opinion consults can
+ * authenticate. The env var alone isn't honored by Codex; it reads the key from
+ * auth.json under CODEX_HOME. Cleared when the key is removed.
+ */
+export function syncCodexAuth(store: Store): void {
+  if (!config.sessionUser) return;
+  let runAs: ReturnType<typeof resolveRunAs>;
+  try {
+    runAs = resolveRunAs(config.sessionUser);
+  } catch {
+    return;
+  }
+  const dir = join(runAs.home, '.codex');
+  const authPath = join(dir, 'auth.json');
+  const key = store.getSecret('openai_api_key');
+  try {
+    if (key) {
+      mkdirSync(dir, { recursive: true });
+      chownSync(dir, runAs.uid, runAs.gid);
+      writeFileSync(authPath, `${JSON.stringify({ auth_mode: 'apikey', OPENAI_API_KEY: key })}\n`, {
+        mode: 0o600,
+      });
+      chownSync(authPath, runAs.uid, runAs.gid);
+    } else {
+      rmSync(authPath, { force: true });
+    }
+  } catch (error) {
+    logger.warn({ error }, 'could not sync the Codex auth file');
   }
 }

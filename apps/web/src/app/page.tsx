@@ -252,6 +252,7 @@ const ACTIVITY_ICON: Record<string, string> = {
   hosted: '🌐',
   remediation: '🔧',
   cert: '🔒',
+  secondopinion: '⚖️',
 };
 
 function timeAgo(iso: string): string {

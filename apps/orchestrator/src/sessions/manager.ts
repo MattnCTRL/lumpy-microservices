@@ -216,6 +216,8 @@ export class SessionManager {
     const env: Record<string, string> = {};
     const vercel = this.store.getSecret('vercel_token');
     if (vercel) env.VERCEL_TOKEN = vercel;
+    const openai = this.store.getSecret('openai_api_key');
+    if (openai) env.OPENAI_API_KEY = openai;
     return env;
   }
 
