@@ -66,14 +66,36 @@ export function parseMetrics(output: string): MetricsReport {
   };
 }
 
+/** Overall wall-clock budget for one SSH metrics collection (handshake + stream). */
+const COLLECT_DEADLINE_MS = 20_000;
+
 /** Connect to a host over SSH, collect a metrics sample, and disconnect. */
 export function collectOverSsh(target: SshTarget): Promise<MetricsReport> {
   return new Promise((resolve, reject) => {
     const client = new Client();
-    const fail = (error: Error) => {
-      client.end();
-      reject(error);
+    let settled = false;
+    let deadline: ReturnType<typeof setTimeout>;
+
+    const finish = (run: () => void): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      try {
+        client.end();
+      } catch {
+        // already closing
+      }
+      run();
     };
+    const ok = (report: MetricsReport) => finish(() => resolve(report));
+    const fail = (error: Error) => finish(() => reject(error));
+
+    // readyTimeout only guards the handshake. A host that completes the handshake
+    // then wedges mid-stream (slow/overloaded box, network stall) would otherwise
+    // leave this promise pending forever - hanging the add/SSH HTTP handler and
+    // permanently leaking the poller's in-flight slot for that host. This overall
+    // deadline covers both phases so the promise always settles.
+    deadline = setTimeout(() => fail(new Error('ssh metrics collection timed out')), COLLECT_DEADLINE_MS);
 
     client
       .on('ready', () => {
@@ -85,11 +107,10 @@ export function collectOverSsh(target: SshTarget): Promise<MetricsReport> {
               output += chunk.toString('utf8');
             })
             .on('close', () => {
-              client.end();
               try {
-                resolve(parseMetrics(output));
+                ok(parseMetrics(output));
               } catch (parseError) {
-                reject(parseError instanceof Error ? parseError : new Error('parse failed'));
+                fail(parseError instanceof Error ? parseError : new Error('parse failed'));
               }
             });
         });
