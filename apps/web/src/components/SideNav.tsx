@@ -253,7 +253,7 @@ function MoreSheet({
     <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
       <button aria-label="Close" className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div
-        className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-neutral-800 bg-neutral-950 p-3"
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-glass bg-glass-strong backdrop-blur-glass p-3"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-700" />
@@ -340,7 +340,7 @@ function Profile({ auth, onSignOut }: { auth: AuthState | null; onSignOut: () =>
 }
 
 function HealthBadge({ health }: { health: HealthResponse | null }) {
-  if (!health) return <span className="text-xs text-red-400">offline</span>;
+  if (!health) return <span className="text-xs text-red-700">offline</span>;
   return (
     <span className="flex items-center gap-2 text-xs text-neutral-500">
       <span className={`h-2 w-2 rounded-full ${health.tmux ? 'bg-emerald-500' : 'bg-amber-500'}`} />

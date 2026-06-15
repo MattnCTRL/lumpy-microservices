@@ -38,7 +38,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex h-full flex-col">
       {error && (
-        <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
+        <div className="bg-red-100 px-4 py-2 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
@@ -148,7 +148,7 @@ function ProjectDetail({
               onDeleted();
             }
           }}
-          className="shrink-0 text-xs text-neutral-500 hover:text-red-400"
+          className="shrink-0 text-xs text-neutral-500 hover:text-red-700"
         >
           delete
         </button>
@@ -163,7 +163,7 @@ function ProjectDetail({
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+    <section className="surface p-4">
       <h2 className="text-sm font-medium text-neutral-100">{title}</h2>
       {hint && <p className="mb-3 mt-0.5 text-xs text-neutral-500">{hint}</p>}
       <div className={hint ? '' : 'mt-3'}>{children}</div>
@@ -452,11 +452,11 @@ function KnowledgePanel({ project }: { project: Project }) {
               refresh
             </button>
           </div>
-          {note && <p className="text-xs text-emerald-400">{note}</p>}
+          {note && <p className="text-xs text-emerald-700">{note}</p>}
 
           {kb.draft !== null && (
-            <div className="rounded-md border border-amber-700/50 bg-amber-950/20 p-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-400">
+            <div className="rounded-md border border-amber-300/50 bg-amber-100 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
                 Draft awaiting approval
               </p>
               <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs text-neutral-300">
@@ -477,7 +477,7 @@ function KnowledgePanel({ project }: { project: Project }) {
                     await api.discardKnowledge(project.id);
                     load();
                   }}
-                  className="rounded-md px-3 py-1 text-sm text-neutral-400 hover:text-red-400"
+                  className="rounded-md px-3 py-1 text-sm text-neutral-400 hover:text-red-700"
                 >
                   Discard
                 </button>
@@ -567,7 +567,7 @@ function SessionsPanel({ project }: { project: Project }) {
             {sessions.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-glass bg-white/55 px-3 py-2"
               >
                 <span className="truncate text-sm text-neutral-100">{s.name}</span>
                 <span className="flex items-center gap-1.5 text-xs text-neutral-400">
@@ -631,7 +631,7 @@ function CreateProjectDialog({
 
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+      <form onSubmit={submit} className="w-full max-w-md surface p-5">
         <h2 className="mb-4 text-base font-semibold text-neutral-100">New project</h2>
         <div className="mb-4 grid grid-cols-2 gap-2">
           <button
@@ -674,7 +674,7 @@ function CreateProjectDialog({
             <input value={description} onChange={(e) => setDescription(e.target.value)} className="input" placeholder="what this project is" />
           </Field>
         </div>
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-200">
             Cancel

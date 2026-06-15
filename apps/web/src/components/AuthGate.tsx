@@ -27,7 +27,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (auth && auth.required && !auth.user) {
     return (
       <Centered>
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-950 px-8 py-10 text-center">
+        <div className="flex flex-col items-center gap-4 surface-strong px-8 py-10 text-center">
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-semibold tracking-tight text-neutral-100">Lumpy</span>
             <span className="text-xs text-neutral-500">Micro Services</span>

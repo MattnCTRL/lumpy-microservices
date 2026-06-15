@@ -223,7 +223,7 @@ export function ConnectorsDialog({
         aria-modal="true"
         aria-label="Connectors"
         onClick={(e) => e.stopPropagation()}
-        className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-lg surface p-5"
       >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-base font-semibold text-neutral-100">Connectors</h2>
@@ -237,7 +237,7 @@ export function ConnectorsDialog({
           launch. Restart the session to apply changes.
         </p>
 
-        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
         {!view ? (
           <p className="text-sm text-neutral-500">Loading…</p>
         ) : (
@@ -282,7 +282,7 @@ export function ConnectorsDialog({
               </div>
 
               {showCustom && (
-                <div className="mb-2 space-y-2 rounded-md border border-neutral-800 bg-neutral-900/40 p-3">
+                <div className="mb-2 space-y-2 rounded-xl border border-glass bg-white/55 p-3">
                   <div className="flex gap-2">
                     <input
                       value={cName}
@@ -338,7 +338,7 @@ export function ConnectorsDialog({
                   {Object.entries(mcpServers).map(([name, def]) => (
                     <li
                       key={name}
-                      className="flex items-center justify-between gap-2 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-xl border border-glass bg-white/55 px-3 py-2"
                     >
                       <div className="min-w-0">
                         <div className="text-sm text-neutral-100">{name}</div>
@@ -348,7 +348,7 @@ export function ConnectorsDialog({
                       </div>
                       <button
                         onClick={() => removeServer(name)}
-                        className="shrink-0 text-xs text-neutral-500 hover:text-red-400"
+                        className="shrink-0 text-xs text-neutral-500 hover:text-red-700"
                       >
                         remove
                       </button>
@@ -370,7 +370,7 @@ export function ConnectorsDialog({
                       <span className="font-mono text-xs text-neutral-600">••••••••</span>
                       <button
                         onClick={() => setRemoveEnv((prev) => [...prev, key])}
-                        className="text-xs text-neutral-500 hover:text-red-400"
+                        className="text-xs text-neutral-500 hover:text-red-700"
                       >
                         remove
                       </button>
@@ -395,7 +395,7 @@ export function ConnectorsDialog({
                           return next;
                         })
                       }
-                      className="text-xs text-neutral-500 hover:text-red-400"
+                      className="text-xs text-neutral-500 hover:text-red-700"
                     >
                       ✕
                     </button>

@@ -65,7 +65,7 @@ export default function SessionsPage() {
   return (
     <div className="flex h-full flex-col">
       {error && (
-        <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
+        <div className="bg-red-100 px-4 py-2 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
@@ -158,9 +158,9 @@ function SessionList({
             onClick={() => onSelect(session.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
               session.locked
-                ? 'border-indigo-700/60 bg-indigo-950/20'
+                ? 'border-indigo-300/60 bg-indigo-100'
                 : session.status === 'running' && session.activity === 'awaiting_permission'
-                  ? 'border-amber-600/70 bg-amber-950/20'
+                  ? 'border-amber-600/70 bg-amber-100'
                   : session.id === selectedId
                     ? 'border-neutral-600 bg-neutral-900'
                     : 'border-transparent hover:bg-neutral-900/60'
@@ -176,7 +176,7 @@ function SessionList({
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="truncate text-xs text-neutral-500">{session.command}</span>
               {session.locked ? (
-                <span className="shrink-0 text-xs text-indigo-400/70">conductor</span>
+                <span className="shrink-0 text-xs text-indigo-700">conductor</span>
               ) : (
                 <RowAction
                   label={session.status === 'running' ? 'stop' : 'delete'}
@@ -233,7 +233,7 @@ function RowAction({ label, onAction }: { label: string; onAction: () => void })
           onAction();
         }
       }}
-      className="shrink-0 text-xs text-neutral-500 hover:text-red-400"
+      className="shrink-0 text-xs text-neutral-500 hover:text-red-700"
     >
       {label}
     </span>
@@ -258,7 +258,7 @@ function SessionPanel({
 }) {
   const [showConnectors, setShowConnectors] = useState(false);
   return (
-    <div className="flex h-full flex-col rounded-lg border border-neutral-800 bg-neutral-950">
+    <div className="flex h-full flex-col surface">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -352,7 +352,7 @@ function StoppedActions({
         <button
           disabled={busy !== null}
           onClick={() => run('delete', () => api.deleteSession(session.id), onDeleted)}
-          className="rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-red-400 disabled:opacity-50"
+          className="rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-red-700 disabled:opacity-50"
         >
           {busy === 'delete' ? 'Deleting…' : 'Delete'}
         </button>
@@ -384,8 +384,8 @@ function PromptBanner({
           { key: 'n', label: 'No' },
         ];
   return (
-    <div className="border-b border-amber-700/40 bg-amber-950/30 px-4 py-2.5">
-      <div className="flex items-center gap-2 text-xs font-medium text-amber-400">
+    <div className="border-b border-amber-300/40 bg-amber-100 px-4 py-2.5">
+      <div className="flex items-center gap-2 text-xs font-medium text-amber-700">
         <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
         Claude is asking
       </div>
@@ -397,9 +397,9 @@ function PromptBanner({
           <button
             key={option.key}
             onClick={() => void api.sendInput(sessionId, option.key)}
-            className="rounded-md border border-amber-700/60 bg-amber-900/30 px-3 py-1 text-sm text-amber-100 hover:bg-amber-900/60"
+            className="rounded-md border border-amber-300/60 bg-amber-100 px-3 py-1 text-sm text-amber-700 hover:bg-amber-100"
           >
-            <span className="font-mono text-amber-400">{option.key}</span> {option.label}
+            <span className="font-mono text-amber-700">{option.key}</span> {option.label}
           </button>
         ))}
       </div>
@@ -520,7 +520,7 @@ function InputBar({ sessionId }: { sessionId: string }) {
             {key.label}
           </button>
         ))}
-        {sent && <span className="text-xs text-emerald-400">sent ✓</span>}
+        {sent && <span className="text-xs text-emerald-700">sent ✓</span>}
       </div>
       <p className="px-1 text-[11px] text-neutral-600">
         Type to talk to this session. When it asks a question, answer with the buttons up top or
@@ -590,7 +590,7 @@ function CreateDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="w-full max-w-md surface p-5"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-100">New session</h2>
         <div className="space-y-3">
@@ -652,7 +652,7 @@ function CreateDialog({
           </label>
         </div>
 
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

@@ -83,8 +83,8 @@ export default function SchedulesPage() {
       <p className="mb-4 text-xs text-neutral-500">
         Recurring autonomous Claude jobs - manual refreshes, audits, health sweeps. Cron is UTC.
       </p>
-      {error && <p className="mb-3 text-sm text-red-400">{error} - {ORCHESTRATOR_URL}</p>}
-      {note && <p className="mb-3 text-sm text-emerald-400">{note}</p>}
+      {error && <p className="mb-3 text-sm text-red-700">{error} - {ORCHESTRATOR_URL}</p>}
+      {note && <p className="mb-3 text-sm text-emerald-700">{note}</p>}
 
       {schedules.length === 0 ? (
         <p className="text-sm text-neutral-500">
@@ -108,7 +108,7 @@ export default function SchedulesPage() {
                     </span>
                     <span className="text-xs text-neutral-500">{humanizeCron(s.cron)}</span>
                     {projectName(s.projectId) && (
-                      <span className="text-xs text-indigo-400/80">↳ {projectName(s.projectId)}</span>
+                      <span className="text-xs text-indigo-700">↳ {projectName(s.projectId)}</span>
                     )}
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-neutral-500">{s.task}</p>
@@ -116,7 +116,7 @@ export default function SchedulesPage() {
                     <span>next: {s.enabled ? fmt(s.nextRunAt) : 'paused'}</span>
                     <span>
                       last: {fmt(s.lastRunAt)}
-                      {s.lastStatus === 'error' && <span className="text-red-400"> (failed)</span>}
+                      {s.lastStatus === 'error' && <span className="text-red-700"> (failed)</span>}
                       {s.lastStatus === 'ok' && <span className="text-emerald-500"> ✓</span>}
                     </span>
                   </div>
@@ -126,7 +126,7 @@ export default function SchedulesPage() {
                     onClick={() => void toggle(s)}
                     className={`rounded border px-2 py-0.5 text-xs ${
                       s.enabled
-                        ? 'border-emerald-700/60 text-emerald-400 hover:bg-emerald-950/30'
+                        ? 'border-emerald-300/60 text-emerald-700 hover:bg-emerald-100'
                         : 'border-neutral-700 text-neutral-400 hover:bg-neutral-800'
                     }`}
                   >
@@ -136,7 +136,7 @@ export default function SchedulesPage() {
                     <button onClick={() => void run(s)} className="text-neutral-400 hover:text-neutral-100">
                       run now
                     </button>
-                    <button onClick={() => void remove(s)} className="text-neutral-500 hover:text-red-400">
+                    <button onClick={() => void remove(s)} className="text-neutral-500 hover:text-red-700">
                       delete
                     </button>
                   </div>
@@ -199,7 +199,7 @@ function CreateDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="my-8 w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-md surface p-5"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-100">New schedule</h2>
         <div className="space-y-3">
@@ -262,7 +262,7 @@ function CreateDialog({
           </Field>
         </div>
 
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

@@ -38,7 +38,7 @@ export function Toaster() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto max-w-md rounded-md border border-red-800 bg-red-950/95 px-3 py-2 text-xs text-red-200 shadow-lg"
+          className="pointer-events-auto max-w-md rounded-md border border-red-300 bg-red-100 px-3 py-2 text-xs text-red-700 shadow-lg"
         >
           {t.message}
         </div>

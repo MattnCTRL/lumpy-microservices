@@ -101,7 +101,7 @@ export default function FleetPage() {
   return (
     <div className="flex h-full flex-col">
       {error && (
-        <div className="bg-red-950/60 px-4 py-2 text-sm text-red-300">
+        <div className="bg-red-100 px-4 py-2 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
@@ -226,7 +226,7 @@ function HostedServicesSection({ services }: { services: ServerHostedService[] }
         {services.map((svc) => (
           <li
             key={`${svc.projectId}:${svc.name}:${svc.url}`}
-            className="flex items-center justify-between gap-3 rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2"
+            className="flex items-center justify-between gap-3 rounded-xl border border-glass bg-white/55 px-3 py-2"
           >
             <div className="flex min-w-0 items-center gap-2">
               <span
@@ -256,7 +256,7 @@ function HostedServicesSection({ services }: { services: ServerHostedService[] }
               <div className="flex items-center gap-2">
                 {svc.certDaysLeft != null && (
                   <span
-                    className={svc.certDaysLeft <= 14 ? 'text-amber-400' : ''}
+                    className={svc.certDaysLeft <= 14 ? 'text-amber-700' : ''}
                     title="TLS certificate expiry"
                   >
                     🔒 {svc.certDaysLeft}d
@@ -333,7 +333,7 @@ function ServerList({
             onClick={() => onSelect(server.id)}
             className={`w-full rounded-md border px-3 py-2 text-left transition ${
               server.status === 'offline'
-                ? 'border-red-900/60 bg-red-950/20'
+                ? 'border-red-300 bg-red-100'
                 : server.id === selectedId
                   ? 'border-neutral-600 bg-neutral-900'
                   : 'border-transparent hover:bg-neutral-900/60'
@@ -371,7 +371,7 @@ function MountBadge({ mount }: { mount: MountState | undefined }) {
   return (
     <span
       className={`flex shrink-0 items-center gap-1 text-xs ${
-        mount.healthy ? 'text-sky-400' : 'text-amber-400'
+        mount.healthy ? 'text-sky-400' : 'text-amber-700'
       }`}
       title={mount.healthy ? 'Files mounted and responsive' : 'Mount stalled (host asleep?)'}
     >
@@ -412,7 +412,7 @@ function ServerDetailPanel({
   };
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-950">
+    <div className="surface">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -427,7 +427,7 @@ function ServerDetailPanel({
               <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
               {server.self && (
                 <span
-                  className="shrink-0 rounded bg-indigo-950/60 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300"
+                  className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700"
                   title="This is the always-on cloud box that runs Lumpy itself"
                 >
                   🏠 runs Lumpy
@@ -470,7 +470,7 @@ function ServerDetailPanel({
           </button>
           <button
             onClick={onDelete}
-            className="text-xs text-neutral-500 hover:text-red-400"
+            className="text-xs text-neutral-500 hover:text-red-700"
             title="Remove server"
           >
             remove
@@ -570,7 +570,7 @@ function SshSetupDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="my-8 w-full max-w-md rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-md surface p-5"
       >
         <h2 className="text-base font-semibold text-neutral-100">SSH monitoring · {server.name}</h2>
         <p className="mb-4 mt-1 text-xs text-neutral-500">
@@ -630,7 +630,7 @@ function SshSetupDialog({
             )}
           </Field>
         </div>
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
@@ -666,9 +666,9 @@ function MetricCard({
   const high = value >= 90;
   const elevated = value >= 75;
   const barColor = high ? 'bg-red-500' : elevated ? 'bg-amber-500' : 'bg-emerald-500';
-  const textColor = high ? 'text-red-400' : elevated ? 'text-amber-400' : 'text-neutral-200';
+  const textColor = high ? 'text-red-700' : elevated ? 'text-amber-700' : 'text-neutral-200';
   return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900/40 p-3">
+    <div className="rounded-xl border border-glass bg-white/55 p-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium text-neutral-400">{label}</span>
         <span className={`text-lg font-semibold ${textColor}`}>
@@ -800,7 +800,7 @@ function AddServerDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-lg surface p-5"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-100">Add to fleet</h2>
 
@@ -969,7 +969,7 @@ function AddServerDialog({
           </div>
         </div>
 
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

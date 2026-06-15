@@ -52,8 +52,8 @@ export default function ServicesPage() {
         </button>
       </div>
 
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-      {note && <p className="mb-3 text-sm text-emerald-400">{note}</p>}
+      {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
+      {note && <p className="mb-3 text-sm text-emerald-700">{note}</p>}
 
       {services.length === 0 ? (
         <p className="text-sm text-neutral-500">
@@ -65,7 +65,7 @@ export default function ServicesPage() {
           {services.map((s) => (
             <div
               key={s.id}
-              className="flex flex-col rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+              className="flex flex-col surface p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -85,7 +85,7 @@ export default function ServicesPage() {
                 <p className="mt-2 line-clamp-3 text-xs text-neutral-400">{s.description}</p>
               )}
               {s.improvements.length > 0 && (
-                <p className="mt-2 text-xs text-indigo-400/80">
+                <p className="mt-2 text-xs text-indigo-700">
                   ✦ {s.improvements.length} self-improvement
                   {s.improvements.length > 1 ? 's' : ''}
                 </p>
@@ -110,7 +110,7 @@ export default function ServicesPage() {
                       void refresh();
                     }
                   }}
-                  className="ml-auto text-xs text-neutral-500 hover:text-red-400"
+                  className="ml-auto text-xs text-neutral-500 hover:text-red-700"
                 >
                   delete
                 </button>
@@ -185,7 +185,7 @@ function ServiceDialog({
     <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
       <form
         onSubmit={submit}
-        className="my-8 w-full max-w-lg rounded-lg border border-neutral-800 bg-neutral-950 p-5"
+        className="my-8 w-full max-w-lg surface p-5"
       >
         <h2 className="mb-4 text-base font-semibold text-neutral-100">
           {service ? `Edit ${service.name}` : 'New micro service'}
@@ -209,14 +209,14 @@ function ServiceDialog({
               <ul className="space-y-1 text-xs text-neutral-500">
                 {service.improvements.map((imp, i) => (
                   <li key={i}>
-                    <span className="text-indigo-400/80">v{imp.version}</span> - {imp.note}
+                    <span className="text-indigo-700">v{imp.version}</span> - {imp.note}
                   </li>
                 ))}
               </ul>
             </div>
           )}
         </div>
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-200">
             Cancel

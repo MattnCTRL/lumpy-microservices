@@ -78,15 +78,15 @@ export default function DashboardPage() {
         <span
           className={`rounded-full px-3 py-1 text-xs font-medium ${
             attention > 0
-              ? 'bg-amber-950/40 text-amber-300'
-              : 'bg-emerald-950/40 text-emerald-300'
+              ? 'bg-amber-100 text-amber-700'
+              : 'bg-emerald-100 text-emerald-700'
           }`}
         >
           {attention > 0 ? `${attention} need attention` : 'all clear ✅'}
         </span>
       </div>
       {error && (
-        <p className="mb-3 text-sm text-red-400">
+        <p className="mb-3 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </p>
       )}
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           accent={needsYou.length > 0 ? 'amber' : undefined}
         >
           {needsYou.length > 0 && (
-            <p className="mb-1 text-xs font-medium text-amber-400">{needsYou.length} need your input</p>
+            <p className="mb-1 text-xs font-medium text-amber-700">{needsYou.length} need your input</p>
           )}
           {running.length === 0 ? (
             <Empty>Nothing running.</Empty>
@@ -224,7 +224,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <section className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+      <section className="mt-3 surface p-4">
         <h2 className="mb-2 text-sm font-medium text-neutral-300">Recent activity</h2>
         {activity.length === 0 ? (
           <p className="text-xs text-neutral-600">Nothing recorded yet.</p>
@@ -318,16 +318,14 @@ function RepoSyncCard({ status, onRun }: { status: RepoSyncStatus | null; onRun:
   if (!status) return null;
   const errors = status.results.filter((r) => r.status === 'error').length;
   return (
-    <div
-      className={`rounded-lg border bg-neutral-950 p-4 ${errors ? 'border-red-900/50' : 'border-neutral-800'}`}
-    >
+    <div className={`surface p-4 ${errors ? 'ring-1 ring-coral/50' : ''}`}>
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-medium text-neutral-300">Repo backups</h2>
         <span className="text-xs">
           {status.configured ? (
-            <span className="text-emerald-400">GitHub linked</span>
+            <span className="text-emerald-700">GitHub linked</span>
           ) : (
-            <span className="text-amber-400">no token</span>
+            <span className="text-amber-700">no token</span>
           )}
         </span>
       </div>

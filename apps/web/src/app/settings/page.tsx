@@ -79,7 +79,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto h-full max-w-3xl overflow-y-auto p-4">
       <h1 className="mb-4 text-lg font-semibold text-neutral-100">Settings</h1>
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
 
       <Section title="Account">
         <AccountSettings
@@ -205,7 +205,7 @@ export default function SettingsPage() {
         ) : (
           <ul className="space-y-2">
             {playbooks.map((p) => (
-              <li key={p.id} className="rounded-md border border-neutral-800 bg-neutral-900/40 p-3">
+              <li key={p.id} className="rounded-xl border border-glass bg-white/55 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-neutral-100">{p.name}</span>
                   <span className="font-mono text-xs text-neutral-500">{p.ruleIds.join(', ')}</span>
@@ -281,7 +281,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-5 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+    <section className="mb-5 surface p-4">
       <h2 className="text-sm font-medium text-neutral-100">{title}</h2>
       {hint && <p className="mb-3 mt-0.5 text-xs text-neutral-500">{hint}</p>}
       <div className={hint ? '' : 'mt-3'}>{children}</div>
@@ -366,15 +366,15 @@ function SecondOpinion({
       ? { tone: 'text-neutral-500', text: 'Disabled.' }
       : !codexConfigured
         ? {
-            tone: 'text-amber-400',
+            tone: 'text-amber-700',
             text: 'Add an OpenAI API key above to activate. Until then, actions run without a second opinion.',
           }
         : !cliInstalled
           ? {
-              tone: 'text-amber-400',
+              tone: 'text-amber-700',
               text: 'Key stored, but the Codex CLI was not detected on the host. Consults are skipped (fail open).',
             }
-          : { tone: 'text-emerald-400', text: 'Active. Codex reviews autonomous actions read-only.' };
+          : { tone: 'text-emerald-700', text: 'Active. Codex reviews autonomous actions read-only.' };
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -420,7 +420,7 @@ function AccountSettings({
           <p className="text-sm text-neutral-100">{auth.user.name ?? auth.user.login}</p>
           <p className="text-xs text-neutral-500">
             @{auth.user.login} · GitHub ·{' '}
-            <span className={auth.user.role === 'admin' ? 'text-emerald-400' : 'text-amber-400'}>
+            <span className={auth.user.role === 'admin' ? 'text-emerald-700' : 'text-amber-700'}>
               {auth.user.role}
             </span>
           </p>

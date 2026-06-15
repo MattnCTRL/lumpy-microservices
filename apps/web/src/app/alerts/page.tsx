@@ -41,14 +41,14 @@ export default function AlertsPage() {
   return (
     <div className="h-full overflow-y-auto p-4">
       {error && (
-        <div className="mb-3 rounded bg-red-950/60 px-4 py-2 text-sm text-red-300">
+        <div className="mb-3 rounded bg-red-100 px-4 py-2 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </div>
       )}
 
       {pending.length > 0 && (
         <section className="mb-5">
-          <h2 className="mb-3 text-sm font-medium text-amber-300">
+          <h2 className="mb-3 text-sm font-medium text-amber-700">
             Awaiting your approval ({pending.length})
           </h2>
           <ul className="space-y-2">
@@ -102,7 +102,7 @@ function PendingItem({
   };
 
   return (
-    <li className="rounded-lg border border-amber-900/50 bg-amber-950/10 px-4 py-3">
+    <li className="rounded-lg border border-amber-300 bg-amber-100 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-medium text-neutral-100">{pending.serverName}</div>
@@ -130,7 +130,7 @@ function PendingItem({
       <p className="mt-1 text-xs text-neutral-500">
         held since {new Date(pending.createdAt).toLocaleTimeString()}
       </p>
-      {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
+      {err && <p className="mt-2 text-xs text-red-700">{err}</p>}
     </li>
   );
 }
@@ -166,8 +166,8 @@ function AlertItem({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
     <li
       className={`rounded-lg border px-4 py-3 ${
         alert.severity === 'critical'
-          ? 'border-red-900/60 bg-red-950/20'
-          : 'border-amber-900/50 bg-amber-950/10'
+          ? 'border-red-300 bg-red-100'
+          : 'border-amber-300 bg-amber-100'
       }`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -176,8 +176,8 @@ function AlertItem({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
               alert.severity === 'critical'
-                ? 'bg-red-500/20 text-red-300'
-                : 'bg-amber-500/20 text-amber-300'
+                ? 'bg-red-500/20 text-red-700'
+                : 'bg-amber-500/20 text-amber-700'
             }`}
           >
             {alert.severity}
@@ -205,7 +205,7 @@ function AlertItem({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
         since {new Date(alert.firedAt).toLocaleTimeString()}
       </p>
 
-      {consultError && <p className="mt-2 text-xs text-red-400">{consultError}</p>}
+      {consultError && <p className="mt-2 text-xs text-red-700">{consultError}</p>}
       {verdict && <VerdictCard verdict={verdict} />}
     </li>
   );
@@ -214,10 +214,10 @@ function AlertItem({ alert, onDismiss }: { alert: Alert; onDismiss: () => void }
 function VerdictCard({ verdict }: { verdict: ConsultVerdict }) {
   const tone =
     verdict.verdict === 'reject'
-      ? 'border-red-900/60 text-red-300'
+      ? 'border-red-300 text-red-700'
       : verdict.verdict === 'concern'
-        ? 'border-amber-900/60 text-amber-300'
-        : 'border-emerald-900/60 text-emerald-300';
+        ? 'border-amber-300 text-amber-700'
+        : 'border-emerald-300 text-emerald-700';
   return (
     <div className={`mt-3 rounded-md border bg-neutral-950/60 p-3 ${tone}`}>
       <div className="flex items-center gap-2">
