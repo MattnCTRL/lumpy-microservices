@@ -536,6 +536,20 @@ export interface Alert {
   firedAt: string;
 }
 
+/**
+ * A remediation that is held awaiting the operator's one-tap approval (a severity
+ * not in the auto policy, a playbook that requires approval, a Codex reject, or a
+ * box at capacity). Persisted so an already-delivered push notification's approve
+ * link still works after an orchestrator restart.
+ */
+export interface PendingRemediation {
+  alertId: string;
+  serverName: string;
+  severity: AlertSeverity;
+  label: string;
+  createdAt: string;
+}
+
 export interface Playbook {
   id: string;
   name: string;

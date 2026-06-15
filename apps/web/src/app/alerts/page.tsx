@@ -1,16 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { Alert, ConsultVerdict } from '@lumpy/shared';
+import type { Alert, ConsultVerdict, PendingRemediation } from '@lumpy/shared';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [pending, setPending] = useState<PendingRemediation[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      setAlerts(await api.listAlerts());
+      const [a, p] = await Promise.all([api.listAlerts(), api.listPendingRemediations()]);
+      setAlerts(a);
+      setPending(p);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
@@ -31,6 +34,19 @@ export default function AlertsPage() {
         </div>
       )}
 
+      {pending.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-3 text-sm font-medium text-amber-300">
+            Awaiting your approval ({pending.length})
+          </h2>
+          <ul className="space-y-2">
+            {pending.map((p) => (
+              <PendingItem key={p.alertId} pending={p} onChange={() => void refresh()} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <h2 className="mb-3 text-sm font-medium text-neutral-300">
         Active alerts {alerts.length > 0 && `(${alerts.length})`}
       </h2>
@@ -47,6 +63,69 @@ export default function AlertsPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+function PendingItem({
+  pending,
+  onChange,
+}: {
+  pending: PendingRemediation;
+  onChange: () => void;
+}) {
+  const [busy, setBusy] = useState<null | 'approve' | 'dismiss'>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async (kind: 'approve' | 'dismiss') => {
+    setBusy(kind);
+    setErr(null);
+    try {
+      const res =
+        kind === 'approve'
+          ? await api.approveRemediation(pending.alertId)
+          : await api.dismissRemediation(pending.alertId);
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? res.statusText);
+      }
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'failed');
+      setBusy(null);
+    }
+  };
+
+  return (
+    <li className="rounded-lg border border-amber-900/50 bg-amber-950/10 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-neutral-100">{pending.serverName}</div>
+          <div className="truncate text-sm text-neutral-300">
+            {pending.label} ({pending.severity})
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => void run('approve')}
+            disabled={busy !== null}
+            className="rounded-md bg-emerald-600/90 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+          >
+            {busy === 'approve' ? 'approving…' : 'Approve fix'}
+          </button>
+          <button
+            onClick={() => void run('dismiss')}
+            disabled={busy !== null}
+            className="text-xs text-neutral-500 hover:text-neutral-200 disabled:opacity-50"
+          >
+            {busy === 'dismiss' ? 'dismissing…' : 'dismiss'}
+          </button>
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-neutral-500">
+        held since {new Date(pending.createdAt).toLocaleTimeString()}
+      </p>
+      {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
+    </li>
   );
 }
 

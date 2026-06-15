@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import type {
   ActivityEntry,
+  Alert,
   HostedIncident,
   HostedService,
   McpServerDef,
@@ -314,6 +315,43 @@ export class Store {
       );
       CREATE INDEX IF NOT EXISTS idx_activity_at ON activity(at);
     `);
+    // Remediations held for one-tap approval. Persisted so an already-delivered
+    // push notification's "Approve fix" link still works after a restart (the
+    // approve endpoint used to read an in-memory map that a reboot wiped).
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS pending_remediations (
+        alert_id TEXT PRIMARY KEY,
+        alert TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `);
+  }
+
+  addPendingRemediation(alert: Alert, at: string): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO pending_remediations (alert_id, alert, created_at)
+         VALUES (@alert_id, @alert, @created_at)`,
+      )
+      .run({ alert_id: alert.id, alert: JSON.stringify(alert), created_at: at });
+  }
+
+  getPendingRemediation(alertId: string): Alert | null {
+    const row = this.db
+      .prepare('SELECT alert FROM pending_remediations WHERE alert_id = ?')
+      .get(alertId) as { alert: string } | undefined;
+    return row ? (JSON.parse(row.alert) as Alert) : null;
+  }
+
+  listPendingRemediations(): { alert: Alert; createdAt: string }[] {
+    const rows = this.db
+      .prepare('SELECT alert, created_at FROM pending_remediations ORDER BY created_at ASC')
+      .all() as { alert: string; created_at: string }[];
+    return rows.map((r) => ({ alert: JSON.parse(r.alert) as Alert, createdAt: r.created_at }));
+  }
+
+  removePendingRemediation(alertId: string): void {
+    this.db.prepare('DELETE FROM pending_remediations WHERE alert_id = ?').run(alertId);
   }
 
   createService(service: Service): void {

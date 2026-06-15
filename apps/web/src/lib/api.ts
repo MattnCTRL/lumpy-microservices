@@ -11,6 +11,7 @@ import type {
   HealthResponse,
   HostedIncident,
   KnowledgeBase,
+  PendingRemediation,
   Playbook,
   Project,
   RepoSyncResult,
@@ -136,6 +137,12 @@ export const api = {
   runRepoSync: () => send('/api/reposync/run', 'POST').then(parse<{ results: RepoSyncResult[] }>),
   dismissAlert: (id: string) =>
     send(`/api/alerts/${encodeURIComponent(id)}`, 'DELETE'),
+
+  listPendingRemediations: () => req('/api/remediation').then(parse<PendingRemediation[]>),
+  approveRemediation: (alertId: string) =>
+    send(`/api/remediation/${encodeURIComponent(alertId)}/approve`, 'POST'),
+  dismissRemediation: (alertId: string) =>
+    send(`/api/remediation/${encodeURIComponent(alertId)}`, 'DELETE'),
 
   listModules: () => req('/api/modules').then(parse<ModuleInfo[]>),
   listPlaybooks: () => req('/api/playbooks').then(parse<Playbook[]>),

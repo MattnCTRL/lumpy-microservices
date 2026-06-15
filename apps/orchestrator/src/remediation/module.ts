@@ -39,8 +39,22 @@ export const remediationModule: LumpyModule = {
   version: '0.1.0',
   description: 'Autonomous Claude sessions to investigate or fix alerts, tiered by severity.',
   register(ctx: ModuleContext) {
-    const handling = new Set<string>(); // already acted on
-    const pending = new Map<string, Alert>(); // awaiting approval
+    const handling = new Set<string>(); // already acted on (transient, in-memory)
+
+    // Hold an alert for one-tap approval and announce it. Persisted via the store
+    // so a restart can't orphan a push notification's already-delivered approve
+    // link (the approve endpoint used to read an in-memory map a reboot wiped).
+    const holdForApproval = (alert: Alert): void => {
+      ctx.store.addPendingRemediation(alert, new Date().toISOString());
+      ctx.bus.publish({
+        type: 'remediation.pending',
+        alertId: alert.id,
+        serverName: alert.serverName,
+        severity: alert.severity,
+        label: alert.label,
+        at: new Date().toISOString(),
+      });
+    };
 
     const start = async (alert: Alert, mode: 'investigate' | 'auto'): Promise<void> => {
       try {
@@ -66,15 +80,7 @@ export const remediationModule: LumpyModule = {
         if (error instanceof SessionCapacityError) {
           // No capacity to spawn right now: hold for one-tap approval / retry
           // rather than dropping the alert (and never pile onto a starved box).
-          pending.set(alert.id, alert);
-          ctx.bus.publish({
-            type: 'remediation.pending',
-            alertId: alert.id,
-            serverName: alert.serverName,
-            severity: alert.severity,
-            label: alert.label,
-            at: new Date().toISOString(),
-          });
+          holdForApproval(alert);
           logger.warn({ alert: alert.id }, 'remediation deferred (at capacity); awaiting approval');
           return;
         }
@@ -103,15 +109,7 @@ export const remediationModule: LumpyModule = {
       }
       if (!gate.proceed) {
         handling.delete(alert.id);
-        pending.set(alert.id, alert);
-        ctx.bus.publish({
-          type: 'remediation.pending',
-          alertId: alert.id,
-          serverName: alert.serverName,
-          severity: alert.severity,
-          label: alert.label,
-          at: new Date().toISOString(),
-        });
+        holdForApproval(alert);
         logger.warn(
           { alert: alert.id, summary: gate.verdict.summary },
           'second opinion held auto-remediation for approval',
@@ -123,20 +121,40 @@ export const remediationModule: LumpyModule = {
 
     ctx.app.get('/api/playbooks', async () => DEFAULT_PLAYBOOKS);
 
+    ctx.app.get('/api/remediation', async () =>
+      ctx.store.listPendingRemediations().map(({ alert, createdAt }) => ({
+        alertId: alert.id,
+        serverName: alert.serverName,
+        severity: alert.severity,
+        label: alert.label,
+        createdAt,
+      })),
+    );
+
     ctx.app.post('/api/remediation/:id/approve', async (request, reply) => {
       const { id } = request.params as { id: string };
-      const alert = pending.get(id);
+      const alert = ctx.store.getPendingRemediation(id);
       if (!alert) return reply.status(404).send({ error: 'no pending remediation for this alert' });
-      pending.delete(id);
+      ctx.store.removePendingRemediation(id);
       handling.add(id);
       await start(alert, ctx.settings.get().remediationMode === 'auto' ? 'auto' : 'investigate');
       return reply.status(202).send();
     });
 
+    // Dismiss a pending remediation without running it.
+    ctx.app.delete('/api/remediation/:id', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (!ctx.store.getPendingRemediation(id)) {
+        return reply.status(404).send({ error: 'no pending remediation for this alert' });
+      }
+      ctx.store.removePendingRemediation(id);
+      return reply.status(204).send();
+    });
+
     ctx.bus.subscribe((event) => {
       if (event.type === 'alert.resolved') {
         handling.delete(event.id);
-        pending.delete(event.id);
+        ctx.store.removePendingRemediation(event.id);
         return;
       }
       if (event.type !== 'alert.fired') return;
@@ -145,7 +163,7 @@ export const remediationModule: LumpyModule = {
       if (mode === 'off') return;
 
       const alert = event.alert;
-      if (handling.has(alert.id) || pending.has(alert.id)) return;
+      if (handling.has(alert.id) || ctx.store.getPendingRemediation(alert.id)) return;
 
       const playbook = findPlaybook(alert.ruleId);
       const autoOk =
@@ -154,15 +172,7 @@ export const remediationModule: LumpyModule = {
         handling.add(alert.id);
         void gateThenStart(alert, mode);
       } else {
-        pending.set(alert.id, alert);
-        ctx.bus.publish({
-          type: 'remediation.pending',
-          alertId: alert.id,
-          serverName: alert.serverName,
-          severity: alert.severity,
-          label: alert.label,
-          at: new Date().toISOString(),
-        });
+        holdForApproval(alert);
         logger.warn({ alert: alert.id, severity: alert.severity }, 'remediation awaiting approval');
       }
     });

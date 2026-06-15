@@ -28,6 +28,8 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
   const events: LumpyEvent[] = [];
   bus.subscribe((e) => events.push(e));
   const routes: Record<string, RouteHandler> = {};
+  // In-memory stand-in for the persisted pending-remediation store.
+  const pendingStore = new Map<string, Alert>();
   const ctx = {
     bus,
     sessions: {
@@ -41,6 +43,7 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
       post: (path: string, handler: RouteHandler) => {
         routes[path] = handler;
       },
+      delete: () => undefined,
     },
     config: {
       workspaceRoot: '/home/lumpy/projects',
@@ -60,7 +63,18 @@ function harness(mode: 'off' | 'investigate' | 'auto', autoSeverities = ['warnin
     },
     // No key configured -> the second-opinion gate fails open (proceeds), so these
     // tests exercise the gate path without reaching the Codex CLI.
-    store: { getSecret: () => null },
+    store: {
+      getSecret: () => null,
+      addPendingRemediation: (alert: Alert) => {
+        pendingStore.set(alert.id, alert);
+      },
+      getPendingRemediation: (id: string) => pendingStore.get(id) ?? null,
+      listPendingRemediations: () =>
+        [...pendingStore.values()].map((alert) => ({ alert, createdAt: 't' })),
+      removePendingRemediation: (id: string) => {
+        pendingStore.delete(id);
+      },
+    },
     logger: {},
   } as unknown as ModuleContext;
   remediationModule.register(ctx);
