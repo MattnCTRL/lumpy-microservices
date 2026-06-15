@@ -28,7 +28,12 @@ export interface DiscoveredDevice {
 function toDevice(peer: TsPeer | undefined): DiscoveredDevice | null {
   const address = peer?.TailscaleIPs?.[0];
   if (!address) return null;
-  const name = peer?.HostName || peer?.DNSName?.replace(/\.$/, '') || address;
+  // Prefer the MagicDNS name (e.g. "ipad-pro-12-9-6th-gen-wifi"); iOS reports a
+  // useless HostName of "localhost", so only fall back to it when it's real.
+  const dns = peer?.DNSName?.replace(/\.$/, '').split('.')[0]?.trim();
+  const host = peer?.HostName?.trim();
+  const real = (v: string | undefined): v is string => Boolean(v) && v !== 'localhost';
+  const name = (real(dns) && dns) || (real(host) && host) || dns || host || address;
   return { name, address, os: peer?.OS ?? '', online: Boolean(peer?.Online) };
 }
 
