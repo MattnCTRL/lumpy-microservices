@@ -1,4 +1,5 @@
-import { chownSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chownSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { freemem } from 'node:os';
 import { join } from 'node:path';
 import { customAlphabet } from 'nanoid';
 import type {
@@ -16,6 +17,7 @@ import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
 import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
+import { buildProjectMcpServers, hasScopedSupabaseDb } from '../projects/mcp.js';
 import { buildLaunchCommand } from './launch.js';
 import { isClaudeCommand, resumeCommand } from './resume.js';
 import type { RunAs } from './runas.js';
@@ -26,6 +28,18 @@ const DEFAULT_ROWS = 32;
 const TOUCH_INTERVAL_MS = 5000;
 
 const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
+
+/**
+ * Thrown by create() when admission control refuses to spawn another session
+ * (too many running, or not enough free memory). Callers fail soft: HTTP returns
+ * 503, fire-and-forget callers (remediation/schedules/services) log and skip.
+ */
+export class SessionCapacityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SessionCapacityError';
+  }
+}
 
 function slug(name: string): string {
   return (
@@ -109,7 +123,49 @@ export class SessionManager {
     return tmux.capturePlain(this.tmuxName(id), lines);
   }
 
+  /** Memory available to start work, in MB. Uses /proc/meminfo on Linux. */
+  private availableMemoryMb(): number {
+    try {
+      const m = readFileSync('/proc/meminfo', 'utf8').match(/^MemAvailable:\s+(\d+)\s+kB/m);
+      if (m?.[1]) return Math.floor(Number(m[1]) / 1024);
+    } catch {
+      // not Linux / no procfs
+    }
+    return Math.floor(freemem() / (1024 * 1024));
+  }
+
+  /** Number of sessions currently running (an attached broker == live in tmux). */
+  runningCount(): number {
+    return this.brokers.size;
+  }
+
+  /**
+   * Admission control: refuse to spawn when the box is already at the session
+   * cap or low on memory, so a storm of remediations/schedules/derives can't
+   * fan out enough Claude processes to OOM the orchestrator itself. The locked
+   * Conductor is exempt - it is the constant that must always come back.
+   */
+  private assertCapacity(locked: boolean): void {
+    if (locked) return;
+    const max = config.maxConcurrentSessions;
+    if (max > 0 && this.brokers.size >= max) {
+      throw new SessionCapacityError(
+        `session limit reached (${this.brokers.size}/${max}); stop a session before starting another`,
+      );
+    }
+    const min = config.minFreeMemoryMb;
+    if (min > 0) {
+      const free = this.availableMemoryMb();
+      if (free < min) {
+        throw new SessionCapacityError(
+          `not enough free memory to start a session (${free}MB available, need ${min}MB)`,
+        );
+      }
+    }
+  }
+
   async create(args: CreateSessionArgs): Promise<Session> {
+    this.assertCapacity(args.locked ?? false);
     const id = generateId();
     const name = this.tmuxName(id);
 
@@ -178,19 +234,29 @@ export class SessionManager {
     const connectors = this.store.getConnectors(id);
     const path = join(workspace, '.mcp.json');
     try {
-      if (Object.keys(connectors.mcpServers).length > 0) {
-        // The session has its own MCP servers - write them.
-        this.writeMcp(path, connectors.mcpServers);
-      } else if (!existsSync(path)) {
-        // Ensure a config file always exists so --strict-mcp-config has an
-        // explicit, empty source (no servers) - never falls back to user/global
-        // config. An existing file (e.g. a project's own .mcp.json) is left alone.
-        this.writeMcp(path, {});
-      }
+      // For a project session, re-derive the project's own scoped MCP servers
+      // (e.g. Supabase pinned to its --project-ref) and let them OVERRIDE the
+      // session's servers. A session can therefore never replace the project's
+      // scoped server with an account-wide one - the data-isolation guarantee.
+      // Always write an explicit file so --strict-mcp-config never falls back to
+      // user/global config.
+      const merged = { ...connectors.mcpServers, ...this.projectMcpServers(id) };
+      this.writeMcp(path, merged);
     } catch (error) {
       logger.warn({ id, error }, 'could not write .mcp.json');
     }
     return connectors.env;
+  }
+
+  /** The scoped MCP servers a session inherits from its project (empty if none). */
+  private projectMcpServers(id: string): Record<string, unknown> {
+    const projectId = this.store.getSession(id)?.projectId;
+    if (!projectId) return {};
+    const project = this.store.getProject(projectId);
+    if (!project) return {};
+    const hasToken =
+      this.store.getProjectSupabaseToken(projectId) !== null || this.store.hasSecret('supabase_pat');
+    return buildProjectMcpServers(project, hasToken);
   }
 
   /**
@@ -201,8 +267,11 @@ export class SessionManager {
   private projectEnv(projectId: string | null | undefined): Record<string, string> {
     if (!projectId) return {};
     const project = this.store.getProject(projectId);
-    const hasSupabaseDb = project?.sources.databases.some((d) => /supabase/i.test(d.url));
-    if (!hasSupabaseDb) return {};
+    // Inject the token ONLY when a database actually yields a scoped --project-ref
+    // server (same parser as buildProjectMcpServers). A loose substring match used
+    // to leak the account PAT into sessions whose URL was a pooler/connection
+    // string with no derivable ref - present, but with no scope.
+    if (!project || !hasScopedSupabaseDb(project)) return {};
     const token = this.store.getProjectSupabaseToken(projectId) ?? this.store.getSecret('supabase_pat');
     return token ? { SUPABASE_ACCESS_TOKEN: token } : {};
   }

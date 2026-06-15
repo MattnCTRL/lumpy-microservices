@@ -25,7 +25,7 @@ const PRESETS: Preset[] = [
       env: { SUPABASE_ACCESS_TOKEN: '${SUPABASE_ACCESS_TOKEN}' },
     },
     envKey: 'SUPABASE_ACCESS_TOKEN',
-    note: 'read-only; remove --read-only for writes',
+    note: 'read-only; prompts for a project ref so it is scoped to one project',
   },
   {
     key: 'github',
@@ -121,7 +121,23 @@ export function ConnectorsDialog({
   const existingKeys = (view?.envKeys ?? []).filter((k) => !removeEnv.includes(k));
 
   const addPreset = (preset: Preset) => {
-    setMcpServers((prev) => ({ ...prev, [preset.name]: preset.def }));
+    let def = preset.def;
+    // A Supabase connector MUST be pinned to one project ref, or the account
+    // token gives it access to every Supabase project on the account. Project
+    // sessions get a scoped server automatically; a session-level one must ask.
+    if (preset.key === 'supabase') {
+      const ref = window
+        .prompt(
+          'Supabase project ref to scope this connector to (the <ref> in https://<ref>.supabase.co). Required so it cannot reach your whole account.',
+        )
+        ?.trim();
+      if (!ref) {
+        setError('Supabase connector needs a project ref to be safely scoped - not added.');
+        return;
+      }
+      def = { ...preset.def, args: [...(preset.def.args ?? []), `--project-ref=${ref}`] };
+    }
+    setMcpServers((prev) => ({ ...prev, [preset.name]: def }));
     if (preset.envKey && !existingKeys.includes(preset.envKey) && !(preset.envKey in setEnv)) {
       setSetEnv((prev) => ({ ...prev, [preset.envKey as string]: '' }));
     }

@@ -63,6 +63,16 @@ export const config = {
   // Run sessions as this OS user (non-root sandboxing). Empty = run as the
   // orchestrator's own user.
   sessionUser: env('LUMPY_SESSION_USER', ''),
+  // Admission control: refuse to spawn a new session once this many are already
+  // running, so a storm of alerts/schedules/derives can't fan out enough Claude
+  // processes to OOM a small box. 0 disables the cap. The locked Conductor is
+  // always exempt (it is the constant).
+  maxConcurrentSessions: Number(env('LUMPY_MAX_SESSIONS', '8')),
+  // Admission control: refuse to spawn a new session when less than this much
+  // memory is available (MemAvailable on Linux). 0 disables the check. Left off
+  // by default because macOS free-memory reporting is misleading; the box sets
+  // it (where /proc/meminfo is accurate) via the installer.
+  minFreeMemoryMb: Number(env('LUMPY_MIN_FREE_MEMORY_MB', '0')),
   // Alert remediation: off | investigate (diagnose only) | auto (also fix).
   remediationMode: env('LUMPY_REMEDIATION_MODE', 'off') as 'off' | 'investigate' | 'auto',
   // Severities that remediate automatically; others require one-tap approval.

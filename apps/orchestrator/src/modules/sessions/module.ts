@@ -1,9 +1,16 @@
 import type { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { ClientMessage, ServerMessage } from '@lumpy/shared';
+import { readUser, wsSessionAccess } from '../../auth/session.js';
 import { config, resolveWorkspace } from '../../config.js';
+import { SessionCapacityError } from '../../sessions/manager.js';
 import * as tmux from '../../sessions/tmux.js';
 import type { LumpyModule, ModuleContext } from '../types.js';
+
+/** True when the auth gate is actually enforcing (mirrors server/http.ts). */
+function authGatingActive(): boolean {
+  return config.requireAuth && Boolean(config.github.clientId && config.github.clientSecret);
+}
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -60,17 +67,24 @@ function registerRest(ctx: ModuleContext): void {
       workspace = project.workspace;
     }
 
-    const session = await sessions.create({
-      // Blank workspace → the manager isolates the session in its own directory.
-      workspace,
-      name: input.name,
-      command: input.command || config.defaultCommand,
-      tags: input.tags ?? [],
-      autonomous: input.autonomous ?? true,
-      task: input.task?.trim() || null,
-      projectId: input.projectId ?? null,
-    });
-    return reply.status(201).send(session);
+    try {
+      const session = await sessions.create({
+        // Blank workspace → the manager isolates the session in its own directory.
+        workspace,
+        name: input.name,
+        command: input.command || config.defaultCommand,
+        tags: input.tags ?? [],
+        autonomous: input.autonomous ?? true,
+        task: input.task?.trim() || null,
+        projectId: input.projectId ?? null,
+      });
+      return reply.status(201).send(session);
+    } catch (error) {
+      if (error instanceof SessionCapacityError) {
+        return reply.status(503).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   app.get('/api/sessions/:id', async (request, reply) => {
@@ -179,6 +193,27 @@ function registerWebSocket(ctx: ModuleContext): void {
       return;
     }
 
+    // A session WebSocket is bidirectional: relaying input is a write. The HTTP
+    // gate treats the upgrade as a harmless GET, so authorize control here.
+    const gatingActive = authGatingActive();
+    const adminTokenOk =
+      Boolean(config.adminToken) && request.headers['x-lumpy-admin-token'] === config.adminToken;
+    const locked = Boolean(ctx.store.getSession(id)?.locked);
+    const access = adminTokenOk
+      ? 'full'
+      : wsSessionAccess(readUser(request), gatingActive, locked);
+    if (access === 'deny-unauthenticated') {
+      send(socket, { type: 'error', message: 'authentication required' });
+      socket.close();
+      return;
+    }
+    if (access === 'deny-forbidden') {
+      send(socket, { type: 'error', message: 'admin role required to attach to this session' });
+      socket.close();
+      return;
+    }
+    const canWrite = access === 'full';
+
     const snapshot = broker.snapshot();
     if (snapshot.length > 0) socket.send(snapshot);
     send(socket, { type: 'snapshot-end' });
@@ -190,6 +225,7 @@ function registerWebSocket(ctx: ModuleContext): void {
       send(socket, { type: 'status', status: 'stopped' }),
     );
 
+    let warnedReadOnly = false;
     socket.on('message', (raw: Buffer) => {
       let message: ClientMessage;
       try {
@@ -197,8 +233,18 @@ function registerWebSocket(ctx: ModuleContext): void {
       } catch {
         return;
       }
+      if (message.type !== 'input' && message.type !== 'resize') return;
+      if (!canWrite) {
+        // Read-only viewer: drop the write, but say so once so input isn't a
+        // silent black hole.
+        if (!warnedReadOnly) {
+          warnedReadOnly = true;
+          send(socket, { type: 'error', message: 'read-only: admin role required to control this session' });
+        }
+        return;
+      }
       if (message.type === 'input') broker.write(message.data);
-      else if (message.type === 'resize') broker.resize(message.cols, message.rows);
+      else broker.resize(message.cols, message.rows);
     });
 
     socket.on('close', () => {

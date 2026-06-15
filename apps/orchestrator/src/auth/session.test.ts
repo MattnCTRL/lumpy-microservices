@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GithubUser } from '@lumpy/shared';
-import { gateDecision, roleFor } from './session.js';
+import { gateDecision, roleFor, wsSessionAccess } from './session.js';
 
 const admin: GithubUser = { login: 'matt', name: 'Matt', avatarUrl: '', role: 'admin' };
 const viewer: GithubUser = { login: 'guest', name: null, avatarUrl: '', role: 'viewer' };
@@ -31,6 +31,19 @@ test('viewers are read-only; admins may mutate', () => {
   assert.equal(gateDecision(viewer, 'POST', '/api/fleet/servers'), 'forbidden');
   assert.equal(gateDecision(admin, 'POST', '/api/fleet/servers'), 'allow');
   assert.equal(gateDecision(admin, 'DELETE', '/api/alerts/x'), 'allow');
+});
+
+test('session WebSocket: gating off means full control for everyone', () => {
+  assert.equal(wsSessionAccess(null, false, false), 'full');
+  assert.equal(wsSessionAccess(viewer, false, true), 'full');
+});
+
+test('session WebSocket: viewers are read-only and cannot attach to locked sessions', () => {
+  assert.equal(wsSessionAccess(null, true, false), 'deny-unauthenticated');
+  assert.equal(wsSessionAccess(viewer, true, false), 'read-only');
+  assert.equal(wsSessionAccess(viewer, true, true), 'deny-forbidden'); // the Conductor
+  assert.equal(wsSessionAccess(admin, true, true), 'full');
+  assert.equal(wsSessionAccess(admin, true, false), 'full');
 });
 
 test('authorized agents may push telemetry without a user', () => {

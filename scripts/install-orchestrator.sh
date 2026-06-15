@@ -64,10 +64,19 @@ Environment=LUMPY_HOST=${BIND}
 Environment=LUMPY_PORT=4317
 Environment=LUMPY_DATA_DIR=${INSTALL_DIR}/data
 Environment=LUMPY_PUBLIC_URL=http://${BIND}:4317
+# Admission control so a storm of alerts/schedules/derives can't fan out enough
+# Claude processes to OOM this small box. MemAvailable (/proc/meminfo) is accurate
+# here, unlike on macOS, so the free-memory guard is enabled. Tune for box size.
+Environment=LUMPY_MAX_SESSIONS=${LUMPY_MAX_SESSIONS:-5}
+Environment=LUMPY_MIN_FREE_MEMORY_MB=${LUMPY_MIN_FREE_MEMORY_MB:-350}
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/npm run start -w @lumpy/orchestrator
 Restart=always
 RestartSec=5
+# Soft memory pressure: reclaim before the kernel OOM-kills. Accounting lets the
+# box-level limit apply to the orchestrator and the tmux/Claude processes it owns.
+MemoryAccounting=yes
+MemoryHigh=${LUMPY_MEMORY_HIGH:-1500M}
 
 [Install]
 WantedBy=multi-user.target

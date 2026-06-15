@@ -2,6 +2,7 @@ import type { Alert } from '@lumpy/shared';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { secondOpinionGate } from '../secondopinion/consult.js';
+import { SessionCapacityError } from '../sessions/manager.js';
 import { DEFAULT_PLAYBOOKS, findPlaybook } from './playbooks.js';
 import { buildRemediationTask } from './task.js';
 
@@ -62,6 +63,21 @@ export const remediationModule: LumpyModule = {
         logger.warn({ alert: alert.id, session: session.id, mode }, 'remediation session started');
       } catch (error) {
         handling.delete(alert.id);
+        if (error instanceof SessionCapacityError) {
+          // No capacity to spawn right now: hold for one-tap approval / retry
+          // rather than dropping the alert (and never pile onto a starved box).
+          pending.set(alert.id, alert);
+          ctx.bus.publish({
+            type: 'remediation.pending',
+            alertId: alert.id,
+            serverName: alert.serverName,
+            severity: alert.severity,
+            label: alert.label,
+            at: new Date().toISOString(),
+          });
+          logger.warn({ alert: alert.id }, 'remediation deferred (at capacity); awaiting approval');
+          return;
+        }
         logger.error({ alert: alert.id, error }, 'remediation failed to start');
       }
     };

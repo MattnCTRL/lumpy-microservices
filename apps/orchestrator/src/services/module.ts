@@ -5,6 +5,7 @@ import type { Service } from '@lumpy/shared';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
+import { SessionCapacityError } from '../sessions/manager.js';
 
 const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
 
@@ -113,17 +114,24 @@ export const servicesModule: LumpyModule = {
       const { id } = request.params as { id: string };
       const service = store.getService(id);
       if (!service) return reply.status(404).send({ error: 'service not found' });
-      const session = await ctx.sessions.create({
-        name: `Service: ${service.name}`,
-        workspace: join(config.workspaceRoot, '_services', slug(service.name)),
-        command: config.defaultCommand,
-        tags: ['service', service.id],
-        autonomous: true,
-        task: buildDeployTask(service, base),
-        env: { LUMPY_URL: base, LUMPY_ADMIN_TOKEN: config.adminToken, LUMPY_SERVICE_ID: service.id },
-      });
-      logger.info({ service: id, session: session.id }, 'service deployed');
-      return reply.status(202).send({ sessionId: session.id });
+      try {
+        const session = await ctx.sessions.create({
+          name: `Service: ${service.name}`,
+          workspace: join(config.workspaceRoot, '_services', slug(service.name)),
+          command: config.defaultCommand,
+          tags: ['service', service.id],
+          autonomous: true,
+          task: buildDeployTask(service, base),
+          env: { LUMPY_URL: base, LUMPY_ADMIN_TOKEN: config.adminToken, LUMPY_SERVICE_ID: service.id },
+        });
+        logger.info({ service: id, session: session.id }, 'service deployed');
+        return reply.status(202).send({ sessionId: session.id });
+      } catch (error) {
+        if (error instanceof SessionCapacityError) {
+          return reply.status(503).send({ error: error.message });
+        }
+        throw error;
+      }
     });
 
     // Self-improvement: record a refinement, optionally update the definition.

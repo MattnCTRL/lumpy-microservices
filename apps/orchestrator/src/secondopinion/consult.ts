@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import {
   chmodSync,
   chownSync,
@@ -10,14 +10,82 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
 import type { ConsultVerdict } from '@lumpy/shared';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { resolveRunAs, type RunAs, runAsEnv } from '../sessions/runas.js';
 import type { Store } from '../store/sqlite.js';
 
-const exec = promisify(execFile);
+const MAX_OUTPUT = 8 * 1024 * 1024;
+
+interface CodexRun {
+  code: number | null;
+  timedOut: boolean;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Run `codex exec` with stdin pointed at /dev/null. `codex exec` also reads a
+ * `<stdin>` block, and a piped/inherited stdin that never EOFs makes it block
+ * forever - which is why the previous execFile-based call hung for the full
+ * timeout and produced no verdict. We spawn it detached (its own process group)
+ * so a timeout can SIGKILL the whole tree, including the bubblewrap sandbox
+ * grandchild, leaving no orphans on the box. Never throws on timeout; rejects
+ * only on a spawn error (e.g. the CLI is missing).
+ */
+function runCodex(
+  args: string[],
+  opts: { uid?: number; gid?: number; env: NodeJS.ProcessEnv; timeoutMs: number },
+): Promise<CodexRun> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('codex', args, {
+      uid: opts.uid,
+      gid: opts.gid,
+      env: opts.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+    });
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      const pid = child.pid;
+      try {
+        if (pid) process.kill(-pid, 'SIGKILL');
+        else child.kill('SIGKILL');
+      } catch {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // already gone
+        }
+      }
+    }, opts.timeoutMs);
+
+    child.stdout?.on('data', (d: Buffer) => {
+      if (stdout.length < MAX_OUTPUT) stdout += d.toString();
+    });
+    child.stderr?.on('data', (d: Buffer) => {
+      if (stderr.length < MAX_OUTPUT) stderr += d.toString();
+    });
+    child.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code, timedOut, stdout, stderr });
+    });
+  });
+}
 
 /** Secret key for the account-level OpenAI API key. */
 export const OPENAI_API_KEY = 'openai_api_key';
@@ -182,7 +250,7 @@ export async function consultCodex(store: Store, input: ConsultInput): Promise<C
       framePrompt(input.prompt),
     ];
 
-    await exec('codex', args, {
+    const result = await runCodex(args, {
       uid: runAs?.uid,
       gid: runAs?.gid,
       env: {
@@ -190,18 +258,36 @@ export async function consultCodex(store: Store, input: ConsultInput): Promise<C
         // Auth (auth.json) lives here; syncCodexAuth keeps it in step with the key.
         CODEX_HOME: join(home, '.codex'),
       },
-      timeout: input.timeoutMs ?? config.codexTimeoutMs,
-      maxBuffer: 8 * 1024 * 1024,
+      timeoutMs: input.timeoutMs ?? config.codexTimeoutMs,
     });
 
-    return { ...parseVerdict(readFileSync(outPath, 'utf8')), available: true };
+    if (result.timedOut) {
+      logger.warn({ subject: input.subject }, 'second-opinion consult timed out (failing open)');
+      return unavailable('codex consult timed out');
+    }
+
+    let raw: string;
+    try {
+      raw = readFileSync(outPath, 'utf8');
+    } catch {
+      // No verdict file written. Fall back to stdout if codex exited cleanly,
+      // otherwise surface the failure (and fail open).
+      if (result.code !== 0) {
+        const reason = (result.stderr || `codex exited with code ${result.code}`)
+          .trim()
+          .slice(0, 300);
+        logger.warn({ subject: input.subject, reason }, 'second-opinion consult failed (failing open)');
+        return unavailable(reason);
+      }
+      raw = result.stdout;
+    }
+    return { ...parseVerdict(raw), available: true };
   } catch (error) {
-    const e = error as { stderr?: string; killed?: boolean; code?: string; message?: string };
-    const reason = e.killed
-      ? 'codex consult timed out'
-      : e.code === 'ENOENT'
+    const e = error as { code?: string; message?: string };
+    const reason =
+      e.code === 'ENOENT'
         ? 'codex CLI not installed'
-        : (e.stderr || e.message || 'codex consult failed').toString().trim().slice(0, 300);
+        : (e.message || 'codex consult failed').toString().trim().slice(0, 300);
     logger.warn({ subject: input.subject, reason }, 'second-opinion consult failed (failing open)');
     return unavailable(reason);
   } finally {

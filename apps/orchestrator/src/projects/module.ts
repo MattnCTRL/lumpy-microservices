@@ -6,9 +6,11 @@ import type { Project, ProjectSources } from '@lumpy/shared';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
-import { FleetStore } from '../store/fleet.js';
+import { SessionCapacityError } from '../sessions/manager.js';
 import { resolveRunAs, type RunAs } from '../sessions/runas.js';
+import { FleetStore } from '../store/fleet.js';
 import { DRAFT_PATH, approveDraft, discardDraft, readKnowledge, writeClaudeMd } from './knowledge.js';
+import { buildProjectMcpServers } from './mcp.js';
 
 /** Build the librarian's prompt: read the project's cumulative sources, draft a manual. */
 function buildLibrarianTask(project: Project, mountPath: string | null, servers: string[]): string {
@@ -131,40 +133,18 @@ function hasSupabaseToken(store: ModuleContext['store'], id: string): boolean {
   return store.getProjectSupabaseToken(id) !== null || store.hasSecret('supabase_pat');
 }
 
-/** Extract a Supabase project ref from a URL (https://<ref>.supabase.co) or a bare ref. */
-function supabaseRef(url: string): string | null {
-  const m = url.match(/https?:\/\/([a-z0-9]+)\.supabase\./i);
-  if (m) return m[1] ?? null;
-  const bare = url.trim();
-  return /^[a-z0-9]{16,}$/i.test(bare) ? bare : null;
-}
-
 /**
  * Write the project's own `.mcp.json` - one Supabase MCP per database, each
  * scoped to THAT database's ref (so a session can never touch another project's
  * - or another of this project's - databases unintentionally). The token is not
  * written to the file; it is referenced via ${SUPABASE_ACCESS_TOKEN} and
  * injected at launch from the encrypted store. Non-Supabase databases are
- * recorded on the project for the librarian but get no MCP server.
+ * recorded on the project for the librarian but get no MCP server. The server
+ * set is built by the shared helper that the session manager also re-derives on
+ * every launch, so the two can never drift.
  */
 function writeProjectMcp(project: Project, hasToken: boolean, runAs: RunAs | null): void {
-  const mcpServers: Record<string, unknown> = {};
-  const used = new Set<string>();
-  if (hasToken) {
-    for (const db of project.sources.databases) {
-      const ref = supabaseRef(db.url);
-      if (!ref) continue;
-      const base = `supabase-${slug(db.label || 'main')}`;
-      let key = base;
-      for (let n = 2; used.has(key); n++) key = `${base}-${n}`;
-      used.add(key);
-      mcpServers[key] = {
-        command: 'npx',
-        args: ['-y', '@supabase/mcp-server-supabase@latest', '--read-only', `--project-ref=${ref}`],
-        env: { SUPABASE_ACCESS_TOKEN: '${SUPABASE_ACCESS_TOKEN}' },
-      };
-    }
-  }
+  const mcpServers = buildProjectMcpServers(project, hasToken);
   try {
     mkdirSync(project.workspace, { recursive: true });
     const path = join(project.workspace, '.mcp.json');
@@ -298,6 +278,17 @@ export const projectsModule: LumpyModule = {
       const project = store.getProject(id);
       if (!project) return reply.status(404).send({ error: 'project not found' });
 
+      // One librarian per project at a time: a double-click (the button re-enables
+      // on the 202, before the librarian finishes) must not stack Claude sessions.
+      const runningLibrarian = (await ctx.sessions.list()).find(
+        (s) => s.projectId === id && s.tags.includes('librarian') && s.status === 'running',
+      );
+      if (runningLibrarian) {
+        return reply
+          .status(409)
+          .send({ error: 'a librarian is already running for this project', sessionId: runningLibrarian.id });
+      }
+
       let mountPath: string | null = null;
       if (project.sources.machineId && config.sessionUser) {
         const machine = fleet.getServer(project.sources.machineId);
@@ -314,17 +305,24 @@ export const projectsModule: LumpyModule = {
       // Ensure the project's isolated .mcp.json (its own DB, nothing else) is current.
       writeProjectMcp(project, hasSupabaseToken(store, id), runAs);
 
-      const session = await ctx.sessions.create({
-        name: `Librarian: ${project.name}`,
-        workspace: project.workspace,
-        command: config.defaultCommand,
-        tags: ['librarian'],
-        autonomous: true,
-        task: buildLibrarianTask(project, mountPath, servers),
-        projectId: project.id,
-      });
-      logger.info({ project: id, session: session.id }, 'librarian session started');
-      return reply.status(202).send({ sessionId: session.id });
+      try {
+        const session = await ctx.sessions.create({
+          name: `Librarian: ${project.name}`,
+          workspace: project.workspace,
+          command: config.defaultCommand,
+          tags: ['librarian'],
+          autonomous: true,
+          task: buildLibrarianTask(project, mountPath, servers),
+          projectId: project.id,
+        });
+        logger.info({ project: id, session: session.id }, 'librarian session started');
+        return reply.status(202).send({ sessionId: session.id });
+      } catch (error) {
+        if (error instanceof SessionCapacityError) {
+          return reply.status(503).send({ error: error.message });
+        }
+        throw error;
+      }
     });
 
     app.post('/api/projects/:id/knowledge/approve', async (request, reply) => {

@@ -46,6 +46,31 @@ export function gateDecision(
   return 'allow';
 }
 
+export type WsAccess = 'deny-unauthenticated' | 'deny-forbidden' | 'read-only' | 'full';
+
+/**
+ * Access level for a write-capable session WebSocket. The HTTP gate only reasons
+ * about REST methods (GET == read), but a WS upgrade is a GET that then carries
+ * bidirectional input - so it must be authorized separately, here.
+ *
+ * - gating inactive: the deployment is open; everyone gets full control (as before).
+ * - unauthenticated (gating on): rejected.
+ * - viewer: read-only (input/resize frames are dropped); and NOT allowed to attach
+ *   at all to a locked session (the Conductor, whose env holds the admin token, so
+ *   even read access could expose it).
+ * - admin: full control.
+ */
+export function wsSessionAccess(
+  user: GithubUser | null,
+  gatingActive: boolean,
+  locked: boolean,
+): WsAccess {
+  if (!gatingActive) return 'full';
+  if (!user) return 'deny-unauthenticated';
+  if (user.role === 'admin') return 'full';
+  return locked ? 'deny-forbidden' : 'read-only';
+}
+
 /** Read and verify the signed user cookie, or null if absent/invalid. */
 export function readUser(request: FastifyRequest): GithubUser | null {
   const raw = request.cookies[USER_COOKIE];
