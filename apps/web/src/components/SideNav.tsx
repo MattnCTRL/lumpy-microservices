@@ -90,7 +90,7 @@ export function SideNav() {
   return (
     <>
       {/* ---- Desktop left rail ---- */}
-      <nav className="hidden h-full w-48 shrink-0 flex-col border-r border-neutral-800 px-3 py-4 md:flex">
+      <nav className="hidden h-full w-48 shrink-0 flex-col border-r border-neutral-800 bg-white/55 px-3 py-4 backdrop-blur-glass md:flex">
         <Link href="/" className="mb-6 px-1">
           <div className="text-lg font-semibold tracking-tight text-neutral-100">Lumpy</div>
           <div className="text-xs text-neutral-500">Micro Services</div>
@@ -121,7 +121,7 @@ export function SideNav() {
       {/* ---- Mobile bottom tab bar: fixed to the viewport bottom and lifted
            clear of the home indicator (see .mobile-tabbar). It can't scroll
            away or get clipped, and content is padded behind it (.has-tabbar). */}
-      <nav className="mobile-tabbar flex items-stretch border-t border-neutral-800 bg-neutral-950 md:hidden">
+      <nav className="mobile-tabbar flex items-stretch border-t border-neutral-800 bg-white/70 backdrop-blur-glass md:hidden">
         {MOBILE_PRIMARY.map((item) => (
           <Tab key={item.href} {...item} active={isActive(pathname, item.href)} />
         ))}
@@ -156,7 +156,7 @@ function RailItem({
       href={href}
       aria-label={label}
       className={`relative flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition ${
-        active ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
+        active ? 'bg-white/85 text-ink shadow-sm' : 'text-muted hover:bg-white/60 hover:text-ink'
       }`}
     >
       <span className="text-base leading-none">{icon}</span>

@@ -279,16 +279,12 @@ function Card({
   accent?: 'amber' | 'red';
   children: React.ReactNode;
 }) {
-  const border =
-    accent === 'red'
-      ? 'border-red-900/50'
-      : accent === 'amber'
-        ? 'border-amber-800/50'
-        : 'border-neutral-800';
+  const accentRing =
+    accent === 'red' ? 'ring-1 ring-coral/50' : accent === 'amber' ? 'ring-1 ring-warn/40' : '';
   return (
     <Link
       href={href}
-      className={`block rounded-lg border ${border} bg-neutral-950 p-4 transition hover:border-neutral-700`}
+      className={`surface block p-4 transition hover:-translate-y-0.5 hover:shadow-glass-lg ${accentRing}`}
     >
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-medium text-neutral-300">{title}</h2>
