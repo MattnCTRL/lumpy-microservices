@@ -20,16 +20,26 @@ export interface Notification {
 }
 
 /**
- * Map a domain event to a push notification, or `null` if the event is not
- * worth notifying about. `publicUrl`, when set, enables deep links and
- * approve/reject action buttons that the phone can reach over the tailnet.
+ * Map a domain event to a push notification, or `null` if the event is not worth
+ * notifying about.
+ *
+ * Two distinct bases, because a single URL cannot serve both: `apiUrl` is the
+ * orchestrator (action POSTs like approve/input must reach it), while `webUrl` is
+ * the PWA (click deep links like /alerts must open it). When `webUrl` is omitted
+ * it falls back to `apiUrl` (single-origin / reverse-proxy deployments).
  */
-export function buildNotification(event: LumpyEvent, publicUrl: string): Notification | null {
+export function buildNotification(
+  event: LumpyEvent,
+  apiUrl: string,
+  webUrl: string = apiUrl,
+): Notification | null {
+  const link = (path: string): string | undefined => (webUrl ? `${webUrl}${path}` : undefined);
+
   if (event.type === 'session.activity' && event.activity === 'awaiting_permission') {
-    const actions: NtfyAction[] = publicUrl
+    const actions: NtfyAction[] = apiUrl
       ? [
-          inputAction('Approve', publicUrl, event.id, '\r'),
-          inputAction('Reject', publicUrl, event.id, '\x1b'),
+          inputAction('Approve', apiUrl, event.id, '\r'),
+          inputAction('Reject', apiUrl, event.id, '\x1b'),
         ]
       : [];
     return {
@@ -37,7 +47,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: event.prompt?.question ?? 'A session is awaiting permission to proceed.',
       priority: 4,
       tags: ['warning'],
-      click: publicUrl ? `${publicUrl}/sessions` : undefined,
+      click: link('/sessions'),
       actions,
     };
   }
@@ -49,17 +59,17 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: alert.message,
       priority: alert.severity === 'critical' ? 5 : 3,
       tags: alert.severity === 'critical' ? ['rotating_light'] : ['warning'],
-      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+      click: link('/alerts'),
     };
   }
 
   if (event.type === 'remediation.pending') {
-    const actions: NtfyAction[] = publicUrl
+    const actions: NtfyAction[] = apiUrl
       ? [
           {
             action: 'http',
             label: 'Approve fix',
-            url: `${publicUrl}/api/remediation/${event.alertId}/approve`,
+            url: `${apiUrl}/api/remediation/${event.alertId}/approve`,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: '{}',
@@ -72,7 +82,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: `${event.label} (${event.severity}). Approve to let Claude investigate and fix.`,
       priority: 4,
       tags: ['warning'],
-      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+      click: link('/alerts'),
       actions,
     };
   }
@@ -83,7 +93,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: 'Lumpy started an autonomous Claude session to handle the alert.',
       priority: 3,
       tags: ['robot'],
-      click: publicUrl ? `${publicUrl}/sessions` : undefined,
+      click: link('/sessions'),
     };
   }
 
@@ -93,7 +103,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: `${event.label} cleared`,
       priority: 2,
       tags: ['white_check_mark'],
-      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+      click: link('/alerts'),
     };
   }
 
@@ -106,7 +116,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
         : `${event.url} is back up.`,
       priority: down ? 5 : 2,
       tags: down ? ['rotating_light'] : ['white_check_mark'],
-      click: publicUrl ? `${publicUrl}/fleet` : undefined,
+      click: link('/fleet'),
     };
   }
 
@@ -116,7 +126,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: `Certificate for ${event.url} expires in ${event.daysLeft} day${event.daysLeft === 1 ? '' : 's'}.`,
       priority: 4,
       tags: ['warning'],
-      click: publicUrl ? `${publicUrl}/fleet` : undefined,
+      click: link('/fleet'),
     };
   }
 
@@ -126,7 +136,7 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: event.message,
       priority: event.priority,
       tags: ['bar_chart'],
-      click: publicUrl ? `${publicUrl}/` : undefined,
+      click: link('/'),
     };
   }
 
@@ -138,23 +148,18 @@ export function buildNotification(event: LumpyEvent, publicUrl: string): Notific
       message: event.summary,
       priority: 4,
       tags: ['no_entry'],
-      click: publicUrl ? `${publicUrl}/alerts` : undefined,
+      click: link('/alerts'),
     };
   }
 
   return null;
 }
 
-function inputAction(
-  label: string,
-  publicUrl: string,
-  sessionId: string,
-  data: string,
-): NtfyAction {
+function inputAction(label: string, apiUrl: string, sessionId: string, data: string): NtfyAction {
   return {
     action: 'http',
     label,
-    url: `${publicUrl}/api/sessions/${sessionId}/input`,
+    url: `${apiUrl}/api/sessions/${sessionId}/input`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data }),

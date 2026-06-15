@@ -21,14 +21,16 @@ export const notifyModule: LumpyModule = {
   version: '0.1.0',
   description: 'Pushes actionable alerts to ntfy from the event spine.',
   register(ctx: ModuleContext) {
-    const { ntfyUrl, ntfyTopic, publicUrl } = ctx.config;
+    const { ntfyUrl, ntfyTopic, publicUrl, webUrl } = ctx.config;
     if (!ntfyTopic) {
       logger.warn('LUMPY_NTFY_TOPIC is not set - push notifications are disabled');
       return;
     }
 
+    // Action POSTs (approve/input) go to the orchestrator (publicUrl); click deep
+    // links open the web UI (webUrl, falling back to publicUrl if unset).
     ctx.bus.subscribe((event) => {
-      const notification = buildNotification(event, publicUrl);
+      const notification = buildNotification(event, publicUrl, webUrl || publicUrl);
       if (notification) void dispatch(ntfyUrl, ntfyTopic, notification);
     });
 
