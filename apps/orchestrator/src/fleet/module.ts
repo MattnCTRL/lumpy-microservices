@@ -50,9 +50,31 @@ const metricsSchema = z.object({
 function registerRest(ctx: ModuleContext, fleet: FleetManager, hosted: HostedServicesMonitor): void {
   const { app } = ctx;
 
-  // Attach the services each machine hosts (resolved from projects, with status).
-  const withHosted = <T extends { id: string }>(server: T): T =>
-    ({ ...server, hostedServices: hosted.forServer(server.id) }) as T;
+  // Attach the services each machine hosts (resolved from projects, with status),
+  // and mark the box that runs Lumpy itself — surfacing Lumpy as a hosted service
+  // on its own home host (the "mother service").
+  const lumpyUrl =
+    ctx.config.webUrl || ctx.config.publicUrl || `http://${ctx.config.host}:3000`;
+  const withHosted = <T extends { id: string; address: string }>(server: T): T => {
+    const isSelf = server.address === ctx.config.host;
+    const services = hosted.forServer(server.id);
+    if (isSelf) {
+      services.unshift({
+        name: 'Lumpy',
+        url: lumpyUrl,
+        projectId: '',
+        projectName: 'platform',
+        status: 'up',
+        statusCode: 200,
+        checkedAt: new Date().toISOString(),
+        latencyMs: null,
+        uptime24h: 1,
+        certDaysLeft: null,
+        lastChangeAt: null,
+      });
+    }
+    return { ...server, self: isSelf, hostedServices: services } as T;
+  };
 
   app.get('/api/fleet/servers', async () => fleet.list().map(withHosted));
 

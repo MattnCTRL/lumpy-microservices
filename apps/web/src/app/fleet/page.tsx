@@ -340,7 +340,10 @@ function ServerList({
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-medium text-neutral-100">{server.name}</span>
+              <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-neutral-100">
+                {server.self && <span title="runs Lumpy">🏠</span>}
+                {server.name}
+              </span>
               <StatusBadge status={server.status} />
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
@@ -420,7 +423,17 @@ function ServerDetailPanel({
             ←
           </button>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-sm font-medium text-neutral-100">{server.name}</h2>
+              {server.self && (
+                <span
+                  className="shrink-0 rounded bg-indigo-950/60 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300"
+                  title="This is the always-on cloud box that runs Lumpy itself"
+                >
+                  🏠 runs Lumpy
+                </span>
+              )}
+            </div>
           <p className="truncate text-xs text-neutral-500">
             {server.kind} · {server.address} · {server.monitoring === 'ssh' ? 'SSH' : 'agent'} ·{' '}
             {server.env} · {server.criticality} ·{' '}

@@ -441,6 +441,8 @@ export interface Server {
   metrics: ServerMetrics | null;
   /** Services hosted on this machine, resolved from projects (with live status). */
   hostedServices: ServerHostedService[];
+  /** True for the always-on cloud box that runs Lumpy itself (the home host). */
+  self: boolean;
 }
 
 /** SSH connection details for agentless monitoring. Never returned to clients. */

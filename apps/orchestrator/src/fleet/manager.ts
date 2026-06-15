@@ -194,6 +194,7 @@ export class FleetManager {
       createdAt: record.createdAt,
       metrics: this.latest.get(record.id) ?? null,
       hostedServices: [],
+      self: false,
     };
   }
 }
