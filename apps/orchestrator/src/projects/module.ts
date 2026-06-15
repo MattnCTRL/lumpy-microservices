@@ -4,6 +4,7 @@ import { customAlphabet } from 'nanoid';
 import { z } from 'zod';
 import type { Project, ProjectSources } from '@lumpy/shared';
 import { config } from '../config.js';
+import { mountState } from '../fleet/mounts.js';
 import { logger } from '../logger.js';
 import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { SessionCapacityError } from '../sessions/manager.js';
@@ -14,9 +15,17 @@ import { buildProjectMcpServers } from './mcp.js';
 
 /** Build the librarian's prompt: read the project's cumulative sources, draft a manual. */
 function buildLibrarianTask(project: Project, mountPath: string | null, servers: string[]): string {
-  const sources: string[] = [
-    "This project's own repository, code, and docs in the current working directory.",
-  ];
+  const sources: string[] = [];
+  if (project.sources.repos.length) {
+    // The workspace is usually a fresh, empty directory on import: tell the
+    // librarian to actually fetch the code rather than assuming it is already
+    // present (which produced fabricated manuals).
+    sources.push(
+      `This project's source repositories - clone each into the current working directory (if not already present) and review it: ${project.sources.repos.join(', ')}. For private repos use the token in $GITHUB_TOKEN, e.g. \`git clone https://$GITHUB_TOKEN@github.com/<owner>/<repo>\`.`,
+    );
+  } else {
+    sources.push("This project's own repository, code, and docs in the current working directory.");
+  }
   if (servers.length) {
     sources.push(
       `Cloud infrastructure this project runs on: ${servers.join('; ')}. Note its role (hosting, deploys, runtime) in the manual.`,
@@ -292,8 +301,15 @@ export const projectsModule: LumpyModule = {
       let mountPath: string | null = null;
       if (project.sources.machineId && config.sessionUser) {
         const machine = fleet.getServer(project.sources.machineId);
-        if (machine) {
+        // Only point the librarian at a mount that is actually live: reading a
+        // stale FUSE mount (host asleep/offline) hangs the session in D-state I/O.
+        if (machine && (await mountState(machine.address)).mounted) {
           mountPath = `/home/${config.sessionUser}/macs/${machine.address.replace(/[.:]/g, '-')}`;
+        } else if (machine) {
+          logger.warn(
+            { project: id, machine: machine.id },
+            'linked machine is not mounted; librarian will skip its files',
+          );
         }
       }
 
@@ -305,6 +321,14 @@ export const projectsModule: LumpyModule = {
       // Ensure the project's isolated .mcp.json (its own DB, nothing else) is current.
       writeProjectMcp(project, hasSupabaseToken(store, id), runAs);
 
+      // Give the librarian the account GitHub token (only when repos are
+      // configured) so it can clone private repos.
+      const librarianEnv: Record<string, string> = {};
+      if (project.sources.repos.length && store.hasSecret('github_token')) {
+        const token = store.getSecret('github_token');
+        if (token) librarianEnv.GITHUB_TOKEN = token;
+      }
+
       try {
         const session = await ctx.sessions.create({
           name: `Librarian: ${project.name}`,
@@ -314,6 +338,7 @@ export const projectsModule: LumpyModule = {
           autonomous: true,
           task: buildLibrarianTask(project, mountPath, servers),
           projectId: project.id,
+          env: librarianEnv,
         });
         logger.info({ project: id, session: session.id }, 'librarian session started');
         return reply.status(202).send({ sessionId: session.id });
