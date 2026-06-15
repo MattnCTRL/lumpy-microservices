@@ -14,6 +14,9 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
   width: 'device-width',
   initialScale: 1,
+  // Let content extend under the notch/home indicator so we can pad with
+  // env(safe-area-inset-*) — needed for the mobile bottom nav.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
