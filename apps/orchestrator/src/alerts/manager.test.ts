@@ -77,6 +77,19 @@ test('resolves after the metric stays normal (hysteresis: not on a single dip)',
   assert.ok(events.some((e) => e.type === 'alert.resolved'));
 });
 
+test('dropping from critical into the warning tier resolves the critical at once', () => {
+  const { bus, events, manager } = harness();
+  bus.publish(diskMetric(92)); // critical
+  bus.publish(diskMetric(85)); // now in the warning tier (>=80, <90)
+  const active = manager.activeAlerts();
+  assert.equal(active.length, 1, 'only one alert is active for the metric');
+  assert.equal(active[0]?.severity, 'warning');
+  assert.ok(
+    events.some((e) => e.type === 'alert.resolved'),
+    'the critical resolved immediately, not after hysteresis',
+  );
+});
+
 test('a sustained CPU rule needs repeated samples', () => {
   const { bus, events } = harness();
   // cpu-warning requires 3 consecutive samples over 90

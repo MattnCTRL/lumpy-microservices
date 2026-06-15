@@ -108,11 +108,16 @@ export class AlertsManager {
             });
           }
         } else {
-          // Below this tier. Break the over-threshold streak immediately, but only
-          // resolve/re-arm after CLEAR_SAMPLES consecutive below-samples (hysteresis),
-          // and only bother counting when there is an active/dismissed alert to clear.
           this.counts.set(key, 0);
-          if (this.active.has(key) || this.acknowledged.has(key)) {
+          if (breached !== undefined) {
+            // A LOWER tier of this metric is still breached - the metric just
+            // dropped a tier (e.g. critical -> warning). Resolve this higher tier
+            // at once so we never show two cards for one metric, and so an
+            // oscillation across the boundary can't pin a stale critical open.
+            this.clear(key);
+          } else if (this.active.has(key) || this.acknowledged.has(key)) {
+            // Metric is below ALL tiers (genuinely normal): apply resolve
+            // hysteresis so a value hovering at a threshold doesn't flap.
             const below = (this.belowCounts.get(key) ?? 0) + 1;
             this.belowCounts.set(key, below);
             if (below >= CLEAR_SAMPLES) this.clear(key);

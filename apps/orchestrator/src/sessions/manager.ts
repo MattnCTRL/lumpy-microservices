@@ -418,6 +418,10 @@ export class SessionManager {
     const record = this.store.getSession(id);
     if (!record) return false;
     this.detach(id);
+    // Emit 'stopped' on removal too (detach alone doesn't), so consumers that key
+    // off session end - e.g. remediation freeing its in-flight alert - aren't left
+    // hanging when a session is deleted rather than stopped.
+    this.publishStatus(id, 'stopped');
     await tmux.killSession(this.tmuxName(id));
     this.store.deleteSession(id);
     this.lastTouch.delete(id);

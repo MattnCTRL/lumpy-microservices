@@ -319,8 +319,9 @@ function StoppedActions({
     try {
       await action();
       after();
-    } catch {
+    } catch (error) {
       setBusy(null);
+      throw error; // surface a failed restart/resume/delete via the global toast
     }
   };
 
@@ -433,13 +434,18 @@ function InputBar({ sessionId }: { sessionId: string }) {
     const value = text;
     if (!value.trim()) return;
     setText('');
-    // Clear any pre-filled input, type the message, then submit it.
-    await api.sendInput(sessionId, '\x15');
-    await api.sendInput(sessionId, value);
-    await new Promise((r) => setTimeout(r, 80));
-    await api.sendInput(sessionId, '\r');
-    setSent(true);
-    setTimeout(() => setSent(false), 1200);
+    try {
+      // Clear any pre-filled input, type the message, then submit it.
+      await api.sendInput(sessionId, '\x15');
+      await api.sendInput(sessionId, value);
+      await new Promise((r) => setTimeout(r, 80));
+      await api.sendInput(sessionId, '\r');
+      setSent(true);
+      setTimeout(() => setSent(false), 1200);
+    } catch (error) {
+      setText(value); // restore so a failed send doesn't drop the operator's message
+      throw error; // surface via the global toast
+    }
   };
 
   const inputClass =
