@@ -3,6 +3,7 @@ import { EventBus } from './events/bus.js';
 import { activityModule } from './activity/module.js';
 import { alertsModule } from './alerts/module.js';
 import { authModule } from './auth/module.js';
+import { backupModule } from './backup/module.js';
 import { digestModule } from './digest/module.js';
 import { fleetModule } from './fleet/module.js';
 import { logger } from './logger.js';
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
     .add(secondOpinionModule)
     .add(digestModule)
     .add(activityModule)
+    .add(backupModule)
     .add(notifyModule);
   const app = await createApp({ sessions, registry, bus, settings: settingsStore, store });
 

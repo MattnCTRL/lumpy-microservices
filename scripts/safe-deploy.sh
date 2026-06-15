@@ -15,7 +15,6 @@ set -uo pipefail
 
 DIR="${LUMPY_DIR:-/opt/lumpy}"
 HEALTH="${LUMPY_HEALTH_URL:-http://100.81.90.46:4317/api/health}"
-WEB_URL="${NEXT_PUBLIC_ORCHESTRATOR_URL:-http://100.81.90.46:4317}"
 DATA="$DIR/data"
 GOOD_FILE="$DATA/.last-good-commit"
 LOCK="$DATA/.deploying"
@@ -32,7 +31,10 @@ build() {
   npm install --no-audit --no-fund >>"$LOG" 2>&1 || return 1
   npm run typecheck >>"$LOG" 2>&1 || return 1
   npm run build -w @lumpy/agent >>"$LOG" 2>&1 || return 1
-  NEXT_PUBLIC_ORCHESTRATOR_URL="$WEB_URL" npm run build -w @lumpy/web >>"$LOG" 2>&1 || return 1
+  # No baked orchestrator URL: the web derives it from the page host at runtime so
+  # an IP/MagicDNS change can't strand the client. An exported NEXT_PUBLIC_ORCHESTRATOR_URL
+  # still overrides if set.
+  npm run build -w @lumpy/web >>"$LOG" 2>&1 || return 1
 }
 
 restart() { systemctl restart lumpy-orchestrator lumpy-web; }

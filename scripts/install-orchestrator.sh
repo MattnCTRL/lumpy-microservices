@@ -49,8 +49,18 @@ fi
 
 cd "$INSTALL_DIR"
 npm install --no-audit --no-fund
-NEXT_PUBLIC_ORCHESTRATOR_URL="http://${BIND}:4317" npm run build -w @lumpy/web
+# Build WITHOUT baking the orchestrator URL: the web derives it from the page host
+# at runtime, so a Tailscale IP change or MagicDNS switch never strands the client.
+npm run build -w @lumpy/web
 mkdir -p "$INSTALL_DIR/data"
+
+# Persist a stable auth-cookie secret so sign-in survives restarts. Without it the
+# secret is random per boot and every deploy/reboot logs the operator out.
+ENV_FILE="$INSTALL_DIR/.env"
+touch "$ENV_FILE" && chmod 600 "$ENV_FILE"
+if ! grep -q '^LUMPY_AUTH_SECRET=' "$ENV_FILE"; then
+  echo "LUMPY_AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >>"$ENV_FILE"
+fi
 
 cat >/etc/systemd/system/lumpy-orchestrator.service <<EOF
 [Unit]
