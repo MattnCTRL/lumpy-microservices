@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type {
   FleetMounts,
   FleetNodeKind,
@@ -29,18 +29,15 @@ export default function FleetPage() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // Auto-select only on first load, so tapping "Back" on mobile isn't undone.
-  const didAutoSelect = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const list = await api.listServers();
       setServers(list);
       setError(null);
-      if (!didAutoSelect.current) {
-        didAutoSelect.current = true;
-        setSelectedId((current) => current ?? list[0]?.id ?? null);
-      }
+      // Don't auto-select: the device list is the landing for this tab. On mobile
+      // the detail covers the list, so auto-selecting would drop you into a device
+      // instead of the full fleet. Tap a device to drill in.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
     } finally {

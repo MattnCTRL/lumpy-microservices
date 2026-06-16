@@ -27,7 +27,9 @@ export default function ProjectsPage() {
       const list = await api.listProjects();
       setProjects(list);
       setError(null);
-      setSelectedId((cur) => cur ?? list[0]?.id ?? null);
+      // Don't auto-select: the list is the landing for this tab. On mobile the
+      // detail covers the list, so auto-selecting would drop you straight into a
+      // project instead of showing the full list. Tap a project to drill in.
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
     } finally {

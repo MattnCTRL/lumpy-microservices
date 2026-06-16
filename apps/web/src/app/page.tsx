@@ -468,7 +468,7 @@ function ConductorBar({ conductor, onExpand }: { conductor: Session | null; onEx
   return (
     <div className="border-t border-line bg-glass px-4 py-3 backdrop-blur-glass">
       {conductor && (
-        <SessionFeed sessionId={conductor.id} running={online} tail={6} className="mb-2 max-h-28" />
+        <SessionFeed sessionId={conductor.id} running={online} tail={12} className="mb-2 max-h-52 min-h-[7rem]" />
       )}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
