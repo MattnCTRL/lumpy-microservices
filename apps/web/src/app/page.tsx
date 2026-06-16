@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   Alert,
   HostedIncident,
+  LedgerEntry,
   RepoSyncStatus,
   Schedule,
   Server,
@@ -13,6 +14,7 @@ import type {
   Session,
 } from '@lumpy/shared';
 import { api, ORCHESTRATOR_URL } from '@/lib/api';
+import { LedgerView } from '@/components/LedgerView';
 import { SkeletonCards } from '@/components/Skeleton';
 
 export default function DashboardPage() {
@@ -23,12 +25,13 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<HostedIncident[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [repoSync, setRepoSync] = useState<RepoSyncStatus | null>(null);
+  const [playbook, setPlaybook] = useState<LedgerEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      const [sv, se, al, sc, inc, act, rs] = await Promise.all([
+      const [sv, se, al, sc, inc, act, rs, pb] = await Promise.all([
         api.listServers(),
         api.listSessions(),
         api.listAlerts(),
@@ -36,6 +39,7 @@ export default function DashboardPage() {
         api.listIncidents().catch(() => []),
         api.listActivity().catch(() => []),
         api.getRepoSync().catch(() => null),
+        api.getConductorLedger().catch(() => []),
       ]);
       setServers(sv);
       setSessions(se);
@@ -44,6 +48,7 @@ export default function DashboardPage() {
       setIncidents(inc);
       setActivity(act);
       setRepoSync(rs);
+      setPlaybook(pb);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
@@ -253,6 +258,17 @@ export default function DashboardPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-3 surface p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-neutral-300">Conductor playbook</h2>
+          <span className="text-[11px] text-neutral-600">the 1000-ft map</span>
+        </div>
+        <LedgerView
+          entries={playbook}
+          emptyHint="Empty for now - as the Conductor manages projects it records the map here: rules, pointers to where each project's data lives, and recurring maintenance. The detail stays in each project's own memory."
+        />
       </section>
         </>
       )}

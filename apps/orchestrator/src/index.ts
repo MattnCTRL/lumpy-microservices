@@ -6,6 +6,7 @@ import { authModule } from './auth/module.js';
 import { backupModule } from './backup/module.js';
 import { digestModule } from './digest/module.js';
 import { fleetModule } from './fleet/module.js';
+import { ledgerModule } from './ledger/module.js';
 import { logger } from './logger.js';
 import { ModuleRegistry } from './modules/registry.js';
 import { sessionsModule } from './modules/sessions/module.js';
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
     .add(digestModule)
     .add(activityModule)
     .add(backupModule)
+    .add(ledgerModule)
     .add(notifyModule);
   const app = await createApp({ sessions, registry, bus, settings: settingsStore, store });
 

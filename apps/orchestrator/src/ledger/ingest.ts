@@ -8,7 +8,7 @@ import type { Store } from '../store/sqlite.js';
 // orchestrator ingests them into the ledger on completion, then clears the file.
 const OUTCOME_REL = '.lumpy/outcome.jsonl';
 
-const VALID: ReadonlySet<string> = new Set<LedgerCategory>([
+export const VALID_CATEGORIES: ReadonlySet<string> = new Set<LedgerCategory>([
   'fact',
   'decision',
   'check',
@@ -20,6 +20,11 @@ const VALID: ReadonlySet<string> = new Set<LedgerCategory>([
   'rule',
   'maintenance',
 ]);
+
+/** Narrow an arbitrary string to a LedgerCategory, or null if not one. */
+export function asLedgerCategory(value: unknown): LedgerCategory | null {
+  return typeof value === 'string' && VALID_CATEGORIES.has(value) ? (value as LedgerCategory) : null;
+}
 
 /**
  * Ingest a finished task's compact outcomes into the ledger (deduped by the store),
@@ -49,10 +54,10 @@ export function ingestOutcomes(
     if (!s) continue;
     try {
       const o = JSON.parse(s) as { category?: string; statement?: string; detail?: string };
-      const category = (o.category ?? '').trim();
-      if (!o.statement || !VALID.has(category)) continue;
+      const category = asLedgerCategory((o.category ?? '').trim());
+      if (!o.statement || !category) continue;
       store.recordLedger(
-        { scope, projectId, category: category as LedgerCategory, statement: o.statement, detail: o.detail ?? null, source },
+        { scope, projectId, category, statement: o.statement, detail: o.detail ?? null, source },
         at,
       );
       n += 1;

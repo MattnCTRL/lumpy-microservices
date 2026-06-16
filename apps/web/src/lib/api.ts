@@ -195,6 +195,7 @@ export const api = {
   getKnowledge: (id: string) =>
     req(`/api/projects/${id}/knowledge`).then(parse<KnowledgeBase>),
   getLedger: (id: string) => req(`/api/projects/${id}/ledger`).then(parse<LedgerEntry[]>),
+  getConductorLedger: () => req('/api/ledger').then(parse<LedgerEntry[]>),
   putKnowledge: (id: string, claudeMd: string) =>
     send(`/api/projects/${id}/knowledge`, 'PUT', { claudeMd }).then(parse<KnowledgeBase>),
   deriveKnowledge: (id: string) =>

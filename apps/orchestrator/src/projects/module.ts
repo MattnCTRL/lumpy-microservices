@@ -10,7 +10,7 @@ import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { SessionCapacityError } from '../sessions/manager.js';
 import { resolveRunAs, type RunAs } from '../sessions/runas.js';
 import { FleetStore } from '../store/fleet.js';
-import { ledgerDigest } from '../ledger/ingest.js';
+import { asLedgerCategory, ledgerDigest } from '../ledger/ingest.js';
 import { DRAFT_PATH, approveDraft, discardDraft, readKnowledge, writeClaudeMd } from './knowledge.js';
 import { buildProjectMcpServers } from './mcp.js';
 
@@ -280,6 +280,36 @@ export const projectsModule: LumpyModule = {
       const { id } = request.params as { id: string };
       if (!store.getProject(id)) return reply.status(404).send({ error: 'project not found' });
       return store.listLedger('project', id);
+    });
+
+    // Record into a project's ledger. The Conductor uses this to leave an access
+    // trail (category "access") when it leans on a project's data - read the same
+    // thing >= 3 times and the store adopts it as cached truth, saving recompute.
+    app.post('/api/projects/:id/ledger', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (!store.getProject(id)) return reply.status(404).send({ error: 'project not found' });
+      const body = (request.body ?? {}) as {
+        category?: unknown;
+        statement?: unknown;
+        detail?: unknown;
+        source?: unknown;
+      };
+      const category = asLedgerCategory(body.category);
+      const statement = typeof body.statement === 'string' ? body.statement.trim() : '';
+      if (!category) return reply.status(400).send({ error: 'invalid or missing category' });
+      if (!statement) return reply.status(400).send({ error: 'statement is required' });
+      store.recordLedger(
+        {
+          scope: 'project',
+          projectId: id,
+          category,
+          statement,
+          detail: typeof body.detail === 'string' ? body.detail : null,
+          source: typeof body.source === 'string' ? body.source : 'conductor',
+        },
+        new Date().toISOString(),
+      );
+      return reply.status(201).send({ ok: true });
     });
 
     app.put('/api/projects/:id/knowledge', async (request, reply) => {
