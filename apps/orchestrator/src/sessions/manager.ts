@@ -28,6 +28,13 @@ const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
 const TOUCH_INTERVAL_MS = 5000;
 
+// Transient-error auto-retry budget for interactive sessions. Up to RETRY_MAX
+// re-nudges within RETRY_WINDOW_MS, each after a growing backoff so we ride out an
+// API hiccup without hammering it or looping forever.
+const RETRY_MAX = 3;
+const RETRY_WINDOW_MS = 5 * 60_000;
+const RETRY_BACKOFFS_MS = [8_000, 20_000, 45_000];
+
 const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
 
 /**
@@ -82,6 +89,9 @@ export class SessionManager {
   private readonly inputChains = new Map<string, Promise<void>>();
   // When a session last stopped (drives task auto-retire / doneForMs).
   private readonly stoppedAt = new Map<string, number>();
+  // Transient-error auto-retry: timestamps of recent retries per session (a rolling
+  // window bounds how many times we re-nudge a session through an API hiccup).
+  private readonly retryTimes = new Map<string, number[]>();
 
   constructor(
     private readonly store: Store,
@@ -516,8 +526,9 @@ export class SessionManager {
   private attachBroker(id: string): Broker {
     this.stoppedAt.delete(id); // it's (re)starting - no longer "done"
     const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS, this.runAs);
-    const tracker = new ActivityTracker((activity, prompt) =>
-      this.setActivity(id, activity, prompt),
+    const tracker = new ActivityTracker(
+      (activity, prompt) => this.setActivity(id, activity, prompt),
+      () => this.handleTransientError(id),
     );
 
     broker.onData((chunk) => {
@@ -541,6 +552,7 @@ export class SessionManager {
     this.activities.delete(id);
     this.prompts.delete(id);
     this.inputChains.delete(id);
+    this.retryTimes.delete(id);
     tracker?.stop();
     broker?.dispose();
     return true;
@@ -585,6 +597,54 @@ export class SessionManager {
   private publishStatus(id: string, status: SessionStatus): void {
     const name = this.store.getSession(id)?.name ?? id;
     this.bus.publish({ type: 'session.status', id, name, status, at: new Date().toISOString() });
+  }
+
+  /**
+   * A session's last turn failed with a transient API error (5xx / rate / overloaded).
+   * For an INTERACTIVE session that stays at a prompt (the Conductor, or a session
+   * you drive) we auto-retry: after a backoff, nudge it to re-attempt the request it
+   * has in context. Bounded to RETRY_MAX within RETRY_WINDOW_MS so we never loop.
+   * Headless one-shot tasks (claude -p) exit on error, so a nudge can't reach them -
+   * they're left to be restarted instead.
+   */
+  private handleTransientError(id: string): void {
+    const record = this.store.getSession(id);
+    if (!record) return;
+    if (record.task && !record.locked) return; // headless one-shot task: it has exited
+
+    const now = Date.now();
+    const times = (this.retryTimes.get(id) ?? []).filter((t) => now - t < RETRY_WINDOW_MS);
+    if (times.length >= RETRY_MAX) {
+      this.retryTimes.set(id, times);
+      logger.warn({ id }, 'transient-error retry budget exhausted; leaving it for the operator');
+      return;
+    }
+    times.push(now);
+    this.retryTimes.set(id, times);
+    const attempt = times.length;
+    const delay = RETRY_BACKOFFS_MS[Math.min(attempt - 1, RETRY_BACKOFFS_MS.length - 1)]!;
+    logger.info({ id, attempt, delay }, 'transient API error - scheduling auto-retry');
+    const timer = setTimeout(() => void this.sendRetry(id, attempt), delay);
+    timer.unref();
+  }
+
+  private async sendRetry(id: string, attempt: number): Promise<void> {
+    if (!this.brokers.has(id)) return; // session gone
+    // If it's working again, the turn is already being re-attempted - wait and recheck.
+    if (this.activities.get(id) === 'working') {
+      const timer = setTimeout(() => void this.sendRetry(id, attempt), 5_000);
+      timer.unref();
+      return;
+    }
+    const nudge =
+      `The previous request hit a transient API error before it completed. ` +
+      `Please try it again now (automatic retry ${attempt}/${RETRY_MAX}).`;
+    // Clear any pre-filled input, type the nudge, submit it - same as an operator send.
+    await this.input(id, '\x15');
+    await this.input(id, nudge);
+    await new Promise((r) => setTimeout(r, 120));
+    await this.input(id, '\r');
+    logger.info({ id, attempt }, 'sent transient-error auto-retry nudge');
   }
 
   private touch(id: string): void {

@@ -94,3 +94,48 @@ test('only emits on a real change', () => {
   assert.deepEqual(changes, ['working']);
   tracker.stop();
 });
+
+test('fires once when a transient API error appears', () => {
+  let fired = 0;
+  const tracker = new ActivityTracker(
+    () => {},
+    () => {
+      fired += 1;
+    },
+  );
+  tracker.feed(Buffer.from('● API Error: 500 Internal server error. try again in a moment\n'));
+  assert.equal(fired, 1, 'fires on the new transient error');
+  // The same error lingering in the rolling tail must not re-fire.
+  tracker.feed(Buffer.from('more output\n'));
+  assert.equal(fired, 1, 'a lingering error does not re-fire');
+  tracker.stop();
+});
+
+test('fires again only for a genuinely new transient error', () => {
+  let fired = 0;
+  const tracker = new ActivityTracker(
+    () => {},
+    () => {
+      fired += 1;
+    },
+  );
+  tracker.feed(Buffer.from('API Error: 529 overloaded\n'));
+  assert.equal(fired, 1);
+  tracker.feed(Buffer.from('recovered, working again\n'));
+  tracker.feed(Buffer.from('API Error: 503 service unavailable\n'));
+  assert.equal(fired, 2, 'a second distinct error fires again');
+  tracker.stop();
+});
+
+test('does not treat a non-transient 4xx as retryable', () => {
+  let fired = 0;
+  const tracker = new ActivityTracker(
+    () => {},
+    () => {
+      fired += 1;
+    },
+  );
+  tracker.feed(Buffer.from('API Error: 400 bad request - your prompt was malformed\n'));
+  assert.equal(fired, 0, '400 is not transient; no auto-retry');
+  tracker.stop();
+});

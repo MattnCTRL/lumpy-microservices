@@ -6,7 +6,7 @@
 // eslint-disable-next-line no-control-regex
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
 const BANNER = /[█▛▜▝▘▐▌▄▀]/; // Claude ASCII-art logo glyphs
-const RULE = /^[─—_]{4,}$/; // box-border rules
+const RULE = /^[─_]{4,}$/; // box-border rules
 
 function isNoise(s: string): boolean {
   return (

@@ -20,6 +20,11 @@ const PERMISSION_PATTERNS = [
   /allow this (action|command|tool)/i,
 ];
 
+// Claude Code renders a failed turn as e.g. "API Error: 500 Internal server
+// error ... try again". 5xx, 429 (rate) and "overloaded" are transient and worth
+// an automatic retry; 4xx like 400 (bad request) are not, so we don't match them.
+const TRANSIENT_ERROR = /api error:\s*(429|5\d\d|overloaded)/gi;
+
 function stripAnsi(input: string): string {
   return input.replace(ANSI_PATTERN, '');
 }
@@ -91,10 +96,15 @@ export class ActivityTracker {
   private lastDataAt = 0;
   private current: SessionActivity = 'unknown';
   private currentPrompt: SessionPrompt | null = null;
+  // Count of transient-error occurrences last seen in the tail. We fire only when
+  // the count INCREASES (a genuinely new error), so an error lingering in the
+  // rolling window after a successful retry never re-triggers.
+  private lastTransientCount = 0;
   private readonly timer: NodeJS.Timeout;
 
   constructor(
     private readonly onChange: (activity: SessionActivity, prompt: SessionPrompt | null) => void,
+    private readonly onTransientError?: () => void,
   ) {
     this.timer = setInterval(() => this.evaluate(), TICK_MS);
     this.timer.unref();
@@ -137,5 +147,11 @@ export class ActivityTracker {
       this.currentPrompt = nextPrompt;
       this.onChange(next, nextPrompt);
     }
+
+    // A new transient API error means the turn failed; signal so the manager can
+    // auto-retry. Count-based so a lingering error doesn't fire repeatedly.
+    const count = (this.tail.match(TRANSIENT_ERROR) ?? []).length;
+    if (count > this.lastTransientCount) this.onTransientError?.();
+    this.lastTransientCount = count;
   }
 }
