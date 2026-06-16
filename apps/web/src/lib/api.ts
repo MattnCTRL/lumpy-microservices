@@ -11,6 +11,7 @@ import type {
   HealthResponse,
   HostedIncident,
   KnowledgeBase,
+  LedgerEntry,
   PendingRemediation,
   Playbook,
   Project,
@@ -193,6 +194,7 @@ export const api = {
   deleteProject: (id: string) => send(`/api/projects/${id}`, 'DELETE').then(ok),
   getKnowledge: (id: string) =>
     req(`/api/projects/${id}/knowledge`).then(parse<KnowledgeBase>),
+  getLedger: (id: string) => req(`/api/projects/${id}/ledger`).then(parse<LedgerEntry[]>),
   putKnowledge: (id: string, claudeMd: string) =>
     send(`/api/projects/${id}/knowledge`, 'PUT', { claudeMd }).then(parse<KnowledgeBase>),
   deriveKnowledge: (id: string) =>

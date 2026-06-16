@@ -537,6 +537,51 @@ export interface TailnetDevice {
 
 // --- Alerts --------------------------------------------------------------
 
+/**
+ * The two-tier memory ("repo of sorts"). PROJECT scope holds a project's nitty-gritty
+ * (facts, decisions, lessons, gotchas, and where its keys/data live). CONDUCTOR scope
+ * is the 1000-ft playbook: how to manage each project and where to reach its data
+ * (pointers), plus rules and maintenance - the map, not the territory. Entries are
+ * terse and DEDUPED on (scope, project, category, statement): re-recording the same
+ * thing bumps `count`/`lastAt` instead of duplicating. Frequently-accessed data gets
+ * `adopted` (cached as truth) to save re-fetching.
+ */
+export type LedgerScope = 'project' | 'conductor';
+
+export type LedgerCategory =
+  // project scope
+  | 'fact'
+  | 'decision'
+  | 'check'
+  | 'gotcha'
+  | 'source' // where keys / external data live
+  | 'access' // a data-access trail entry (the "library card")
+  // conductor scope
+  | 'playbook' // how to manage a project
+  | 'pointer' // where a project's data/repo is
+  | 'rule'
+  | 'maintenance';
+
+export interface LedgerEntry {
+  id: string;
+  scope: LedgerScope;
+  /** The project this entry belongs to (null/'' for conductor scope). */
+  projectId: string | null;
+  category: LedgerCategory;
+  /** The terse, normalized statement - also the dedup key within its bucket. */
+  statement: string;
+  /** Optional short elaboration (kept compact; never raw transcripts). */
+  detail: string | null;
+  /** Times recorded (dedup increments this rather than adding a row). */
+  count: number;
+  /** Accessed/confirmed enough to be treated as cached truth. */
+  adopted: boolean;
+  /** The task/session that recorded it, for provenance. */
+  source: string | null;
+  firstAt: string;
+  lastAt: string;
+}
+
 export type AlertSeverity = 'warning' | 'critical';
 
 export interface Alert {

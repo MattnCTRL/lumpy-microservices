@@ -17,6 +17,7 @@ import { logger } from '../logger.js';
 import type { SessionRecord, Store } from '../store/sqlite.js';
 import { ActivityTracker } from './activity.js';
 import { Broker } from './broker.js';
+import { ingestOutcomes } from '../ledger/ingest.js';
 import { buildProjectMcpServers, hasScopedSupabaseDb } from '../projects/mcp.js';
 import { buildLaunchCommand } from './launch.js';
 import { isClaudeCommand, resumeCommand } from './resume.js';
@@ -547,6 +548,23 @@ export class SessionManager {
 
   private teardown(id: string): void {
     this.stoppedAt.set(id, Date.now());
+    // A finished task writes its compact outcomes into the project (or platform)
+    // ledger before its card retires - the durable memory, not the transcript.
+    const record = this.store.getSession(id);
+    if (record && record.task && !record.locked) {
+      try {
+        ingestOutcomes(
+          this.store,
+          record.workspace,
+          record.projectId ? 'project' : 'conductor',
+          record.projectId,
+          record.name,
+          new Date().toISOString(),
+        );
+      } catch (error) {
+        logger.warn({ id, error }, 'ledger ingest failed');
+      }
+    }
     if (this.detach(id)) this.publishStatus(id, 'stopped');
   }
 

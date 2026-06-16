@@ -10,6 +10,7 @@ import type { LumpyModule, ModuleContext } from '../modules/types.js';
 import { SessionCapacityError } from '../sessions/manager.js';
 import { resolveRunAs, type RunAs } from '../sessions/runas.js';
 import { FleetStore } from '../store/fleet.js';
+import { ledgerDigest } from '../ledger/ingest.js';
 import { DRAFT_PATH, approveDraft, discardDraft, readKnowledge, writeClaudeMd } from './knowledge.js';
 import { buildProjectMcpServers } from './mcp.js';
 
@@ -261,6 +262,7 @@ export const projectsModule: LumpyModule = {
       // The project's hosted-service URLs are no longer probed, so clear their
       // incidents rather than leaving an open one skewing uptime forever.
       store.deleteHostedIncidentsForProject(id);
+      store.deleteLedgerForProject(id);
       return reply.status(204).send();
     });
 
@@ -271,6 +273,13 @@ export const projectsModule: LumpyModule = {
       const project = store.getProject(id);
       if (!project) return reply.status(404).send({ error: 'project not found' });
       return readKnowledge(project.workspace);
+    });
+
+    // The project's memory ledger (compact, deduped facts/decisions/checks/gotchas).
+    app.get('/api/projects/:id/ledger', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (!store.getProject(id)) return reply.status(404).send({ error: 'project not found' });
+      return store.listLedger('project', id);
     });
 
     app.put('/api/projects/:id/knowledge', async (request, reply) => {
@@ -332,6 +341,14 @@ export const projectsModule: LumpyModule = {
         if (token) librarianEnv.GITHUB_TOKEN = token;
       }
 
+      // Seed the project's existing memory so the librarian builds on it instead
+      // of re-deriving what is already known.
+      const baseTask = buildLibrarianTask(project, mountPath, servers);
+      const prior = ledgerDigest(store, project.id);
+      const task = prior
+        ? `${baseTask}\n\nPRIOR PROJECT MEMORY (build on this; do not re-derive what is already known):\n${prior}`
+        : baseTask;
+
       try {
         const session = await ctx.sessions.create({
           name: `Librarian: ${project.name}`,
@@ -339,7 +356,7 @@ export const projectsModule: LumpyModule = {
           command: config.defaultCommand,
           tags: ['librarian'],
           autonomous: true,
-          task: buildLibrarianTask(project, mountPath, servers),
+          task,
           projectId: project.id,
           env: librarianEnv,
         });

@@ -7,6 +7,9 @@ import type {
   Alert,
   HostedIncident,
   HostedService,
+  LedgerCategory,
+  LedgerEntry,
+  LedgerScope,
   McpServerDef,
   Project,
   ProjectDatabase,
@@ -18,6 +21,36 @@ import type {
   SessionConnectors,
 } from '@lumpy/shared';
 import { decryptSecret, encryptSecret, loadOrCreateKey } from '../crypto/secret.js';
+
+interface LedgerRow {
+  id: string;
+  scope: string;
+  project_id: string;
+  category: string;
+  statement: string;
+  detail: string | null;
+  count: number;
+  adopted: number;
+  source: string | null;
+  first_at: string;
+  last_at: string;
+}
+
+function toLedgerEntry(row: LedgerRow): LedgerEntry {
+  return {
+    id: row.id,
+    scope: row.scope as LedgerEntry['scope'],
+    projectId: row.project_id || null,
+    category: row.category as LedgerEntry['category'],
+    statement: row.statement,
+    detail: row.detail,
+    count: row.count,
+    adopted: row.adopted === 1,
+    source: row.source,
+    firstAt: row.first_at,
+    lastAt: row.last_at,
+  };
+}
 
 export interface SessionRecord {
   id: string;
@@ -325,6 +358,85 @@ export class Store {
         created_at TEXT NOT NULL
       );
     `);
+    // The two-tier memory ledger. project_id is '' for conductor scope so the
+    // UNIQUE dedup key works (SQLite treats NULLs as distinct). Re-recording the
+    // same (scope, project, category, statement) bumps count/last_at, never dupes.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS ledger (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        project_id TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        detail TEXT,
+        count INTEGER NOT NULL DEFAULT 1,
+        adopted INTEGER NOT NULL DEFAULT 0,
+        source TEXT,
+        first_at TEXT NOT NULL,
+        last_at TEXT NOT NULL,
+        UNIQUE(scope, project_id, category, statement)
+      );
+      CREATE INDEX IF NOT EXISTS idx_ledger_scope ON ledger(scope, project_id, last_at);
+    `);
+  }
+
+  /** Record a ledger entry, deduped on (scope, project, category, statement). A
+   *  repeat bumps count/last_at; an 'access' entry leaned on repeatedly is adopted. */
+  recordLedger(
+    e: {
+      scope: LedgerScope;
+      projectId?: string | null;
+      category: LedgerCategory;
+      statement: string;
+      detail?: string | null;
+      source?: string | null;
+    },
+    at: string,
+  ): void {
+    const pid = e.projectId ?? '';
+    const statement = e.statement.trim().slice(0, 300);
+    if (!statement) return;
+    this.db
+      .prepare(
+        `INSERT INTO ledger (id, scope, project_id, category, statement, detail, count, adopted, source, first_at, last_at)
+         VALUES (@id, @scope, @pid, @category, @statement, @detail, 1, 0, @source, @at, @at)
+         ON CONFLICT(scope, project_id, category, statement) DO UPDATE SET
+           count = count + 1,
+           last_at = @at,
+           detail = COALESCE(@detail, ledger.detail),
+           source = COALESCE(@source, ledger.source)`,
+      )
+      .run({
+        id: randomUUID(),
+        scope: e.scope,
+        pid,
+        category: e.category,
+        statement,
+        detail: e.detail?.trim().slice(0, 600) ?? null,
+        source: e.source ?? null,
+        at,
+      });
+    // Learning behaviour: data accessed repeatedly is adopted as cached truth.
+    if (e.category === 'access') {
+      this.db
+        .prepare(
+          `UPDATE ledger SET adopted = 1
+           WHERE scope=@scope AND project_id=@pid AND category='access' AND statement=@statement AND count >= 3`,
+        )
+        .run({ scope: e.scope, pid, statement });
+    }
+  }
+
+  listLedger(scope: LedgerScope, projectId: string | null, limit = 200): LedgerEntry[] {
+    const rows = this.db
+      .prepare('SELECT * FROM ledger WHERE scope = ? AND project_id = ? ORDER BY last_at DESC LIMIT ?')
+      .all(scope, projectId ?? '', limit) as LedgerRow[];
+    return rows.map(toLedgerEntry);
+  }
+
+  /** Remove a project's ledger (called when the project is deleted). */
+  deleteLedgerForProject(projectId: string): void {
+    this.db.prepare("DELETE FROM ledger WHERE scope = 'project' AND project_id = ?").run(projectId);
   }
 
   addPendingRemediation(alert: Alert, at: string): void {

@@ -28,6 +28,17 @@ export const PROGRESS_NOTE =
   'can be resumed later without losing context.';
 
 /**
+ * Appended so a finished task leaves compact, deduped memory in the project ledger
+ * rather than perpetual transcripts. The orchestrator ingests this file on completion.
+ */
+export const OUTCOME_NOTE =
+  'When you finish, record what you did and learned by appending compact JSON lines to ' +
+  '.lumpy/outcome.jsonl - one object per line: ' +
+  '{"category":"fact|decision|check|gotcha|source|access","statement":"<terse>","detail":"<optional short>"}. ' +
+  'Record the FACT and its result (e.g. "disk check on Nublear - no anomalies"), not raw output; ' +
+  'use "access" when you read an external data source. Be terse and non-duplicative - this is the project memory.';
+
+/**
  * Build the shell command to run inside tmux from a base command.
  *
  * For Claude sessions, autonomous mode adds --dangerously-skip-permissions so it
@@ -58,7 +69,7 @@ export function buildLaunchCommand(base: string, options: LaunchOptions): string
     // mode). It MUST be the value of -p, not a trailing positional - `--mcp-config`
     // is variadic and would otherwise swallow the prompt as another config-file
     // path, which silently killed every task session on startup.
-    const full = options.autonomous ? `${task}\n\n${PROGRESS_NOTE}` : task;
+    const full = options.autonomous ? `${task}\n\n${PROGRESS_NOTE}\n\n${OUTCOME_NOTE}` : task;
     parts.push('-p', shquote(full));
   }
 
