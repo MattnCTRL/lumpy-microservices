@@ -20,6 +20,7 @@ interface Kind {
   ring: string;
 }
 const KINDS: Record<string, Kind> = {
+  conductor: { label: 'Conductor', icon: '👑', tint: 'tint-violet', ring: 'text-violet' },
   librarian: { label: 'Librarian', icon: '📚', tint: 'tint-violet', ring: 'text-violet' },
   remediation: { label: 'Remediation', icon: '🔧', tint: 'tint-coral', ring: 'text-coral' },
   scheduled: { label: 'Scheduled', icon: '⏰', tint: 'tint-ice', ring: 'text-ice' },
@@ -29,6 +30,7 @@ const KINDS: Record<string, Kind> = {
 const SESSION_KIND: Kind = { label: 'Session', icon: '⌨', tint: 'tint-ice', ring: 'text-ice' };
 
 function kindOf(s: Session): Kind {
+  if (s.kind === 'conductor') return KINDS.conductor!;
   if (s.kind === 'session') return SESSION_KIND;
   for (const tag of s.tags) if (KINDS[tag]) return KINDS[tag];
   return KINDS.task;
@@ -105,10 +107,20 @@ export default function CommandCenterPage() {
     };
   }, [refresh]);
 
+  // The Conductor is the command bar, not a card - EXCEPT while it's actively
+  // working on your command, when it appears in Running so the board reflects that
+  // something is happening (it does most coordination itself, inline).
+  const conductorBusy =
+    conductor?.status === 'running' &&
+    (conductor.activity === 'working' || conductor.activity === 'awaiting_permission');
+  const cards = conductorBusy && conductor ? [conductor, ...sessions] : sessions;
+
   const byLane: Record<LaneKey, Session[]> = { queued: [], running: [], finalizing: [], done: [] };
-  for (const s of sessions) byLane[laneOf(s)].push(s);
+  for (const s of cards) byLane[laneOf(s)].push(s);
   const activeCount = byLane.queued.length + byLane.running.length;
-  const wrapping = byLane.finalizing.length + byLane.done.length;
+  // "Wrapping up" = tasks finishing/draining; parked = stopped sessions you can resume.
+  const finishing = byLane.finalizing.length + byLane.done.filter((s) => s.kind !== 'session').length;
+  const parked = byLane.done.filter((s) => s.kind === 'session').length;
 
   const liveSelected =
     [...sessions, ...(conductor ? [conductor] : [])].find((s) => s.id === selectedId) ?? null;
@@ -131,7 +143,9 @@ export default function CommandCenterPage() {
           <h1 className="text-lg font-semibold text-neutral-100">Command center</h1>
           {!loading && (
             <span className="text-xs text-neutral-500">
-              {activeCount} active{wrapping > 0 && ` · ${wrapping} wrapping up`}
+              {activeCount} active
+              {finishing > 0 && ` · ${finishing} wrapping up`}
+              {parked > 0 && ` · ${parked} parked`}
             </span>
           )}
         </div>
@@ -295,6 +309,13 @@ function StageLine({
   }
   if (lane === 'queued') return <span className="text-neutral-500">queued · {ago(session.createdAt)}</span>;
   if (lane === 'running') {
+    if (session.kind === 'conductor') {
+      return (
+        <span className={`flex items-center gap-1.5 ${ring}`}>
+          <Spinner /> coordinating…
+        </span>
+      );
+    }
     if (isSession) return <span className={ring}>live workspace</span>;
     return (
       <span className={`flex items-center gap-1.5 ${ring}`}>
