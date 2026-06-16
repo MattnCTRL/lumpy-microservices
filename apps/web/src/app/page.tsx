@@ -113,14 +113,20 @@ export default function CommandCenterPage() {
   const conductorBusy =
     conductor?.status === 'running' &&
     (conductor.activity === 'working' || conductor.activity === 'awaiting_permission');
-  const cards = conductorBusy && conductor ? [conductor, ...sessions] : sessions;
+
+  // The kanban lanes are ONLY for things that actually flow through them: tasks
+  // moving Queued -> Done, and the Conductor while it's working. Stopped interactive
+  // sessions are static - they don't move - so they live on a separate "parked"
+  // shelf below the board instead of sitting forever in Done (which read as a
+  // disconnect: a flow board with nothing flowing).
+  const parked = sessions.filter((s) => s.kind === 'session' && s.status === 'stopped');
+  const flowing = sessions.filter((s) => !(s.kind === 'session' && s.status === 'stopped'));
+  const cards = conductorBusy && conductor ? [conductor, ...flowing] : flowing;
 
   const byLane: Record<LaneKey, Session[]> = { queued: [], running: [], finalizing: [], done: [] };
   for (const s of cards) byLane[laneOf(s)].push(s);
   const activeCount = byLane.queued.length + byLane.running.length;
-  // "Wrapping up" = tasks finishing/draining; parked = stopped sessions you can resume.
-  const finishing = byLane.finalizing.length + byLane.done.filter((s) => s.kind !== 'session').length;
-  const parked = byLane.done.filter((s) => s.kind === 'session').length;
+  const finishing = byLane.finalizing.length + byLane.done.length;
 
   const liveSelected =
     [...sessions, ...(conductor ? [conductor] : [])].find((s) => s.id === selectedId) ?? null;
@@ -145,7 +151,7 @@ export default function CommandCenterPage() {
             <span className="text-xs text-neutral-500">
               {activeCount} active
               {finishing > 0 && ` · ${finishing} wrapping up`}
-              {parked > 0 && ` · ${parked} parked`}
+              {parked.length > 0 && ` · ${parked.length} parked`}
             </span>
           )}
         </div>
@@ -174,6 +180,30 @@ export default function CommandCenterPage() {
           </div>
         )}
       </div>
+
+      {parked.length > 0 && (
+        <div className="border-t border-line px-4 py-2">
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+            Parked sessions
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {parked.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedId(s.id)}
+                className="surface flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-left transition hover:shadow-glass-lg"
+                title={`Resume ${s.name}`}
+              >
+                <span className="text-sm leading-none">⌨</span>
+                <span className="max-w-[12rem] truncate text-xs font-medium text-neutral-100">
+                  {s.name}
+                </span>
+                <span className="shrink-0 text-[10px] text-neutral-500">resume →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ConductorBar conductor={conductor} onExpand={() => conductor && setSelectedId(conductor.id)} />
 
