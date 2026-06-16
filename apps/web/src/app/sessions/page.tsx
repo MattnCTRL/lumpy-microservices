@@ -22,7 +22,9 @@ export default function SessionsPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const list = await api.listSessions();
+      // Tasks (headless one-shot jobs) live on the Mission Control board, not here -
+      // this list is the things you actually drive (the Conductor + your sessions).
+      const list = (await api.listSessions()).filter((s) => s.kind !== 'task');
       setSessions(list);
       setError(null);
       if (!didAutoSelect.current) {

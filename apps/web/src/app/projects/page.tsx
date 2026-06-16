@@ -411,13 +411,14 @@ function KnowledgePanel({ project }: { project: Project }) {
   const [draftText, setDraftText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
 
   const load = useCallback(() => {
     api
       .getKnowledge(project.id)
       .then((k) => {
         setKb(k);
-        setDraftText(k.claudeMd);
+        setDraftText((t) => t || k.claudeMd);
       })
       .catch(() => {});
   }, [project.id]);
@@ -426,12 +427,40 @@ function KnowledgePanel({ project }: { project: Project }) {
     load();
   }, [load]);
 
+  // While the librarian runs on the Mission Control board, poll for its draft and
+  // surface it here automatically when it lands (no manual refresh needed).
+  useEffect(() => {
+    if (!working) return;
+    let elapsed = 0;
+    const iv = setInterval(async () => {
+      elapsed += 6;
+      try {
+        const k = await api.getKnowledge(project.id);
+        setKb(k);
+        if (k.draft !== null) {
+          setWorking(false);
+          setNote('Draft ready - review and approve below.');
+        }
+      } catch {
+        // transient; keep polling
+      }
+      if (elapsed >= 360) {
+        setWorking(false);
+        setNote('The librarian is taking a while - check Mission Control, or hit refresh.');
+      }
+    }, 6000);
+    return () => clearInterval(iv);
+  }, [working, project.id]);
+
   const derive = async () => {
     setBusy('derive');
     setNote(null);
     try {
       await api.deriveKnowledge(project.id);
-      setNote('Librarian started - it will read your sources and write a draft. Refresh in a bit.');
+      setWorking(true);
+      setNote('Librarian running (see Mission Control) - the draft appears here when it finishes.');
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'could not start the librarian');
     } finally {
       setBusy(null);
     }
@@ -449,10 +478,14 @@ function KnowledgePanel({ project }: { project: Project }) {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={derive}
-              disabled={busy !== null}
+              disabled={busy !== null || working}
               className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
             >
-              {busy === 'derive' ? 'Starting librarian…' : '✦ Build / refresh from sources'}
+              {busy === 'derive'
+                ? 'Starting librarian…'
+                : working
+                  ? 'Librarian running…'
+                  : '✦ Build / refresh from sources'}
             </button>
             <button onClick={load} className="text-xs text-neutral-500 hover:text-neutral-200">
               refresh
@@ -497,7 +530,7 @@ function KnowledgePanel({ project }: { project: Project }) {
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
               className="input h-48 font-mono text-xs"
-              placeholder="# Operating manual\n\nWrite or generate the rules that govern this project…"
+              placeholder={'# Operating manual\n\nWrite or generate the rules that govern this project…'}
             />
             <button
               onClick={async () => {

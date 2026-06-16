@@ -41,6 +41,16 @@ export interface Session {
   autonomous: boolean;
   /** Optional task the session was started with. */
   task: string | null;
+  /**
+   * What this session IS, for the UI split:
+   * - 'conductor': the locked master orchestrator (persistent, interactive)
+   * - 'task': a headless one-shot job (librarian/remediation/scheduled/service or
+   *   any autonomous session with a task) - runs to completion then auto-retires
+   * - 'session': a plain interactive session you drive
+   */
+  kind: 'conductor' | 'task' | 'session';
+  /** For a finished task: ms since it stopped (drives the auto-retire), else null. */
+  doneForMs: number | null;
   createdAt: string;
   lastActivityAt: string | null;
 }

@@ -68,6 +68,9 @@ export const config = {
   // processes to OOM a small box. 0 disables the cap. The locked Conductor is
   // always exempt (it is the constant).
   maxConcurrentSessions: Number(env('LUMPY_MAX_SESSIONS', '8')),
+  // How long a finished one-shot task lingers on the board before auto-retiring
+  // (its output persists in the project; only the session artifact is cleared).
+  taskReapGraceMs: Number(env('LUMPY_TASK_REAP_GRACE_MS', '90000')),
   // Admission control: refuse to spawn a new session when less than this much
   // memory is available (MemAvailable on Linux). 0 disables the check. Left off
   // by default because macOS free-memory reporting is misleading; the box sets

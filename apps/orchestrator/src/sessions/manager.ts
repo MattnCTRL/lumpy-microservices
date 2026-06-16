@@ -79,6 +79,8 @@ export class SessionManager {
   private readonly lastTouch = new Map<string, number>();
   // Per-session serialization of input writes (see input()).
   private readonly inputChains = new Map<string, Promise<void>>();
+  // When a session last stopped (drives task auto-retire / doneForMs).
+  private readonly stoppedAt = new Map<string, number>();
 
   constructor(
     private readonly store: Store,
@@ -425,6 +427,7 @@ export class SessionManager {
     await tmux.killSession(this.tmuxName(id));
     this.store.deleteSession(id);
     this.lastTouch.delete(id);
+    this.stoppedAt.delete(id);
     logger.info({ id }, 'session removed');
     return true;
   }
@@ -510,6 +513,7 @@ export class SessionManager {
   }
 
   private attachBroker(id: string): Broker {
+    this.stoppedAt.delete(id); // it's (re)starting - no longer "done"
     const broker = new Broker(this.tmuxName(id), DEFAULT_COLS, DEFAULT_ROWS, this.runAs);
     const tracker = new ActivityTracker((activity, prompt) =>
       this.setActivity(id, activity, prompt),
@@ -542,6 +546,7 @@ export class SessionManager {
   }
 
   private teardown(id: string): void {
+    this.stoppedAt.set(id, Date.now());
     if (this.detach(id)) this.publishStatus(id, 'stopped');
   }
 
@@ -573,6 +578,11 @@ export class SessionManager {
   }
 
   private toSession(record: SessionRecord, live: boolean): Session {
+    // A session is the locked Conductor, a one-shot task (has a task prompt), or a
+    // plain interactive session. Tasks run headless and auto-retire when done.
+    const kind = record.locked ? 'conductor' : record.task ? 'task' : 'session';
+    const stoppedAt = this.stoppedAt.get(record.id);
+    const doneForMs = !live && stoppedAt !== undefined ? Date.now() - stoppedAt : null;
     return {
       id: record.id,
       name: record.name,
@@ -586,8 +596,31 @@ export class SessionManager {
       prompt: live ? (this.prompts.get(record.id) ?? null) : null,
       autonomous: record.autonomous,
       task: record.task,
+      kind,
+      doneForMs,
       createdAt: record.createdAt,
       lastActivityAt: record.lastActivityAt,
     };
+  }
+
+  /**
+   * Retire finished one-shot tasks (librarian/remediation/scheduled/service or any
+   * autonomous session with a task) once they have been stopped longer than the
+   * grace window - their card flashes "done" then drains off the board. Their
+   * OUTPUT persists where it belongs (e.g. the librarian's draft in the project),
+   * so only the disposable session artifact is cleared. Interactive sessions and
+   * the Conductor are never reaped.
+   */
+  async reapDoneTasks(graceMs: number): Promise<void> {
+    const now = Date.now();
+    for (const record of this.store.listSessions()) {
+      if (record.locked || !record.task) continue; // tasks only
+      if (await tmux.sessionExists(this.tmuxName(record.id))) continue; // still running
+      const since = this.stoppedAt.get(record.id) ?? Date.parse(record.createdAt);
+      if (Number.isFinite(since) && now - since > graceMs) {
+        this.stoppedAt.delete(record.id);
+        await this.remove(record.id);
+      }
+    }
   }
 }

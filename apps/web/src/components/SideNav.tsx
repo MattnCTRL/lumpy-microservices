@@ -15,6 +15,7 @@ interface Item {
 // Full nav - shown on the desktop left rail.
 const NAV: Item[] = [
   { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/tasks', label: 'Tasks', icon: '🛰️' },
   { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/sessions', label: 'Sessions', icon: '⌨' },
   { href: '/services', label: 'Services', icon: '🧩' },
@@ -26,11 +27,12 @@ const NAV: Item[] = [
 // Everything else lives behind "More" so the bar never overflows.
 const MOBILE_PRIMARY: Item[] = [
   { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/tasks', label: 'Tasks', icon: '🛰️' },
   { href: '/sessions', label: 'Sessions', icon: '⌨' },
-  { href: '/fleet', label: 'Fleet', icon: '🖥' },
 ];
 const MOBILE_MORE: Item[] = [
   { href: '/projects', label: 'Projects', icon: '📁' },
+  { href: '/fleet', label: 'Fleet', icon: '🖥' },
   { href: '/services', label: 'Services', icon: '🧩' },
   { href: '/schedules', label: 'Schedules', icon: '⏰' },
   { href: '/settings', label: 'Settings', icon: '⚙' },

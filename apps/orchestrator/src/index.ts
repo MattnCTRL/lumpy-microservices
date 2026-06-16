@@ -84,6 +84,14 @@ async function main(): Promise<void> {
   const conductorKeeper = setInterval(() => void ensureConductor(sessions, store), 60_000);
   conductorKeeper.unref();
 
+  // Retire finished one-shot tasks so the mission-control board drains itself
+  // (their output persists in the project; the session artifact is cleared).
+  const taskReaper = setInterval(
+    () => void sessions.reapDoneTasks(config.taskReapGraceMs),
+    30_000,
+  );
+  taskReaper.unref();
+
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
     if (shuttingDown) return;
