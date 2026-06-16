@@ -3,6 +3,10 @@ import type { SessionActivity, SessionPrompt, SessionPromptOption } from '@lumpy
 const WORKING_WINDOW_MS = 1200;
 const TICK_MS = 1000;
 const TAIL_LIMIT = 4096;
+// On (re)attach, tmux redraws the pane, so a fresh tracker can see a PRE-EXISTING
+// error from before a restart. We baseline (never fire) for this window after the
+// tracker is created, so only errors that appear AFTERWARD trigger an auto-retry.
+const WARMUP_MS = 4000;
 
 // CSI sequences, OSC sequences, and stray carriage-return / bell bytes.
 const ANSI_PATTERN = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|[\r\x07]/g;
@@ -100,11 +104,15 @@ export class ActivityTracker {
   // the count INCREASES (a genuinely new error), so an error lingering in the
   // rolling window after a successful retry never re-triggers.
   private lastTransientCount = 0;
+  private warmedUp = false;
+  private readonly createdAt = Date.now();
   private readonly timer: NodeJS.Timeout;
 
   constructor(
     private readonly onChange: (activity: SessionActivity, prompt: SessionPrompt | null) => void,
     private readonly onTransientError?: () => void,
+    // Overridable so tests can disable the attach warm-up (default below).
+    private readonly warmupMs: number = WARMUP_MS,
   ) {
     this.timer = setInterval(() => this.evaluate(), TICK_MS);
     this.timer.unref();
@@ -149,9 +157,14 @@ export class ActivityTracker {
     }
 
     // A new transient API error means the turn failed; signal so the manager can
-    // auto-retry. Count-based so a lingering error doesn't fire repeatedly.
+    // auto-retry. Count-based so a lingering error doesn't fire repeatedly. During
+    // the attach warm-up we only baseline, so a stale error redrawn on (re)attach
+    // never triggers a retry.
     const count = (this.tail.match(TRANSIENT_ERROR) ?? []).length;
-    if (count > this.lastTransientCount) this.onTransientError?.();
+    if (this.warmedUp || Date.now() - this.createdAt >= this.warmupMs) {
+      this.warmedUp = true;
+      if (count > this.lastTransientCount) this.onTransientError?.();
+    }
     this.lastTransientCount = count;
   }
 }

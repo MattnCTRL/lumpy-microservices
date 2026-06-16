@@ -102,6 +102,7 @@ test('fires once when a transient API error appears', () => {
     () => {
       fired += 1;
     },
+    0, // no warm-up
   );
   tracker.feed(Buffer.from('● API Error: 500 Internal server error. try again in a moment\n'));
   assert.equal(fired, 1, 'fires on the new transient error');
@@ -118,6 +119,7 @@ test('fires again only for a genuinely new transient error', () => {
     () => {
       fired += 1;
     },
+    0,
   );
   tracker.feed(Buffer.from('API Error: 529 overloaded\n'));
   assert.equal(fired, 1);
@@ -134,8 +136,23 @@ test('does not treat a non-transient 4xx as retryable', () => {
     () => {
       fired += 1;
     },
+    0,
   );
   tracker.feed(Buffer.from('API Error: 400 bad request - your prompt was malformed\n'));
   assert.equal(fired, 0, '400 is not transient; no auto-retry');
+  tracker.stop();
+});
+
+test('does not fire for a stale error seen during the attach warm-up', () => {
+  let fired = 0;
+  // Default warm-up active: an error already on the pane at (re)attach is baselined.
+  const tracker = new ActivityTracker(
+    () => {},
+    () => {
+      fired += 1;
+    },
+  );
+  tracker.feed(Buffer.from('● API Error: 500 Internal server error (from before the restart)\n'));
+  assert.equal(fired, 0, 'a pre-existing error redrawn on attach is not retried');
   tracker.stop();
 });
