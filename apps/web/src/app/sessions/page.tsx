@@ -29,7 +29,14 @@ export default function SessionsPage() {
       setError(null);
       if (!didAutoSelect.current) {
         didAutoSelect.current = true;
-        setSelectedId((current) => current ?? list.find((s) => s.status === 'running')?.id ?? null);
+        // Land on the Conductor by default - it's the hub you talk to.
+        setSelectedId(
+          (current) =>
+            current ??
+            list.find((s) => s.kind === 'conductor')?.id ??
+            list.find((s) => s.status === 'running')?.id ??
+            null,
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'orchestrator unreachable');
@@ -268,6 +275,9 @@ function SessionPanel({
   onDeleted: () => void;
 }) {
   const [showConnectors, setShowConnectors] = useState(false);
+  // Chat-first: the raw terminal is hidden by default and toggled on to inspect.
+  const [showTerminal, setShowTerminal] = useState(false);
+  const running = session.status === 'running';
   return (
     <div className="flex h-full flex-col surface">
       <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-2">
@@ -280,11 +290,27 @@ function SessionPanel({
             ←
           </button>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-medium text-neutral-100">{session.name}</h2>
+            <h2 className="truncate text-sm font-medium text-neutral-100">
+              {session.kind === 'conductor' ? '👑 ' : ''}
+              {session.name}
+            </h2>
             <p className="truncate text-xs text-neutral-500">{session.workspace}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {running && (
+            <button
+              onClick={() => setShowTerminal((v) => !v)}
+              className={`rounded border px-2 py-0.5 text-xs ${
+                showTerminal
+                  ? 'border-neutral-500 bg-neutral-800 text-neutral-100'
+                  : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+              }`}
+              title="Show or hide the raw terminal"
+            >
+              {showTerminal ? 'Hide terminal' : '⌟ Terminal'}
+            </button>
+          )}
           <button
             onClick={() => setShowConnectors(true)}
             className="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-300 hover:bg-neutral-800"
@@ -298,17 +324,65 @@ function SessionPanel({
       {showConnectors && (
         <ConnectorsDialog sessionId={session.id} onClose={() => setShowConnectors(false)} />
       )}
-      {session.status === 'running' && session.activity === 'awaiting_permission' && (
+      {running && session.activity === 'awaiting_permission' && (
         <PromptBanner sessionId={session.id} prompt={session.prompt} />
       )}
-      <div className="min-h-0 flex-1 p-2">
-        {session.status === 'running' ? (
-          <Terminal key={session.id} sessionId={session.id} />
-        ) : (
+      {running ? (
+        <>
+          <div className="min-h-0 flex-1">
+            {/* Terminal mounts (and opens its socket) only when expanded. */}
+            {showTerminal ? (
+              <div className="h-full p-2">
+                <Terminal key={session.id} sessionId={session.id} />
+              </div>
+            ) : (
+              <div className="h-full overflow-y-auto p-3">
+                <ConversationLede session={session} />
+              </div>
+            )}
+          </div>
+          <InputBar sessionId={session.id} />
+        </>
+      ) : (
+        <div className="min-h-0 flex-1 p-2">
           <StoppedActions session={session} onChanged={onChanged} onDeleted={onDeleted} />
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The clean, conversation-first view shown instead of the raw terminal. */
+function ConversationLede({ session }: { session: Session }) {
+  const conductor = session.kind === 'conductor';
+  const status =
+    session.activity === 'awaiting_permission'
+      ? { label: 'needs you', cls: 'bg-amber-100 text-amber-700' }
+      : session.activity === 'working'
+        ? { label: 'working…', cls: 'bg-emerald-100 text-emerald-700' }
+        : { label: 'idle', cls: 'bg-neutral-200 text-neutral-600' };
+  return (
+    <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center gap-3 text-center">
+      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/70 text-3xl shadow-glass">
+        {conductor ? '👑' : '⌨'}
       </div>
-      {session.status === 'running' && <InputBar sessionId={session.id} />}
+      <div>
+        <div className="text-base font-semibold text-neutral-100">
+          {conductor ? 'Lumpy Conductor' : session.name}
+        </div>
+        <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.cls}`}>
+          {status.label}
+        </span>
+      </div>
+      <p className="max-w-sm text-sm text-neutral-500">
+        {conductor
+          ? 'Talk to Lumpy below - it coordinates your sessions, tasks, and fleet. Just tell it what you need.'
+          : 'Message this session below; it is running its task autonomously.'}
+      </p>
+      <p className="text-xs text-neutral-500">
+        Toggle <span className="font-medium text-neutral-400">Terminal</span> (top right) to watch the
+        raw session.
+      </p>
     </div>
   );
 }
