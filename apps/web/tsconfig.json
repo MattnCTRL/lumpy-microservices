@@ -18,6 +18,7 @@
     },
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "src", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "// typecheck note": "Deliberately NOT including .next/types: the deploy runs `tsc --noEmit` BEFORE `next build`, so stale generated route-types from a prior build (e.g. a route since deleted) would break typecheck. `next build` validates those generated types itself, so no coverage is lost.",
+  "include": ["next-env.d.ts", "src"],
+  "exclude": ["node_modules", ".next"]
 }
