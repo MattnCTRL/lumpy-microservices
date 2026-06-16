@@ -20,25 +20,35 @@ test('interactive claude runs plainly', () => {
   assert.equal(buildLaunchCommand('claude', { autonomous: false }), 'claude');
 });
 
-test('an autonomous task is appended with a progress-handoff note', () => {
+test('an autonomous task runs headless via -p with a progress-handoff note', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: true, task: 'fix the build' }),
-    `claude --dangerously-skip-permissions 'fix the build\n\n${PROGRESS_NOTE}'`,
+    `claude --dangerously-skip-permissions -p 'fix the build\n\n${PROGRESS_NOTE}'`,
   );
 });
 
-test('a non-autonomous task is appended verbatim (no progress note)', () => {
+test('a non-autonomous task runs headless via -p (no progress note)', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: false, task: 'fix the build' }),
-    "claude 'fix the build'",
+    "claude -p 'fix the build'",
   );
 });
 
 test('a task containing a quote is escaped', () => {
   assert.equal(
     buildLaunchCommand('claude', { autonomous: false, task: "it's broken" }),
-    "claude 'it'\\''s broken'",
+    "claude -p 'it'\\''s broken'",
   );
+});
+
+test('the task is the value of -p so the variadic --mcp-config cannot swallow it', () => {
+  const cmd = buildLaunchCommand('claude', {
+    autonomous: true,
+    task: 'do X',
+    mcpConfig: '/w/.mcp.json',
+  });
+  // --mcp-config takes only the path; the prompt follows as -p's value.
+  assert.match(cmd, /--mcp-config '\/w\/\.mcp\.json' -p '/);
 });
 
 test('non-claude commands run verbatim', () => {

@@ -33,7 +33,8 @@ export const PROGRESS_NOTE =
  * For Claude sessions, autonomous mode adds --dangerously-skip-permissions so it
  * executes without prompting. When the session runs as root, `sandbox` sets
  * IS_SANDBOX so that is permitted; non-root sessions don't need it. An optional
- * task is passed as the initial prompt. Non-Claude commands run verbatim.
+ * task runs headless via -p (a run-to-completion job that exits when done).
+ * Non-Claude commands run verbatim.
  */
 export function buildLaunchCommand(base: string, options: LaunchOptions): string {
   if (!isClaudeCommand(base)) return base;
@@ -53,9 +54,12 @@ export function buildLaunchCommand(base: string, options: LaunchOptions): string
 
   const task = options.task?.trim();
   if (task) {
-    // Autonomous sessions auto-stop when idle; ask them to leave a handoff.
+    // A task is a headless one-shot job: run it to completion and exit (-p print
+    // mode). It MUST be the value of -p, not a trailing positional - `--mcp-config`
+    // is variadic and would otherwise swallow the prompt as another config-file
+    // path, which silently killed every task session on startup.
     const full = options.autonomous ? `${task}\n\n${PROGRESS_NOTE}` : task;
-    parts.push(shquote(full));
+    parts.push('-p', shquote(full));
   }
 
   return parts.join(' ');
