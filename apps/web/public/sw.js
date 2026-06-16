@@ -2,7 +2,7 @@
 // we must never serve stale app code. We always try the network and only fall back
 // to cache when offline, caching successful same-origin GETs for that fallback.
 // The orchestrator API is a different origin (:4317) and is never touched here.
-const CACHE = 'lumpy-shell-v1';
+const CACHE = 'lumpy-shell-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 

@@ -1,54 +1,86 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import type {
-  ActivityEntry,
-  Alert,
-  HostedIncident,
-  LedgerEntry,
-  RepoSyncStatus,
-  Schedule,
-  Server,
-  ServerHostedService,
-  Session,
-} from '@lumpy/shared';
-import { api, ORCHESTRATOR_URL } from '@/lib/api';
-import { LedgerView } from '@/components/LedgerView';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { LumpyEvent, Session } from '@lumpy/shared';
+import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
+import { reconnectingSocket } from '@/lib/socket';
+import { CreateDialog, SessionPanel } from '@/components/SessionPanel';
 import { SkeletonCards } from '@/components/Skeleton';
 
-export default function DashboardPage() {
-  const [servers, setServers] = useState<Server[]>([]);
+// The command center: one surface. Every piece of work is a card flowing through
+// the board; the Conductor is the hub you command from the bar below; tapping a
+// card opens its full conversation. The old per-tab split (Home / Sessions /
+// Tasks) collapses into this.
+interface Kind {
+  label: string;
+  icon: string;
+  tint: string;
+  ring: string;
+}
+const KINDS: Record<string, Kind> = {
+  librarian: { label: 'Librarian', icon: '📚', tint: 'tint-violet', ring: 'text-violet' },
+  remediation: { label: 'Remediation', icon: '🔧', tint: 'tint-coral', ring: 'text-coral' },
+  scheduled: { label: 'Scheduled', icon: '⏰', tint: 'tint-ice', ring: 'text-ice' },
+  service: { label: 'Service', icon: '🧩', tint: 'tint-mint', ring: 'text-mint' },
+  task: { label: 'Task', icon: '⚡', tint: 'tint-ice', ring: 'text-ice' },
+};
+const SESSION_KIND: Kind = { label: 'Session', icon: '⌨', tint: 'tint-ice', ring: 'text-ice' };
+
+function kindOf(s: Session): Kind {
+  if (s.kind === 'session') return SESSION_KIND;
+  for (const tag of s.tags) if (KINDS[tag]) return KINDS[tag];
+  return KINDS.task;
+}
+
+function ago(iso: string): string {
+  const sec = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000));
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h`;
+}
+
+// A finished task lingers in "Finalizing" (memory is written on teardown, so this
+// is the visible beat) before sliding to Done and draining over the reap grace.
+const FINALIZE_MS = 9000;
+const REAP_GRACE_MS = 90000;
+
+type LaneKey = 'queued' | 'running' | 'finalizing' | 'done';
+
+const LANES: { key: LaneKey; label: string; hint: string }[] = [
+  { key: 'queued', label: 'Queued', hint: 'spinning up' },
+  { key: 'running', label: 'Running', hint: 'nothing active' },
+  { key: 'finalizing', label: 'Finalizing', hint: 'writing to memory' },
+  { key: 'done', label: 'Done', hint: 'recently finished' },
+];
+
+function laneOf(s: Session): LaneKey {
+  // Interactive sessions are persistent workspaces, not throughput jobs: running
+  // ones sit in Running; stopped ones park in Done (resumable, never auto-drain).
+  if (s.kind === 'session') return s.status === 'running' ? 'running' : 'done';
+  // Tasks flow through the pipeline and drain when finished.
+  if (s.status === 'running') {
+    if ((s.activity === 'idle' || s.activity === 'unknown') && !s.lastActivityAt) return 'queued';
+    return 'running';
+  }
+  if (s.doneForMs != null && s.doneForMs < FINALIZE_MS) return 'finalizing';
+  return 'done';
+}
+
+export default function CommandCenterPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [incidents, setIncidents] = useState<HostedIncident[]>([]);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  const [repoSync, setRepoSync] = useState<RepoSyncStatus | null>(null);
-  const [playbook, setPlaybook] = useState<LedgerEntry[]>([]);
+  const [conductor, setConductor] = useState<Session | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<Session | null>(null);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      const [sv, se, al, sc, inc, act, rs, pb] = await Promise.all([
-        api.listServers(),
-        api.listSessions(),
-        api.listAlerts(),
-        api.listSchedules().catch(() => []),
-        api.listIncidents().catch(() => []),
-        api.listActivity().catch(() => []),
-        api.getRepoSync().catch(() => null),
-        api.getConductorLedger().catch(() => []),
-      ]);
-      setServers(sv);
-      setSessions(se);
-      setAlerts(al);
-      setSchedules(sc);
-      setIncidents(inc);
-      setActivity(act);
-      setRepoSync(rs);
-      setPlaybook(pb);
+      const all = await api.listSessions();
+      setConductor(all.find((s) => s.kind === 'conductor') ?? null);
+      setSessions(all.filter((s) => s.kind !== 'conductor'));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'orchestrator unreachable');
@@ -59,370 +91,379 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void refresh();
-    const interval = setInterval(() => void refresh(), 6000);
-    return () => clearInterval(interval);
+    const socket = reconnectingSocket(eventsSocketUrl(), (data) => {
+      const m = JSON.parse(data) as LumpyEvent;
+      if (m.type === 'session.status' || m.type === 'session.activity') void refresh();
+    });
+    // The 2s poll advances the client-side stage clock (Finalizing -> Done ->
+    // drain) and drives retirement without waiting on an event.
+    const interval = setInterval(() => void refresh(), 2000);
+    return () => {
+      socket.close();
+      clearInterval(interval);
+    };
   }, [refresh]);
 
-  const cloud = servers.filter((s) => s.kind === 'server');
-  const serversOnline = cloud.filter((s) => s.status === 'online').length;
-  const serversDown = cloud.filter((s) => s.status === 'offline');
-  const services: ServerHostedService[] = servers.flatMap((s) => s.hostedServices);
-  const servicesDown = services.filter((s) => s.status === 'down');
-  const running = sessions.filter((s) => s.status === 'running');
-  const needsYou = running.filter((s) => s.activity === 'awaiting_permission');
-  const criticalAlerts = alerts.filter((a) => a.severity === 'critical').length;
-  const enabledSchedules = schedules.filter((s) => s.enabled);
-  const nextSchedule = enabledSchedules
-    .map((s) => s.nextRunAt)
-    .filter((x): x is string => Boolean(x))
-    .sort()[0];
+  const byLane: Record<LaneKey, Session[]> = { queued: [], running: [], finalizing: [], done: [] };
+  for (const s of sessions) byLane[laneOf(s)].push(s);
+  const activeCount = byLane.queued.length + byLane.running.length;
+  const wrapping = byLane.finalizing.length + byLane.done.length;
 
-  const attention =
-    serversDown.length + servicesDown.length + alerts.length + needsYou.length;
+  const liveSelected =
+    [...sessions, ...(conductor ? [conductor] : [])].find((s) => s.id === selectedId) ?? null;
+  // Keep the last-known snapshot so an open drawer doesn't vanish when its task is
+  // reaped out of the list (~90s after it finishes); we show a retired notice instead.
+  useEffect(() => {
+    if (liveSelected) setSnapshot(liveSelected);
+  }, [liveSelected]);
+  const selected = liveSelected ?? (selectedId ? snapshot : null);
+  const retired = Boolean(selectedId && !liveSelected && snapshot);
+  const closeDrawer = () => {
+    setSelectedId(null);
+    setSnapshot(null);
+  };
 
   return (
-    <div className="mx-auto h-full max-w-4xl overflow-y-auto p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-neutral-100">Lumpy</h1>
-        {!loading && (
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              attention > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-            }`}
-          >
-            {attention > 0 ? `${attention} need attention` : 'all clear ✅'}
-          </span>
-        )}
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-lg font-semibold text-neutral-100">Command center</h1>
+          {!loading && (
+            <span className="text-xs text-neutral-500">
+              {activeCount} active{wrapping > 0 && ` · ${wrapping} wrapping up`}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="shrink-0 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-white"
+        >
+          + New session
+        </button>
       </div>
+
       {error && (
-        <p className="mb-3 text-sm text-red-700">
+        <p className="px-4 pb-2 text-sm text-red-700">
           {error} - is the orchestrator running on {ORCHESTRATOR_URL}?
         </p>
       )}
 
-      {loading ? (
-        <SkeletonCards count={7} />
-      ) : (
-        <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Card href="/fleet" title="Servers" stat={`${serversOnline}/${cloud.length}`} hint="online" tint="ice">
-          {cloud.length === 0 ? (
-            <Empty>No servers yet.</Empty>
-          ) : (
-            cloud.map((s) => (
-              <Row key={s.id} dot={serverDot(s.status)} label={s.name} right={s.status} />
-            ))
-          )}
-        </Card>
+      <div className="min-h-0 flex-1 overflow-x-auto px-4">
+        {loading ? (
+          <SkeletonCards count={4} />
+        ) : (
+          <div className="grid h-full min-w-[760px] grid-cols-4 gap-3 pb-3">
+            {LANES.map((lane) => (
+              <Lane key={lane.key} lane={lane} cards={byLane[lane.key]} onOpen={setSelectedId} />
+            ))}
+          </div>
+        )}
+      </div>
 
-        <Card
-          href="/fleet"
-          title="Hosted services"
-          stat={`${services.length - servicesDown.length}/${services.length}`}
-          hint="up"
-          tint="mint"
-        >
-          {services.length === 0 ? (
-            <Empty>None tracked yet.</Empty>
-          ) : (
-            services.map((s, i) => (
-              <Row
-                key={`${s.url}:${i}`}
-                dot={hostedDot(s.status)}
-                label={s.name}
-                right={s.uptime24h != null ? `${(s.uptime24h * 100).toFixed(s.uptime24h >= 0.9995 ? 0 : 1)}%` : s.status}
-              />
-            ))
-          )}
-        </Card>
+      <ConductorBar conductor={conductor} onExpand={() => conductor && setSelectedId(conductor.id)} />
 
-        <Card
-          href="/sessions"
-          title="Sessions"
-          stat={`${running.length}`}
-          hint="running"
-          tint="violet"
-          accent={needsYou.length > 0 ? 'amber' : undefined}
-        >
-          {needsYou.length > 0 && (
-            <p className="mb-1 text-xs font-medium text-amber-700">{needsYou.length} need your input</p>
-          )}
-          {running.length === 0 ? (
-            <Empty>Nothing running.</Empty>
+      {selected && (
+        <Drawer onClose={closeDrawer}>
+          {retired ? (
+            <RetiredNotice name={snapshot?.name ?? 'This task'} onClose={closeDrawer} />
           ) : (
-            running
-              .slice(0, 5)
-              .map((s) => (
-                <Row
-                  key={s.id}
-                  dot={s.activity === 'awaiting_permission' ? 'bg-amber-500' : 'bg-blue-500'}
-                  label={s.name}
-                  right={s.activity === 'awaiting_permission' ? 'needs you' : s.activity}
-                />
-              ))
+            <SessionPanel
+              session={selected}
+              onBack={closeDrawer}
+              onChanged={() => void refresh()}
+              onDeleted={() => {
+                closeDrawer();
+                void refresh();
+              }}
+            />
           )}
-        </Card>
+        </Drawer>
+      )}
 
-        <Card
-          href="/alerts"
-          title="Alerts"
-          stat={`${alerts.length}`}
-          hint="active"
-          tint="coral"
-          accent={criticalAlerts > 0 ? 'red' : undefined}
-        >
-          {alerts.length === 0 ? (
-            <Empty>No active alerts.</Empty>
-          ) : (
-            alerts
-              .slice(0, 5)
-              .map((a) => (
-                <Row
-                  key={a.id}
-                  dot={a.severity === 'critical' ? 'bg-red-500' : 'bg-amber-500'}
-                  label={`${a.serverName}: ${a.label}`}
-                  right={a.severity}
-                />
-              ))
-          )}
-        </Card>
-
-        <Card
-          href="/schedules"
-          title="Schedules"
-          stat={`${enabledSchedules.length}`}
-          hint="enabled"
-          tint="ice"
-        >
-          {schedules.length === 0 ? (
-            <Empty>No schedules.</Empty>
-          ) : (
-            enabledSchedules
-              .slice(0, 5)
-              .map((s) => (
-                <Row
-                  key={s.id}
-                  dot="bg-neutral-500"
-                  label={s.name}
-                  right={s.nextRunAt ? new Date(s.nextRunAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                />
-              ))
-          )}
-          {nextSchedule && (
-            <p className="mt-1 text-[11px] text-neutral-600">
-              next run {new Date(nextSchedule).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
-          )}
-        </Card>
-
-        <Card href="/fleet" title="Recent incidents" stat={`${incidents.filter((i) => !i.resolvedAt).length}`} hint="open" tint="coral">
-          {incidents.length === 0 ? (
-            <Empty>No incidents recorded. 🎉</Empty>
-          ) : (
-            incidents
-              .slice(0, 5)
-              .map((i) => (
-                <Row
-                  key={i.id}
-                  dot={i.resolvedAt ? 'bg-neutral-600' : 'bg-red-500'}
-                  label={i.name}
-                  right={incidentSpan(i)}
-                />
-              ))
-          )}
-        </Card>
-
-        <RepoSyncCard
-          status={repoSync}
-          onRun={async () => {
-            await api.runRepoSync().catch(() => {});
+      {creating && (
+        <CreateDialog
+          onClose={() => setCreating(false)}
+          onCreated={(session) => {
+            setCreating(false);
             void refresh();
+            setSelectedId(session.id);
           }}
         />
-      </div>
-
-      <section className="mt-3 surface p-4">
-        <h2 className="mb-2 text-sm font-medium text-neutral-300">Recent activity</h2>
-        {activity.length === 0 ? (
-          <p className="text-xs text-neutral-600">Nothing recorded yet.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {activity.slice(0, 20).map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex min-w-0 items-center gap-2 text-neutral-200">
-                  <span className="shrink-0">{ACTIVITY_ICON[a.kind] ?? '•'}</span>
-                  <span className="truncate">{a.title}</span>
-                </span>
-                <span className="shrink-0 text-xs text-neutral-600">{timeAgo(a.at)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-3 surface p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-300">Conductor playbook</h2>
-          <span className="text-[11px] text-neutral-600">the 1000-ft map</span>
-        </div>
-        <LedgerView
-          entries={playbook}
-          emptyHint="Empty for now - as the Conductor manages projects it records the map here: rules, pointers to where each project's data lives, and recurring maintenance. The detail stays in each project's own memory."
-        />
-      </section>
-        </>
       )}
     </div>
   );
 }
 
-const ACTIVITY_ICON: Record<string, string> = {
-  session: '⌨',
-  alert: '🔔',
-  hosted: '🌐',
-  remediation: '🔧',
-  cert: '🔒',
-  secondopinion: '⚖️',
-};
-
-function timeAgo(iso: string): string {
-  const mins = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
-
-function Card({
-  href,
-  title,
-  stat,
-  hint,
-  accent,
-  tint,
-  children,
+function Lane({
+  lane,
+  cards,
+  onOpen,
 }: {
-  href: string;
-  title: string;
-  stat: string;
-  hint: string;
-  accent?: 'amber' | 'red';
-  tint?: 'mint' | 'ice' | 'violet' | 'coral';
-  children: React.ReactNode;
+  lane: { key: LaneKey; label: string; hint: string };
+  cards: Session[];
+  onOpen: (id: string) => void;
 }) {
-  const accentRing =
-    accent === 'red' ? 'ring-1 ring-coral/50' : accent === 'amber' ? 'ring-1 ring-warn/40' : '';
   return (
-    <Link
-      href={href}
-      className={`surface ${tint ? `tint-${tint}` : ''} block p-4 transition hover:-translate-y-0.5 hover:shadow-glass-lg ${accentRing}`}
-    >
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-neutral-300">{title}</h2>
-        <span className="text-xs text-neutral-600">
-          <span className="text-base font-semibold text-neutral-100">{stat}</span> {hint}
+    <div className="flex min-h-0 flex-col">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+          {lane.label}
+        </span>
+        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white/70 px-1.5 text-[10px] font-semibold text-neutral-500 shadow-glass">
+          {cards.length}
         </span>
       </div>
-      <div className="space-y-1">{children}</div>
-    </Link>
-  );
-}
-
-function Row({ dot, label, right }: { dot: string; label: string; right: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2 text-sm">
-      <span className="flex min-w-0 items-center gap-2 text-neutral-200">
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="shrink-0 text-xs text-neutral-500">{right}</span>
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
+        {cards.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line py-6 text-center text-[11px] text-neutral-500">
+            {lane.hint}
+          </div>
+        ) : (
+          cards.map((s) => <SessionCard key={s.id} session={s} lane={lane.key} onOpen={onOpen} />)
+        )}
+      </div>
     </div>
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-neutral-600">{children}</p>;
-}
+function SessionCard({
+  session,
+  lane,
+  onOpen,
+}: {
+  session: Session;
+  lane: LaneKey;
+  onOpen: (id: string) => void;
+}) {
+  const kind = kindOf(session);
+  const isSession = session.kind === 'session';
+  // Tasks visibly drain in Done (opacity falls with age); parked sessions don't.
+  const drainOpacity =
+    lane === 'done' && !isSession && session.doneForMs != null
+      ? Math.max(0.3, 1 - session.doneForMs / REAP_GRACE_MS)
+      : 1;
+  const needsYou = session.status === 'running' && session.activity === 'awaiting_permission';
 
-function RepoSyncCard({ status, onRun }: { status: RepoSyncStatus | null; onRun: () => void }) {
-  const [busy, setBusy] = useState(false);
-  if (!status) return null;
-  const errors = status.results.filter((r) => r.status === 'error').length;
   return (
-    <div className={`surface p-4 ${errors ? 'ring-1 ring-coral/50' : ''}`}>
-      <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-medium text-neutral-300">Repo backups</h2>
-        <span className="text-xs">
-          {status.configured ? (
-            <span className="text-emerald-700">GitHub linked</span>
-          ) : (
-            <span className="text-amber-700">no token</span>
+    <button
+      onClick={() => onOpen(session.id)}
+      style={drainOpacity !== 1 ? { opacity: drainOpacity } : undefined}
+      className={`surface ${kind.tint} animate-lane-in block w-full p-3 text-left transition hover:-translate-y-0.5 hover:shadow-glass-lg ${
+        needsYou ? 'ring-1 ring-warn/50' : ''
+      }`}
+      aria-label={`${kind.label}: ${session.name}`}
+    >
+      <div className="flex items-start gap-2.5">
+        <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/70 text-base shadow-glass">
+          {kind.icon}
+          {lane === 'running' && (
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
           )}
         </span>
-      </div>
-      {!status.configured ? (
-        <p className="text-xs text-neutral-500">
-          Add a GitHub token in{' '}
-          <Link href="/settings" className="text-sky-400 hover:underline">
-            Settings
-          </Link>{' '}
-          to back the box&apos;s repos up to GitHub.
-        </p>
-      ) : (
-        <div className="space-y-1">
-          {status.results.length === 0 ? (
-            <Empty>No runs yet.</Empty>
-          ) : (
-            status.results
-              .slice(0, 5)
-              .map((r, i) => (
-                <Row
-                  key={`${r.repo}:${i}`}
-                  dot={
-                    r.status === 'pushed'
-                      ? 'bg-emerald-500'
-                      : r.status === 'error'
-                        ? 'bg-red-500'
-                        : 'bg-neutral-600'
-                  }
-                  label={r.repo}
-                  right={r.status}
-                />
-              ))
-          )}
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-[11px] text-neutral-600">
-              {status.lastRunAt ? `last ${timeAgo(status.lastRunAt)}` : 'not run yet'} → {status.branch}
-            </span>
-            <button
-              onClick={() => {
-                setBusy(true);
-                onRun();
-                setTimeout(() => setBusy(false), 1500);
-              }}
-              disabled={busy}
-              className="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {busy ? 'backing up…' : 'back up now'}
-            </button>
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+            {kind.label}
+          </span>
+          <div className="truncate text-sm font-medium text-neutral-100" title={session.name}>
+            {session.name}
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between text-[11px]">
+        <StageLine session={session} lane={lane} ring={kind.ring} isSession={isSession} />
+        <span className="shrink-0 font-medium text-ink">open →</span>
+      </div>
+    </button>
+  );
+}
+
+function StageLine({
+  session,
+  lane,
+  ring,
+  isSession,
+}: {
+  session: Session;
+  lane: LaneKey;
+  ring: string;
+  isSession: boolean;
+}) {
+  if (session.status === 'running' && session.activity === 'awaiting_permission') {
+    return <span className="font-medium text-warn">needs your input</span>;
+  }
+  if (lane === 'queued') return <span className="text-neutral-500">queued · {ago(session.createdAt)}</span>;
+  if (lane === 'running') {
+    if (isSession) return <span className={ring}>live workspace</span>;
+    return (
+      <span className={`flex items-center gap-1.5 ${ring}`}>
+        <Spinner /> working · {ago(session.createdAt)}
+      </span>
+    );
+  }
+  if (lane === 'finalizing') {
+    return (
+      <span className={`flex items-center gap-1.5 ${ring}`}>
+        <Spinner /> writing to memory
+      </span>
+    );
+  }
+  // Done lane.
+  if (isSession) return <span className="text-neutral-500">parked · resume</span>;
+  return <span className="text-neutral-500">✓ recorded · draining</span>;
+}
+
+function Spinner() {
+  return (
+    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+  );
+}
+
+/** A right-side slide-over holding the full session/conversation view. Taps
+ *  anywhere outside the panel (and Escape) close it; the panel stops propagation
+ *  so the whole non-panel area is dismissible regardless of width. z-50 sits it
+ *  above the z-40 mobile tab bar. */
+function Drawer({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div aria-hidden className="flex-1 bg-black/40 backdrop-blur-[2px]" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="h-full w-full max-w-xl shrink-0 animate-lane-in shadow-glass-lg sm:w-[34rem]"
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
-function serverDot(status: string): string {
-  return status === 'online' ? 'bg-emerald-500' : status === 'offline' ? 'bg-red-500' : 'bg-neutral-600';
+/** Shown in the drawer when the task whose panel was open has finished and been
+ *  retired from the board, so the view doesn't just vanish out from under you. */
+function RetiredNotice({ name, onClose }: { name: string; onClose: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 surface p-6 text-center">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/70 text-2xl shadow-glass">
+        ✓
+      </div>
+      <div className="text-sm font-medium text-neutral-100">{name} finished</div>
+      <p className="max-w-xs text-xs text-neutral-500">
+        Its outcome was recorded to memory and the task has retired off the board. The durable
+        result lives in the project&apos;s knowledge, not here.
+      </p>
+      <button
+        onClick={onClose}
+        className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
+      >
+        Close
+      </button>
+    </div>
+  );
 }
-function hostedDot(status: string): string {
-  return status === 'up' ? 'bg-emerald-500' : status === 'down' ? 'bg-red-500' : 'bg-neutral-600';
-}
-function incidentSpan(i: HostedIncident): string {
-  const start = Date.parse(i.startedAt);
-  const end = i.resolvedAt ? Date.parse(i.resolvedAt) : Date.now();
-  const mins = Math.max(1, Math.round((end - start) / 60000));
-  const dur = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}m`;
-  return i.resolvedAt ? `${dur} ago` : `down ${dur}`;
+
+/**
+ * The Conductor command bar - pinned below the board. Send a command from here;
+ * the Conductor coordinates the cards above. "Expand" opens its full conversation.
+ */
+function ConductorBar({ conductor, onExpand }: { conductor: Session | null; onExpand: () => void }) {
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sentAt, setSentAt] = useState(false);
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clearTimer.current) clearTimeout(clearTimer.current);
+    };
+  }, []);
+
+  const online = conductor?.status === 'running';
+  const needsYou = conductor?.activity === 'awaiting_permission';
+
+  const send = async () => {
+    const value = text.trim();
+    if (!value || !conductor || sending) return;
+    setSending(true);
+    try {
+      // Clear any pre-filled line, type the command, submit it.
+      await api.sendInput(conductor.id, '\x15');
+      await api.sendInput(conductor.id, value);
+      await new Promise((r) => setTimeout(r, 80));
+      await api.sendInput(conductor.id, '\r');
+      setText('');
+      setSentAt(true);
+      if (clearTimer.current) clearTimeout(clearTimer.current);
+      clearTimer.current = setTimeout(() => setSentAt(false), 2500);
+    } catch {
+      // surfaced by the global toast
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-line bg-glass px-4 py-3 backdrop-blur-glass">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              !online ? 'bg-neutral-400' : needsYou ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'
+            }`}
+          />
+          👑 Conductor
+          <span className="font-normal normal-case text-neutral-500">
+            {!conductor
+              ? 'not running'
+              : needsYou
+                ? 'needs your input'
+                : conductor.activity === 'working'
+                  ? 'working'
+                  : 'ready'}
+          </span>
+        </span>
+        {conductor && (
+          <button onClick={onExpand} className="text-[11px] font-medium text-ink hover:underline">
+            expand conversation →
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          disabled={!online || sending}
+          placeholder={online ? 'Command the Conductor…' : 'Conductor offline'}
+          className="input flex-1"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <button
+          onClick={() => void send()}
+          disabled={!online || sending || !text.trim()}
+          className="shrink-0 rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
+        >
+          {sentAt ? 'sent ✓' : 'Send'}
+        </button>
+      </div>
+    </div>
+  );
 }

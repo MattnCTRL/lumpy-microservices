@@ -644,8 +644,8 @@ function SessionsPanel({ project }: { project: Project }) {
           >
             {busy ? 'Starting…' : '+ New session in project'}
           </button>
-          <a href="/sessions" className="text-xs text-neutral-500 hover:text-neutral-200">
-            open Sessions →
+          <a href="/" className="text-xs text-neutral-500 hover:text-neutral-200">
+            open Command center →
           </a>
         </div>
       </div>

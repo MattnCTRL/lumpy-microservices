@@ -12,27 +12,25 @@ interface Item {
   icon: string;
 }
 
-// Full nav - shown on the desktop left rail.
+// Full nav - shown on the desktop left rail. The command center ("/") is the
+// primary surface: it holds the Conductor + every session/task as flowing cards.
 const NAV: Item[] = [
-  { href: '/', label: 'Home', icon: '🏠' },
-  { href: '/tasks', label: 'Tasks', icon: '🛰️' },
+  { href: '/', label: 'Command center', icon: '🛰️' },
   { href: '/projects', label: 'Projects', icon: '📁' },
-  { href: '/sessions', label: 'Sessions', icon: '⌨' },
   { href: '/services', label: 'Services', icon: '🧩' },
   { href: '/schedules', label: 'Schedules', icon: '⏰' },
   { href: '/fleet', label: 'Fleet', icon: '🖥' },
 ];
 
-// Mobile bottom bar: a focused 5-tab set (Alerts + More are added in markup).
+// Mobile bottom bar: a focused tab set (Alerts + More are added in markup).
 // Everything else lives behind "More" so the bar never overflows.
 const MOBILE_PRIMARY: Item[] = [
-  { href: '/', label: 'Home', icon: '🏠' },
-  { href: '/tasks', label: 'Tasks', icon: '🛰️' },
-  { href: '/sessions', label: 'Sessions', icon: '⌨' },
-];
-const MOBILE_MORE: Item[] = [
+  { href: '/', label: 'Command', icon: '🛰️' },
   { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/fleet', label: 'Fleet', icon: '🖥' },
+];
+const MOBILE_MORE: Item[] = [
+  { href: '/overview', label: 'Overview', icon: '📊' },
   { href: '/services', label: 'Services', icon: '🧩' },
   { href: '/schedules', label: 'Schedules', icon: '⏰' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
@@ -103,6 +101,7 @@ export function SideNav() {
           ))}
         </div>
         <div className="mt-4 flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <RailItem href="/overview" label="Overview" icon="📊" active={pathname.startsWith('/overview')} />
           <RailItem
             href="/alerts"
             label="Alerts"
