@@ -138,6 +138,15 @@ function runAs(): RunAs | null {
 export async function ensureConductor(sessions: SessionManager, store: Store): Promise<void> {
   if (!config.conductorEnabled) return;
 
+  // Always refresh the operating manual on disk so a fresh start loads the latest
+  // version. A running session keeps the copy it loaded until it next restarts.
+  const workspace = conductorWorkspace();
+  try {
+    writeClaudeMd(workspace, MANUAL, runAs());
+  } catch (error) {
+    logger.warn({ error }, 'could not write the Conductor manual');
+  }
+
   const existing = store.listSessions().find((s) => s.locked);
   if (existing) {
     const live = await sessions.get(existing.id);
@@ -149,13 +158,6 @@ export async function ensureConductor(sessions: SessionManager, store: Store): P
       });
     }
     return;
-  }
-
-  const workspace = conductorWorkspace();
-  try {
-    writeClaudeMd(workspace, MANUAL, runAs());
-  } catch (error) {
-    logger.warn({ error }, 'could not write the Conductor manual');
   }
 
   const base = config.publicUrl || `http://${config.host}:${config.port}`;
