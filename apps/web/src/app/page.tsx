@@ -6,6 +6,7 @@ import type { LumpyEvent, Session } from '@lumpy/shared';
 import { api, eventsSocketUrl, ORCHESTRATOR_URL } from '@/lib/api';
 import { reconnectingSocket } from '@/lib/socket';
 import { CreateDialog, SessionPanel } from '@/components/SessionPanel';
+import { SessionFeed } from '@/components/SessionFeed';
 import { SkeletonCards } from '@/components/Skeleton';
 
 // The command center: one surface. Every piece of work is a card flowing through
@@ -415,6 +416,9 @@ function ConductorBar({ conductor, onExpand }: { conductor: Session | null; onEx
 
   return (
     <div className="border-t border-line bg-glass px-4 py-3 backdrop-blur-glass">
+      {conductor && (
+        <SessionFeed sessionId={conductor.id} running={online} tail={6} className="mb-2 max-h-28" />
+      )}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
           <span

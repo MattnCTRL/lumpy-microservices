@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Session, SessionActivity } from '@lumpy/shared';
 import { ConnectorsDialog } from '@/components/ConnectorsDialog';
 import { Field } from '@/components/Field';
+import { SessionFeed } from '@/components/SessionFeed';
 import { Terminal } from '@/components/Terminal';
 import { api } from '@/lib/api';
 
@@ -114,7 +115,7 @@ export function SessionPanel({
                 <Terminal key={session.id} sessionId={session.id} />
               </div>
             ) : (
-              <div className="h-full overflow-y-auto p-3">
+              <div className="h-full min-h-0 p-3">
                 <ConversationLede session={session} />
               </div>
             )}
@@ -130,7 +131,8 @@ export function SessionPanel({
   );
 }
 
-/** The clean, conversation-first view shown instead of the raw terminal. */
+/** The clean, conversation-first view: a live, readable transcript of the session
+ *  (cleaned from its terminal output) instead of the raw TTY. */
 function ConversationLede({ session }: { session: Session }) {
   const conductor = session.kind === 'conductor';
   const status =
@@ -140,27 +142,20 @@ function ConversationLede({ session }: { session: Session }) {
         ? { label: 'working…', cls: 'bg-emerald-100 text-emerald-700' }
         : { label: 'idle', cls: 'bg-neutral-200 text-neutral-600' };
   return (
-    <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center gap-3 text-center">
-      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/70 text-3xl shadow-glass">
-        {conductor ? '👑' : '⌨'}
-      </div>
-      <div>
-        <div className="text-base font-semibold text-neutral-100">
-          {conductor ? 'Lumpy Conductor' : session.name}
+    <div className="flex h-full flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <span className="text-lg leading-none">{conductor ? '👑' : '⌨'}</span>
+          <span className="truncate font-medium text-neutral-100">
+            {conductor ? 'Lumpy Conductor' : session.name}
+          </span>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.cls}`}>
+            {status.label}
+          </span>
         </div>
-        <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.cls}`}>
-          {status.label}
-        </span>
+        <span className="shrink-0 text-[11px] text-neutral-500">toggle Terminal for the raw view</span>
       </div>
-      <p className="max-w-sm text-sm text-neutral-500">
-        {conductor
-          ? 'Talk to Lumpy below - it coordinates your sessions, tasks, and fleet. Just tell it what you need.'
-          : 'Message this session below; it is running its task autonomously.'}
-      </p>
-      <p className="text-xs text-neutral-500">
-        Toggle <span className="font-medium text-neutral-400">Terminal</span> (top right) to watch the
-        raw session.
-      </p>
+      <SessionFeed sessionId={session.id} running tail={150} className="min-h-0 flex-1" />
     </div>
   );
 }
