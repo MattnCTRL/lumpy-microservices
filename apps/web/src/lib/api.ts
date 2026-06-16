@@ -133,6 +133,8 @@ export const api = {
   resumeSession: (id: string) =>
     send(`/api/sessions/${id}/resume`, 'POST').then(parse<Session>),
   deleteSession: (id: string) => send(`/api/sessions/${id}`, 'DELETE').then(ok),
+  getOutput: (id: string, lines = 200) =>
+    req(`/api/sessions/${id}/output?lines=${lines}`).then(parse<{ output: string }>),
   sendInput: (id: string, data: string) =>
     send(`/api/sessions/${id}/input`, 'POST', { data }).then(async (res) => {
       // A 404 means the session ended between render and keypress - an expected,

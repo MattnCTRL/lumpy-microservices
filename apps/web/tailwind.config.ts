@@ -65,6 +65,22 @@ export default {
       backdropBlur: {
         glass: '16px',
       },
+      keyframes: {
+        // A card sliding into its lane (used on enter and on lane change).
+        'lane-in': {
+          '0%': { opacity: '0', transform: 'translateX(-10px) scale(0.985)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
+        // A finished card draining off the Done lane before it retires.
+        drain: {
+          '0%': { opacity: '1', transform: 'translateX(0)' },
+          '100%': { opacity: '0', transform: 'translateX(18px)' },
+        },
+      },
+      animation: {
+        'lane-in': 'lane-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        drain: 'drain 700ms ease-in both',
+      },
     },
   },
   plugins: [],
