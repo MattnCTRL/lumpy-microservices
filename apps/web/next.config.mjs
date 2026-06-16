@@ -2,6 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@lumpy/shared'],
+  async redirects() {
+    // The old per-tab routes folded into the unified command center at "/".
+    // A real server-level 307 (vs a page-level redirect) so old links/bookmarks
+    // land cleanly without depending on client hydration.
+    return [
+      { source: '/tasks', destination: '/', permanent: false },
+      { source: '/sessions', destination: '/', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
